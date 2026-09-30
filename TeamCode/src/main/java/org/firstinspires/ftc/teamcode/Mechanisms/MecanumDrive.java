@@ -15,10 +15,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
         private IMU imu;
 
         public void init(HardwareMap hwMap) {
-            frontLeftMotor = hwMap.get(DcMotor.class, "front_left_motor");//0
-            backLeftMotor = hwMap.get(DcMotor.class, "back_left_motor");//2
-            frontRightMotor = hwMap.get(DcMotor.class, "front_right_motor");//1
-            backRightMotor = hwMap.get(DcMotor.class, "back_right_motor");//3
+            frontLeftMotor = hwMap.get(DcMotor.class, "fl_motor");//0
+            backLeftMotor = hwMap.get(DcMotor.class, "bl_motor");//2
+            frontRightMotor = hwMap.get(DcMotor.class, "fr_motor");//1
+            backRightMotor = hwMap.get(DcMotor.class, "br_motor");//3
 
             //2
 
