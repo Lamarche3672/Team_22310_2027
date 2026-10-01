@@ -45,3 +45,11 @@ public class AprilTagLimelightTest extends OpMode {
         }
     }
 }
+//if far range April tag capture doesnt work, change range,
+// go configuration --> detector downscale --> change to 1.5 (currently it is 2)
+
+//change ID filters dpeinding on alliance side, this is also found in configuration
+
+//Chnage x and y crop for performance boost if you dont need as much of the screen
+
+//3D point of interest oculd be used for knowing whre the scoign bucket is
