@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro;
+/*package org.firstinspires.ftc.teamcode.pedro;
 
 import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.hardwareMap;
 
@@ -7,7 +7,7 @@ import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-public class Constants {
+public class  Constants {
 
     public static MecanumConfig drivetrainConfig; //Added cuz Tuning.java needed it
 
@@ -29,10 +29,11 @@ public class Constants {
 
     public static PathConstants pathConstants = new PathConstants();
 
-        public static Follower createFollower (HardwareMap hardwareMap){
+        public static Follower createFollower(HardwareMap hardwareMap) {
             return new FollowerBuilder(followerConstants, hardwareMap)
                     .pathConstraints(pathConstraints)
                     .mecanumDrivetrain(driveConstants)
                     .build();
         }
+*/
 

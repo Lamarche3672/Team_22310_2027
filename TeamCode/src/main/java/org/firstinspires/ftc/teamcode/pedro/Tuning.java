@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import org.firstinspires.ftc.teamcode.pedro.procedures.MecanumTuner;
 import org.firstinspires.ftc.teamcode.pedro.procedures.Tests;
 import org.firstinspires.ftc.teamcode.pedro.procedures.ThreeWheelIMUTuner;
+import org.firstinspires.ftc.teamcode.pedro.procedures.ThreeWheelTuner;
 
 public class Tuning {
     //Import @Tuners below:
@@ -26,8 +27,8 @@ public class Tuning {
     }
 
     @Tuner
-    public static Procedure threeWheelIMUTuner() {
-        return new ThreeWheelIMUTuner();
+    public static Procedure threeWheelTuner() {
+        return new ThreeWheelTuner();
     }
 // this is new and from constants. may have to move
     public static MecanumConfig driveConfig = new MecanumConfig(
