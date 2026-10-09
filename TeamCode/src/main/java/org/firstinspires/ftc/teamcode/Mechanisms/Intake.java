@@ -15,7 +15,6 @@ public class Intake{
     double maxSpeed = 0.6;
     private DcMotor intakeMotor;
 
-    boolean intakeButton;
     public void init(HardwareMap hwMap) {
         intakeMotor = hwMap.get(DcMotor.class, "intake_motor");
 
@@ -23,7 +22,7 @@ public class Intake{
         intakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-        public void loop ( double forward){
+        public void loop (double forward){
             if (gamepad1.right_bumper) {
                 intakeMotor.setPower(maxSpeed * (forward / maxPower));
             }
