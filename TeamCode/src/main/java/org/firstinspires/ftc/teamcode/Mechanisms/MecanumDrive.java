@@ -16,8 +16,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
         public void init(HardwareMap hwMap) {
             frontLeftMotor = hwMap.get(DcMotor.class, "fl_motor");//0
-            backLeftMotor = hwMap.get(DcMotor.class, "bl_motor");//2
             frontRightMotor = hwMap.get(DcMotor.class, "fr_motor");//1
+            backLeftMotor = hwMap.get(DcMotor.class, "bl_motor");//2
             backRightMotor = hwMap.get(DcMotor.class, "br_motor");//3
 
             //2
