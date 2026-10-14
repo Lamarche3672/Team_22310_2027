@@ -11,21 +11,22 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 //@TeleOp(name = "Intake", group = "TeamCode")
 public class Intake{
 
-    double maxPower = 0.6;
-    double maxSpeed = 0.6;
-    private DcMotor intakeMotor;
+    static double maxPower = 0.6;
+    static double maxSpeed = 0.6;
+    private static DcMotor intakeMotor;
 
     public void init(HardwareMap hwMap) {
         intakeMotor = hwMap.get(DcMotor.class, "intake_motor");
-
         intakeMotor.setDirection(DcMotor.Direction.FORWARD);
         intakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-        public void loop (double forward){
-            if (gamepad1.right_bumper) {
+        public static void loop (double forward){
+            while (gamepad1.right_bumper) {
+                System.out.println(intakeMotor);
                 intakeMotor.setPower(maxSpeed * (forward / maxPower));
             }
         }
+
 }
 

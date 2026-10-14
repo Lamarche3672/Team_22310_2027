@@ -1,5 +1,6 @@
 
 package org.firstinspires.ftc.teamcode.Mechanisms;
+import static org.firstinspires.ftc.robotcore.external.BlocksOpModeCompanion.gamepad1;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -19,6 +20,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
             frontRightMotor = hwMap.get(DcMotor.class, "fr_motor");//1
             backLeftMotor = hwMap.get(DcMotor.class, "bl_motor");//2
             backRightMotor = hwMap.get(DcMotor.class, "br_motor");//3
+
 
             //2
 
@@ -70,5 +72,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
             double newStrafe = r * Math.cos(theta);
 
             this.drive(newForward, newStrafe, rotate);
+            System.out.println("hi"); // if it doesnt run that means something is blocking to run this
+            Intake.loop(1);
         }
     }
