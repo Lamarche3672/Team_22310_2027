@@ -21,10 +21,15 @@ public class Intake{
         intakeMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
-        public static void loop (double forward){
+        public static void loop (double forward, double backward){
             while (gamepad1.right_bumper) {
                 System.out.println(intakeMotor);
                 intakeMotor.setPower(maxSpeed * (forward / maxPower));
+            }
+
+            while (gamepad1.left_bumper) {
+                System.out.println(intakeMotor);
+                intakeMotor.setPower(maxSpeed * (backward / maxPower));
             }
         }
 

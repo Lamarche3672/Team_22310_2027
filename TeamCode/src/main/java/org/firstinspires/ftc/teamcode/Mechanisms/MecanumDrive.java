@@ -71,8 +71,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
             double newForward = r * Math.sin(theta);
             double newStrafe = r * Math.cos(theta);
 
-            this.drive(newForward, newStrafe, rotate);
+            /*this.drive(newForward, newStrafe, rotate);
             System.out.println("hi"); // if it doesnt run that means something is blocking to run this
-            Intake.loop(1);
+            Intake.loop("1");
+
+            System.out.println("hi"); // if it doesnt run that means something is blocking to run this
+            Intake.loop(2);
+             */
         }
     }
