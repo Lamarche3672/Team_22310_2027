@@ -13,7 +13,7 @@ public class Index extends OpMode {
 
     @Override
     public void init() {
-        indexMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        indexMotor = hardwareMap.get(DcMotor.class, "index_motor");
         indexMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         indexMotor.setPower(0);
