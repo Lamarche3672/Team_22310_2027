@@ -8,10 +8,10 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 @TeleOp(name = "TeleOpCodeTestOne", group = "TeamCode")
 public class MainCommand extends OpMode {
 
-    private static final double INTAKE_POWER = 1;
-    private DcMotor intakeMotor;
+    private static final double INTAKE_POWER = 1.0;
+    private static final double INDEX_POWER = 1.0;
 
-    private static final double INDEX_POWER = 0.6;
+    private DcMotor intakeMotor;
     private DcMotor indexMotor;
 
     @Override
@@ -29,32 +29,33 @@ public class MainCommand extends OpMode {
 
     @Override
     public void loop() {
-        double power = 0,power2 = 0;
+        double intakePower = 0.0;
 
         if (gamepad1.right_bumper) {
-            power = INTAKE_POWER;
+            intakePower = INTAKE_POWER;
         } else if (gamepad1.left_bumper) {
-            power = -INTAKE_POWER;
+            intakePower = -INTAKE_POWER;
         }
 
-        intakeMotor.setPower(power);
-        telemetry.addData("Intake power", power);
-        telemetry.update();
+        double indexPower = 0.0;
 
         if (gamepad1.a) {
-            power2 = INDEX_POWER;
+            indexPower = INDEX_POWER;
         } else if (gamepad1.b) {
-            power2 = -INDEX_POWER;
+            indexPower = -INDEX_POWER;
         }
 
-        intakeMotor.setPower(power2);
-        telemetry.addData("Index power", power2);
+        intakeMotor.setPower(intakePower);
+        indexMotor.setPower(indexPower);
+
+        telemetry.addData("Intake power", intakePower);
+        telemetry.addData("Index power", indexPower);
         telemetry.update();
     }
 
     @Override
     public void stop() {
-        intakeMotor.setPower(0);
-        indexMotor.setPower(0);
+        intakeMotor.setPower(0.0);
+        indexMotor.setPower(0.0);
     }
 }

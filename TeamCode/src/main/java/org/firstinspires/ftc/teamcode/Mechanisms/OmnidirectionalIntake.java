@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 @TeleOp(name = "Omnidirectional Intake", group = "TeamCode")
 public class OmnidirectionalIntake extends OpMode {
 
-    private static final double INTAKE_POWER = -1;
+    private static final double INTAKE_POWER = 1;
     private DcMotor intakeMotor;
 
     @Override
@@ -23,11 +23,13 @@ public class OmnidirectionalIntake extends OpMode {
     public void loop() {
         double power = 0;
 
-        if (gamepad1.left_bumper) {
+        if (gamepad1.right_bumper) {
             power = INTAKE_POWER;
-        } else if (gamepad1.right_bumper) {
+        } else if (gamepad1.left_bumper) {
             power = -INTAKE_POWER;//goes backwards
         }
+
+        power = 0.0;
 
         intakeMotor.setPower(power);
         telemetry.addData("Intake power", power);
@@ -39,5 +41,3 @@ public class OmnidirectionalIntake extends OpMode {
         intakeMotor.setPower(0);
     }
 }
-
-//fpor ome \rewson the intake and outake work togetehr in this code

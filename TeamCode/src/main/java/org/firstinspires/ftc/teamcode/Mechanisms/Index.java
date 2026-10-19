@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 @TeleOp(name = "Index", group = "TeamCode")
 public class Index extends OpMode {
 
-    private static final double INDEX_POWER = 0.6;
+    private static final double INDEX_POWER = 1.0;
     private DcMotor indexMotor;
 
     @Override
@@ -17,6 +17,7 @@ public class Index extends OpMode {
         indexMotor.setDirection(DcMotorSimple.Direction.FORWARD);
         indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         indexMotor.setPower(0);
+
     }
 
     @Override
@@ -28,6 +29,7 @@ public class Index extends OpMode {
         } else if (gamepad1.b) {
             power = -INDEX_POWER; //goes backwards
         }
+        power = 0.0;
 
         indexMotor.setPower(power);
         telemetry.addData("Index power", power);
