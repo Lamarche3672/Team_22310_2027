@@ -5,8 +5,8 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "Indexer", group = "TeamCode")
-public class Indexer extends OpMode {
+@TeleOp(name = "Index", group = "TeamCode")
+public class Index extends OpMode {
 
     private static final double INDEX_POWER = 0.6;
     private DcMotor indexMotor;
@@ -25,8 +25,8 @@ public class Indexer extends OpMode {
 
         if (gamepad1.a) {
             power = INDEX_POWER;
-        } else if (gamepad1.a) {
-            power = -INDEX_POWER;
+        } else if (gamepad1.b) {
+            power = -INDEX_POWER; //goes backwards
         }
 
         indexMotor.setPower(power);
