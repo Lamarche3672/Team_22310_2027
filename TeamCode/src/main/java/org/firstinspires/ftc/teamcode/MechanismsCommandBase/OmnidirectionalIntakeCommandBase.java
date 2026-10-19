@@ -1,12 +1,12 @@
-package org.firstinspires.ftc.teamcode.Mechanisms;
+package org.firstinspires.ftc.teamcode.MechanismsCommandBase;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "Intake", group = "TeamCode")
-public class Intake extends OpMode {
+@TeleOp(name = "Omnidirectional Intake", group = "TeamCode")
+public class OmnidirectionalIntakeCommandBase extends OpMode {
 
     private static final double INTAKE_POWER = 1;
     private DcMotor intakeMotor;
@@ -26,7 +26,7 @@ public class Intake extends OpMode {
         if (gamepad1.right_bumper) {
             power = INTAKE_POWER;
         } else if (gamepad1.left_bumper) {
-            power = -INTAKE_POWER;
+            power = -INTAKE_POWER;//goes backwards
         }
 
         intakeMotor.setPower(power);

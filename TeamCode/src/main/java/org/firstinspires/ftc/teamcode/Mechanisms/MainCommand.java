@@ -29,7 +29,7 @@ public class MainCommand extends OpMode {
 
     @Override
     public void loop() {
-        double power = 0;
+        double power = 0,power2 = 0;
 
         if (gamepad1.right_bumper) {
             power = INTAKE_POWER;
@@ -41,11 +41,9 @@ public class MainCommand extends OpMode {
         telemetry.addData("Intake power", power);
         telemetry.update();
 
-        double power2 = 0;
-
-        if (gamepad1.right_bumper) {
+        if (gamepad1.a) {
             power2 = INDEX_POWER;
-        } else if (gamepad1.left_bumper) {
+        } else if (gamepad1.b) {
             power2 = -INDEX_POWER;
         }
 
@@ -57,5 +55,6 @@ public class MainCommand extends OpMode {
     @Override
     public void stop() {
         intakeMotor.setPower(0);
+        indexMotor.setPower(0);
     }
 }
