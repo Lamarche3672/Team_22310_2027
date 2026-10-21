@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class ColourSensor {
-    float gainLight = 8;
+    float gainLight = 12;
     double rr = 0.35;
     double rg = 0.3;
     double rb = 0.3;
