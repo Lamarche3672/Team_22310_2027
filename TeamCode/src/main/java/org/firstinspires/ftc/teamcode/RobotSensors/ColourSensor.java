@@ -7,16 +7,16 @@ import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class ColourSensor {
-    float gainLight = 12;
-    double rr = 0.35;
+    float gainLight = 4;
+    double rr = 0.35; // greater than
     double rg = 0.3;
     double rb = 0.3;
-    double yr = 0.5;
-    double yg = 0.9;
+    double yr = 0.5; // greater than
+    double yg = 0.9; // greater than
     double yb = 0.6;
     double br = 0.2;
     double bg = 0.5;
-    double bb = 0.5;
+    double bb = 0.5; // greater than
 
     NormalizedColorSensor colorSensor;
 
@@ -49,7 +49,7 @@ public class ColourSensor {
         red, green, blue
 
         THESE VALUES ARE FROM BROGAN PRATT, FIND OUR OWN VALUES LATER
-        RED = >.35, <.3, <.3
+        RED = >.1, <.25, <.3
         YELLOW = >.5, >.9, <.6
         BLUE = <.2, <.5, >.5
          */
