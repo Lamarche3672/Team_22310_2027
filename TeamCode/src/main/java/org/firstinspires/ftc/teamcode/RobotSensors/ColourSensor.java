@@ -14,9 +14,9 @@ public class ColourSensor {
     double yr = 0.5;
     double yg = 0.9;
     double yb = 0.6;
-    double br = 0.03;
-    double bg = 0.13;
-    double bb = 0.4;
+    double br = 0.07;
+    double bg = 0.12;
+    double bb = 0.3;
 
     NormalizedColorSensor colorSensor;
 
@@ -51,7 +51,7 @@ public class ColourSensor {
         THESE VALUES ARE FROM BROGAN PRATT, FIND OUR OWN VALUES LATER
         RED = >.1 <.2, <.11
         YELLOW = >.01, >.9, <.6
-        BLUE = <.03, <.13, >.4
+        BLUE = <.07, <.12, >.32
          */
 
         if (normRed > rr && normGreen < rg && normBlue < rb) {
