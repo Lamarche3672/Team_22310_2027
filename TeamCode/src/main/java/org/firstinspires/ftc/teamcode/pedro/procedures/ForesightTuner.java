@@ -157,7 +157,12 @@ class ForwardVelocity extends TuningOpMode<Double> {
         localizer.setPose(Pose.zero());
         localizer.update();
 
+        ElapsedTime motionTimer = new ElapsedTime();
         while (!end) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Forward velocity measurement stopped or timed out. Check Pinpoint localization.");
+            }
             localizer.update();
             if (Math.abs(localizer.pose().x()) > distance) {
                 end = true;
@@ -215,7 +220,12 @@ class StrafeVelocity extends TuningOpMode<Double> {
         localizer.setPose(Pose.zero());
         localizer.update();
 
+        ElapsedTime motionTimer = new ElapsedTime();
         while (!end) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Strafe velocity measurement stopped or timed out. Check Pinpoint localization.");
+            }
             localizer.update();
             if (Math.abs(localizer.pose().y()) > distance) {
                 end = true;
@@ -278,7 +288,12 @@ class ForwardDeceleration extends TuningOpMode<Double> {
 
         drivetrain.drive(power, false);
 
+        ElapsedTime motionTimer = new ElapsedTime();
         while (!stopping) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Forward deceleration measurement stopped or timed out. Check Pinpoint localization and target velocity.");
+            }
             localizer.update();
             double currentVelocity = localizer.twist().toVector2D().x();
             if (Math.abs(currentVelocity) > velocity) {
@@ -293,6 +308,10 @@ class ForwardDeceleration extends TuningOpMode<Double> {
         boolean end = false;
 
         while (!end) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Forward deceleration measurement stopped or timed out.");
+            }
             localizer.update();
             double currentVelocity = localizer.twist().toVector2D().x();
             long currentTimeNano = System.nanoTime();
@@ -369,7 +388,12 @@ class StrafeDeceleration extends TuningOpMode<Double> {
 
         drivetrain.drive(power, false);
 
+        ElapsedTime motionTimer = new ElapsedTime();
         while (!stopping) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Strafe deceleration measurement stopped or timed out. Check Pinpoint localization and target velocity.");
+            }
             localizer.update();
             double currentVelocity = localizer.twist().toVector2D().y();
             if (Math.abs(currentVelocity) > velocity) {
@@ -384,6 +408,10 @@ class StrafeDeceleration extends TuningOpMode<Double> {
         boolean end = false;
 
         while (!end) {
+            if (isStopRequested() || motionTimer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Strafe deceleration measurement stopped or timed out.");
+            }
             localizer.update();
             double currentVelocity = localizer.twist().toVector2D().y();
             long currentTimeNano = System.nanoTime();
@@ -1250,4 +1278,3 @@ class StrafeTranslational extends TuningOpMode<List<Double>> {
         this.tau = -1.0/linReg[1];
     }
 }
-

@@ -76,6 +76,13 @@ public class Tests extends Procedure {
 
         awaitInputs(inputs);
 
+        if ((selectedTest.get() == Test.LINE || selectedTest.get() == Test.CURVED
+                || selectedTest.get() == Test.INTERPOLATION_CURVED)
+                && (!Double.isFinite(distance.get()) || distance.get() <= 0.0)) {
+            abort("Enter a finite positive test distance in inches.");
+            return;
+        }
+
         switch (selectedTest.get()) {
             case HOLD:
                 if (!algorithm)
@@ -168,7 +175,6 @@ class TestsLine extends TuningOpMode<Boolean> {
         Follower follower = followerFunction.apply(hardwareMap);
         follower.setPose(Pose.zero());
 
-        double distance = 48;
         boolean forward = true;
 
         Path path1 = line(Pose.zero(), new Pose(distance,0, 0)).constant(0);
@@ -210,7 +216,6 @@ class TestsCurve extends TuningOpMode<Boolean> {
         Follower follower = followerFunction.apply(hardwareMap);
         follower.setPose(Pose.zero());
 
-        double distance = 48;
         boolean forward = true;
 
         Path path1 = curve(Pose.zero(), new Pose(distance + 0,0), new Pose(distance,distance)).tangent();
@@ -252,7 +257,6 @@ class TestsInterpolation extends TuningOpMode<Boolean> {
         Follower follower = followerFunction.apply(hardwareMap);
         follower.setPose(Pose.zero());
 
-        double distance = 48;
         boolean forward = true;
 
         Path path1 = curve(Pose.zero(), new Pose(distance + 0,0), new Pose(distance,distance)).heading((curve, t) -> Math.PI);
@@ -481,5 +485,4 @@ class TestsPose extends TuningOpMode<Boolean> {
         return true;
     }
 }
-
 
