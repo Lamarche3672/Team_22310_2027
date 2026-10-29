@@ -1,9 +1,12 @@
-package org.firstinspires.ftc.teamcode.FinalTeleOp;
+package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
+
 @TeleOp(name = "TeleOpCodeTestTwo", group = "TeamCode")
-public class MainCommandFinal extends OpMode {
+public class MainTeleOp extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
 
