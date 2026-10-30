@@ -1,19 +1,18 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
-public class MecanumDriveFinal extends OpMode {
+public class MecanumDriveFinal {
     private DcMotor frontLeftMotor;
     private DcMotor backLeftMotor;
     private DcMotor frontRightMotor;
     private DcMotor backRightMotor;
     private IMU imu;
 
-    public void init() {
+    public void init(HardwareMap hardwareMap) {
         frontLeftMotor = hardwareMap.get(DcMotor.class, "fl_motor");
         frontRightMotor = hardwareMap.get(DcMotor.class, "fr_motor");
         backLeftMotor = hardwareMap.get(DcMotor.class, "bl_motor");
@@ -27,6 +26,11 @@ public class MecanumDriveFinal extends OpMode {
         frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
         stop();
 
         imu = hardwareMap.get(IMU.class, "imu");
@@ -35,11 +39,6 @@ public class MecanumDriveFinal extends OpMode {
                 RevHubOrientationOnRobot.UsbFacingDirection.FORWARD);
         imu.initialize(new IMU.Parameters(hubOrientation));
         imu.resetYaw();
-    }
-
-
-    public void loop() {
-
     }
 
     public void drive(double forward, double strafe, double rotate) {
