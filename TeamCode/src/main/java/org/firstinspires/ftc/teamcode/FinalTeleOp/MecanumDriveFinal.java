@@ -6,11 +6,16 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 public class MecanumDriveFinal {
+    private static final double DRIVE_DEADZONE = 0.05;
+
     private DcMotor frontLeftMotor;
     private DcMotor backLeftMotor;
     private DcMotor frontRightMotor;
     private DcMotor backRightMotor;
     private GoBildaPinpointDriver pinpoint;
+    private double headingOffsetRadians;
+    private double headingRadians = Double.NaN;
+    private boolean headingReady;
 
     public void init(HardwareMap hardwareMap) {
         frontLeftMotor = hardwareMap.get(DcMotor.class, "fl_motor");
@@ -26,19 +31,45 @@ public class MecanumDriveFinal {
         frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        /*frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);*/
+        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         stop();
 
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        headingOffsetRadians = 0;
+        headingRadians = Double.NaN;
+        headingReady = false;
+        // Keep the robot stationary during INIT while the IMU calibrates.
         pinpoint.resetPosAndIMU();
     }
 
     public void drive(double forward, double strafe, double rotate) {
-        applyMotorPowers(Math.pow(forward, 3), Math.pow(strafe, 3), Math.pow(rotate, 3));
+        driveCubic(forward, strafe, rotate, 0);
+    }
+
+    private void driveCubic(double forward, double strafe, double rotate, double heading) {
+        if (!Double.isFinite(forward) || !Double.isFinite(strafe) || !Double.isFinite(rotate)) {
+            stop();
+            return;
+        }
+
+        // Cube the stick magnitude, not each axis: preserve the requested direction.
+        double magnitude = Math.hypot(forward, strafe);
+        double limitedMagnitude = Math.min(1.0, magnitude);
+        double scale = magnitude > DRIVE_DEADZONE
+                ? Math.pow(limitedMagnitude, 3) / magnitude : 0;
+        forward *= scale;
+        strafe *= scale;
+        rotate = Math.abs(rotate) > DRIVE_DEADZONE
+                ? Math.pow(Math.max(-1.0, Math.min(1.0, rotate)), 3) : 0;
+
+        // Pinpoint heading is CCW-positive; strafe input is right-positive.
+        double robotForward = forward * Math.cos(heading) - strafe * Math.sin(heading);
+        double robotStrafe = forward * Math.sin(heading) + strafe * Math.cos(heading);
+        applyMotorPowers(robotForward, robotStrafe, rotate);
     }
 
     private void applyMotorPowers(double forward, double strafe, double rotate) {
@@ -58,21 +89,42 @@ public class MecanumDriveFinal {
     }
 
     public void driveFieldRelative(double forward, double strafe, double rotate) {
-        // Curve joystick inputs before rotating them into the robot's reference frame.
-        forward = Math.pow(forward, 3);
-        strafe = Math.pow(strafe, 3);
-        rotate = Math.pow(rotate, 3);
+        updateHeading();
+        if (!headingReady) {
+            stop();
+            return;
+        }
+        driveCubic(forward, strafe, rotate,
+                AngleUnit.normalizeRadians(headingRadians - headingOffsetRadians));
+    }
 
-        pinpoint.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
-        double heading = pinpoint.getHeading(AngleUnit.RADIANS);
+    public void updateHeading() {
+        // Heading-only reads do not refresh calibration/fault status.
+        pinpoint.update();
+        headingRadians = pinpoint.getHeading(AngleUnit.RADIANS);
+        headingReady = pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY
+                && Double.isFinite(headingRadians);
+    }
 
-        double theta = Math.atan2(forward, strafe);
-        double magnitude = Math.hypot(strafe, forward);
-        theta = AngleUnit.normalizeRadians(theta - heading);
+    public void resetFieldHeading() {
+        updateHeading();
+        if (headingReady) {
+            // Software zero only: do not recalibrate the IMU while driving.
+            headingOffsetRadians = headingRadians;
+        }
+    }
 
-        double robotForward = magnitude * Math.sin(theta);
-        double robotStrafe = magnitude * Math.cos(theta);
-        applyMotorPowers(robotForward, robotStrafe, rotate);
+    public boolean isHeadingReady() {
+        return headingReady;
+    }
+
+    public GoBildaPinpointDriver.DeviceStatus getHeadingStatus() {
+        return pinpoint.getDeviceStatus();
+    }
+
+    public double getFieldHeadingDegrees() {
+        return headingReady ? Math.toDegrees(AngleUnit.normalizeRadians(
+                headingRadians - headingOffsetRadians)) : Double.NaN;
     }
 
     public void stop() {
