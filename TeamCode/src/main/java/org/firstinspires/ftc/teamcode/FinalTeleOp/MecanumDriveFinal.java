@@ -5,21 +5,8 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-import java.util.Arrays;
-import java.util.function.LongSupplier;
-
 public class MecanumDriveFinal {
     private static final double DRIVE_DEADZONE = 0.05;
-    // Power units per second: about 0.6 s to full power, 0.33 s to release it.
-    private static final double POWER_RAMP_UP = 1.6;
-    private static final double POWER_RAMP_DOWN = 3.0;
-    // A delayed loop must not cause a large power jump when it resumes.
-    private static final double MAX_RAMP_TIMESTEP_SECONDS = 0.05;
-
-    private final LongSupplier nanoTime;
-    private final double[] appliedPowers = new double[4];
-    private final double[] targetPowers = new double[4];
-    private long lastPowerUpdateNanos;
 
     private DcMotor frontLeftMotor;
     private DcMotor backLeftMotor;
@@ -29,15 +16,6 @@ public class MecanumDriveFinal {
     private double headingOffsetRadians;
     private double headingRadians = Double.NaN;
     private boolean headingReady;
-
-    public MecanumDriveFinal() {
-        this(System::nanoTime);
-    }
-
-    // Injectable monotonic clock for deterministic ramp tests.
-    MecanumDriveFinal(LongSupplier nanoTime) {
-        this.nanoTime = nanoTime;
-    }
 
     public void init(HardwareMap hardwareMap) {
         frontLeftMotor = hardwareMap.get(DcMotor.class, "fl_motor");
@@ -80,16 +58,13 @@ public class MecanumDriveFinal {
 
         // Cube the stick magnitude, not each axis: preserve the requested direction.
         double magnitude = Math.hypot(forward, strafe);
-        // Rescale outside the deadzone so power starts continuously at zero.
-        double limitedMagnitude = Math.max(0,
-                (Math.min(1.0, magnitude) - DRIVE_DEADZONE) / (1.0 - DRIVE_DEADZONE));
+        double limitedMagnitude = Math.min(1.0, magnitude);
         double scale = magnitude > DRIVE_DEADZONE
                 ? Math.pow(limitedMagnitude, 3) / magnitude : 0;
         forward *= scale;
         strafe *= scale;
-        double turnMagnitude = Math.max(0,
-                (Math.min(1.0, Math.abs(rotate)) - DRIVE_DEADZONE) / (1.0 - DRIVE_DEADZONE));
-        rotate = Math.copySign(Math.pow(turnMagnitude, 3), rotate);
+        rotate = Math.abs(rotate) > DRIVE_DEADZONE
+                ? Math.pow(Math.max(-1.0, Math.min(1.0, rotate)), 3) : 0;
 
         // Pinpoint heading is CCW-positive; strafe input is right-positive.
         double robotForward = forward * Math.cos(heading) - strafe * Math.sin(heading);
@@ -107,37 +82,10 @@ public class MecanumDriveFinal {
                 Math.max(Math.abs(frontLeftPower), Math.abs(backLeftPower)),
                 Math.max(Math.abs(frontRightPower), Math.abs(backRightPower))));
 
-        targetPowers[0] = frontLeftPower / maxPower;
-        targetPowers[1] = backLeftPower / maxPower;
-        targetPowers[2] = frontRightPower / maxPower;
-        targetPowers[3] = backRightPower / maxPower;
-
-        long now = nanoTime.getAsLong();
-        double dt = Math.max(0, Math.min(MAX_RAMP_TIMESTEP_SECONDS,
-                (now - lastPowerUpdateNanos) * 1e-9));
-        lastPowerUpdateNanos = now;
-
-        // Use one interpolation fraction for all wheels. Independent wheel clamps
-        // can distort the requested translation/turn mix, especially on diagonals.
-        double fraction = 1.0;
-        for (int i = 0; i < appliedPowers.length; i++) {
-            double change = Math.abs(targetPowers[i] - appliedPowers[i]);
-            if (change > 0) {
-                boolean reversing = targetPowers[i] * appliedPowers[i] < 0;
-                boolean speedingUp = Math.abs(targetPowers[i]) > Math.abs(appliedPowers[i]);
-                double rate = reversing || speedingUp ? POWER_RAMP_UP : POWER_RAMP_DOWN;
-                fraction = Math.min(fraction, rate * dt / change);
-            }
-        }
-        for (int i = 0; i < appliedPowers.length; i++) {
-            appliedPowers[i] = fraction >= 1.0 ? targetPowers[i]
-                    : appliedPowers[i] + fraction * (targetPowers[i] - appliedPowers[i]);
-        }
-
-        frontLeftMotor.setPower(appliedPowers[0]);
-        backLeftMotor.setPower(appliedPowers[1]);
-        frontRightMotor.setPower(appliedPowers[2]);
-        backRightMotor.setPower(appliedPowers[3]);
+        frontLeftMotor.setPower(frontLeftPower / maxPower);
+        backLeftMotor.setPower(backLeftPower / maxPower);
+        frontRightMotor.setPower(frontRightPower / maxPower);
+        backRightMotor.setPower(backRightPower / maxPower);
     }
 
     public void driveFieldRelative(double forward, double strafe, double rotate) {
@@ -180,10 +128,6 @@ public class MecanumDriveFinal {
     }
 
     public void stop() {
-        // Explicit STOP, invalid inputs and heading faults bypass the normal ramp.
-        Arrays.fill(appliedPowers, 0);
-        Arrays.fill(targetPowers, 0);
-        lastPowerUpdateNanos = nanoTime.getAsLong();
         frontLeftMotor.setPower(0);
         backLeftMotor.setPower(0);
         frontRightMotor.setPower(0);
