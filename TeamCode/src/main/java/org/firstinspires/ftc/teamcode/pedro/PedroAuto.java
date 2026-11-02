@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * Requires this project's Constants.java and measured Pedro tuning.
  * Route: 24 inches forward, curve left, then return to the starting point.
  */
-@Autonomous(name = "22310 Pedro Auto Example", group = "Pedro")
+@Autonomous(name = "22310 Pedro Auto Test", group = "Pedro")
 public final class PedroAuto extends LinearOpMode {
 
     // EDIT THESE POSES TO CHANGE THE ROUTE. Distances are inches.

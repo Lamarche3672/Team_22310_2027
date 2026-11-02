@@ -7,7 +7,7 @@ import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
 
 @TeleOp(name = "TeleOpCodeTestTwo", group = "TeamCode")
 public class MainTeleOp extends OpMode {
-    private static final double DRIVE_DEADZONE = 0.10;
+    //private static final double DRIVE_DEADZONE = 0.10;
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
 
@@ -25,10 +25,10 @@ public class MainTeleOp extends OpMode {
         intakeIndex.loop(gamepad1, telemetry);
 
         //mecanum
-        double forward = -gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double rotate = gamepad1.right_stick_x;
-        if (Math.abs(forward) < DRIVE_DEADZONE) {
+        double forward = Math.pow(-gamepad1.left_stick_y, 3);
+        double strafe =Math.pow(gamepad1.left_stick_x, 3);
+        double rotate = Math.pow(gamepad1.right_stick_x, 3);
+        /*if (Math.abs(forward) < DRIVE_DEADZONE) {
             forward = 0;
         }
         if (Math.abs(strafe) < DRIVE_DEADZONE) {
@@ -36,7 +36,8 @@ public class MainTeleOp extends OpMode {
         }
         if (Math.abs(rotate) < DRIVE_DEADZONE) {
             rotate = 0;
-        }
+        }*/
+
         drive.driveFieldRelative(forward, strafe, rotate);
     }
 
