@@ -7,7 +7,7 @@ import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
 
 @TeleOp(name = "TeleOpCodeTestTwo", group = "TeamCode")
 public class MainTeleOp extends OpMode {
-    private static final double DRIVE_DEADZONE = 0.05;
+    private static final double DRIVE_DEADZONE = 0.10;
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
 

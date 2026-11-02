@@ -1,16 +1,16 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
 
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.IMU;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
 public class MecanumDriveFinal {
     private DcMotor frontLeftMotor;
     private DcMotor backLeftMotor;
     private DcMotor frontRightMotor;
     private DcMotor backRightMotor;
-    private IMU imu;
+    private GoBildaPinpointDriver pinpoint;
 
     public void init(HardwareMap hardwareMap) {
         frontLeftMotor = hardwareMap.get(DcMotor.class, "fl_motor");
@@ -33,12 +33,8 @@ public class MecanumDriveFinal {
 
         stop();
 
-        imu = hardwareMap.get(IMU.class, "imu");
-        RevHubOrientationOnRobot hubOrientation = new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD);
-        imu.initialize(new IMU.Parameters(hubOrientation));
-        imu.resetYaw();
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        pinpoint.resetPosAndIMU();
     }
 
     public void drive(double forward, double strafe, double rotate) {
@@ -58,9 +54,11 @@ public class MecanumDriveFinal {
     }
 
     public void driveFieldRelative(double forward, double strafe, double rotate) {
+        pinpoint.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
+        double heading = pinpoint.getHeading(AngleUnit.RADIANS);
+
         double theta = Math.atan2(forward, strafe);
         double magnitude = Math.hypot(strafe, forward);
-        double heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         theta = AngleUnit.normalizeRadians(theta - heading);
 
         double robotForward = magnitude * Math.sin(theta);

@@ -27,10 +27,10 @@ public final class Constants {
     // Pedro's wheel mix has the same signs as DriveMath.wheels when turn is CCW.
     // Keep the existing drive motor names and polarities; verify with Mecanum Tuner.
     public static final MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
-        c.frontLeftName.set("fl.motor");
-        c.frontRightName.set("fr.motor");
-        c.backLeftName.set("bl.motor");
-        c.backRightName.set("br.motor");
+        c.frontLeftName.set("fl_motor");
+        c.frontRightName.set("fr_motor");
+        c.backLeftName.set("bl_motor");
+        c.backRightName.set("br_motor");
         c.frontLeftDirection.set(DcMotorSimple.Direction.REVERSE);
         c.frontRightDirection.set(DcMotorSimple.Direction.FORWARD);
         c.backLeftDirection.set(DcMotorSimple.Direction.REVERSE);
