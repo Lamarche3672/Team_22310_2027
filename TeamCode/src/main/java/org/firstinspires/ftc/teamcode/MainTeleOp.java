@@ -7,9 +7,9 @@ import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
 
 @TeleOp(name = "TeleOpCodeTestTwo", group = "TeamCode")
 public class MainTeleOp extends OpMode {
-    //private static final double DRIVE_DEADZONE = 0.10;
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
+    private boolean headingResetPressed;
 
     @Override
     public void init() {
@@ -20,25 +20,35 @@ public class MainTeleOp extends OpMode {
     }
 
     @Override
-    public void loop() {
-        //intake and index
-        intakeIndex.loop(gamepad1, telemetry);
+    public void init_loop() {
+        drive.updateHeading();
+        telemetry.addLine("Keep robot STILL during calibration; wait for Pinpoint READY.");
+        addDriveTelemetry();
+        telemetry.update();
+    }
 
+    @Override
+    public void loop() {
         //mecanum
         double forward = -gamepad1.left_stick_y;
         double strafe = gamepad1.left_stick_x;
         double rotate = gamepad1.right_stick_x;
-        /*if (Math.abs(forward) < DRIVE_DEADZONE) {
-            forward = 0;
+        if (gamepad1.options && !headingResetPressed) {
+            drive.resetFieldHeading();
         }
-        if (Math.abs(strafe) < DRIVE_DEADZONE) {
-            strafe = 0;
-        }
-        if (Math.abs(rotate) < DRIVE_DEADZONE) {
-            rotate = 0;
-        }*/
+        headingResetPressed = gamepad1.options;
 
         drive.driveFieldRelative(forward, strafe, rotate);
+        addDriveTelemetry();
+        // IndexIntake.loop also sends the combined telemetry packet.
+        intakeIndex.loop(gamepad1, telemetry);
+    }
+
+    private void addDriveTelemetry() {
+        telemetry.addData("Pinpoint", drive.getHeadingStatus());
+        telemetry.addData("Field heading (deg)", drive.getFieldHeadingDegrees());
+        telemetry.addData("Drive", drive.isHeadingReady() ? "Ready" : "STOPPED: heading unavailable");
+        telemetry.addLine("Options: make current robot direction field-forward");
     }
 
     @Override
