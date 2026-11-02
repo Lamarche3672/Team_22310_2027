@@ -38,6 +38,10 @@ public class MecanumDriveFinal {
     }
 
     public void drive(double forward, double strafe, double rotate) {
+        applyMotorPowers(Math.pow(forward, 3), Math.pow(strafe, 3), Math.pow(rotate, 3));
+    }
+
+    private void applyMotorPowers(double forward, double strafe, double rotate) {
         double frontLeftPower = forward + strafe + rotate;
         double backLeftPower = forward - strafe + rotate;
         double frontRightPower = forward - strafe - rotate;
@@ -54,6 +58,11 @@ public class MecanumDriveFinal {
     }
 
     public void driveFieldRelative(double forward, double strafe, double rotate) {
+        // Curve joystick inputs before rotating them into the robot's reference frame.
+        forward = Math.pow(forward, 3);
+        strafe = Math.pow(strafe, 3);
+        rotate = Math.pow(rotate, 3);
+
         pinpoint.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
         double heading = pinpoint.getHeading(AngleUnit.RADIANS);
 
@@ -63,7 +72,7 @@ public class MecanumDriveFinal {
 
         double robotForward = magnitude * Math.sin(theta);
         double robotStrafe = magnitude * Math.cos(theta);
-        drive(robotForward, robotStrafe, rotate);
+        applyMotorPowers(robotForward, robotStrafe, rotate);
     }
 
     public void stop() {

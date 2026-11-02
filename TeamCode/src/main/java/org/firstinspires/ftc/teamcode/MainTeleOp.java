@@ -25,9 +25,9 @@ public class MainTeleOp extends OpMode {
         intakeIndex.loop(gamepad1, telemetry);
 
         //mecanum
-        double forward = Math.pow(-gamepad1.left_stick_y, 3);
-        double strafe =Math.pow(gamepad1.left_stick_x, 3);
-        double rotate = Math.pow(gamepad1.right_stick_x, 3);
+        double forward = -gamepad1.left_stick_y;
+        double strafe = gamepad1.left_stick_x;
+        double rotate = gamepad1.right_stick_x;
         /*if (Math.abs(forward) < DRIVE_DEADZONE) {
             forward = 0;
         }
