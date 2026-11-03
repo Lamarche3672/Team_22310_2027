@@ -2,12 +2,13 @@ package org.firstinspires.ftc.teamcode.TrackingSystem;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 public class FlywheelTuner extends OpMode {
 
-    public DcMotor flywheelMotor;
+    public DcMotorEx flywheelMotor;
 
     public double highVelocity = 1500;
     public double lowVelocity = 900;
@@ -23,7 +24,7 @@ public class FlywheelTuner extends OpMode {
 
     @Override
     public void init() {
-        flywheelMotor = hardwareMap.get(DcMotor.class, "flywheel");
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -73,10 +74,10 @@ public class FlywheelTuner extends OpMode {
         flywheelMotor.setVelocity(curTargetVelocity);
 
         double currentVelocity = flywheelMotor.getVelocity();
-        double error = curTargetVelocity - curVelocity;
+        double error = curTargetVelocity - currentVelocity;
 
-        telemetry.addData("Current Velocity", curTargetVelocity);
-        telemetry.addData("Current Velocity", "%.2f", curVelocity);
+        telemetry.addData("Target Velocity", curTargetVelocity);
+        telemetry.addData("Current Velocity", "%.2f", currentVelocity);
         telemetry.addData("Error", "%.2f", error);
         telemetry.addLine("--------------------");
         telemetry.addData("Tuning P", "%.4f (D-Pad U/D)", P);
