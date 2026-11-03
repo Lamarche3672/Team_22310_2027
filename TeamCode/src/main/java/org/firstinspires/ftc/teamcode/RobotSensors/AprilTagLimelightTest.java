@@ -15,7 +15,7 @@ public class AprilTagLimelightTest extends OpMode {
     @Override
     public void init() {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.pipelineSwitch(8); // AprilTag pipeline
+        limelight.pipelineSwitch(0); // AprilTag pipeline
     }
 
     @Override
