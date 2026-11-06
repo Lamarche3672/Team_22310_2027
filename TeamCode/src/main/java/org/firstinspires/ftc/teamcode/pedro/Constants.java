@@ -94,13 +94,37 @@ public final class Constants {
     /** Shared initialization for the calibrated localizer and manual Pinpoint tuner. */
     public static PinpointLocalizer initializePinpoint(HardwareMap map, PinpointConfig config) {
         // Stop the drivetrain before the Pinpoint calibrates. Keep the robot still.
-        createDrivetrain(map).stop(false);
-        PinpointLocalizer localizer = new PinpointLocalizer(map, config);
-        GoBildaPinpointDriver pinpoint = map.get(GoBildaPinpointDriver.class, config.name.get());
-        if (pinpoint.getDeviceStatus() != GoBildaPinpointDriver.DeviceStatus.READY)
-            throw new IllegalStateException("Pinpoint not ready: " + pinpoint.getDeviceStatus()
-                    + ". Check both pods, I2C connection, and keep still during calibration.");
-        return localizer;
+        Mecanum drivetrain = createDrivetrain(map);
+        drivetrain.stop(false);
+        try {
+            PinpointLocalizer localizer = new PinpointLocalizer(map, config);
+            GoBildaPinpointDriver pinpoint = map.get(GoBildaPinpointDriver.class, config.name.get());
+            // Pedro waits a fixed 500 ms. Refresh status and allow slower calibration,
+            // but never continue with a missing pod, IMU fault, or an endless wait.
+            long deadline = System.nanoTime() + 3_000_000_000L;
+            while (true) {
+                if (Thread.currentThread().isInterrupted())
+                    throw new IllegalStateException("Pinpoint initialization interrupted.");
+                localizer.update();
+                GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
+                if (status == GoBildaPinpointDriver.DeviceStatus.READY) return localizer;
+                boolean waiting = status == GoBildaPinpointDriver.DeviceStatus.CALIBRATING
+                        || status == GoBildaPinpointDriver.DeviceStatus.NOT_READY
+                        || status == GoBildaPinpointDriver.DeviceStatus.FAULT_BAD_READ;
+                if (!waiting || System.nanoTime() >= deadline)
+                    throw new IllegalStateException("Pinpoint not ready: " + status
+                            + ". Check both pods, I2C connection, and keep still during calibration.");
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Pinpoint initialization interrupted.", error);
+                }
+            }
+        } catch (RuntimeException error) {
+            drivetrain.stop(true);
+            throw error;
+        }
     }
 
     public static Foresight createAlgorithm() {

@@ -128,24 +128,31 @@ class PinpointCustomPodScalar extends TuningOpMode<Double> {
     protected Double runTuningOpMode() throws InterruptedException {
         PinpointConfig config = new PinpointConfig(c -> {
             c.name.set(name);
-            c.ticksPerUnit.set(OptionalDouble.of(1.0));
             c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
             c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
             c.xPodOffset.set(0.0);
             c.yPodOffset.set(0.0);
         });
-        PinpointLocalizer localizer = PinpointTuner.localizer(hardwareMap, config);
-        localizer.setPose(new Pose(0, 0));
+        PinpointTuner.localizer(hardwareMap, config);
+        GoBildaPinpointDriver pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, name);
         Thread.sleep(1000);
         waitForStart();
-        localizer.setPose(Pose.zero());
-        localizer.update();
+        if (isStopRequested()) return null;
+        pinpoint.update();
+        int startTicks = pinpoint.getEncoderX();
+        int travelTicks = 0;
         while (!isStopRequested()) {
-            localizer.update();
-            telemetry.addData("Forward travel (raw ticks)", localizer.pose().x());
+            pinpoint.update();
+            if (pinpoint.getDeviceStatus() != GoBildaPinpointDriver.DeviceStatus.READY)
+                return null;
+            // Use actual counts, not pose inches with a fake one-tick/inch scale.
+            // That fake scale can trip the SDK driver's position corruption checks.
+            travelTicks = pinpoint.getEncoderX() - startTicks;
+            telemetry.addData("Forward travel (raw ticks)", travelTicks);
             telemetry.update();
+            idle();
         }
-        return Math.abs((localizer.pose().x() / distance));
+        return Math.abs((double) travelTicks) / distance;
     }
 }
 
