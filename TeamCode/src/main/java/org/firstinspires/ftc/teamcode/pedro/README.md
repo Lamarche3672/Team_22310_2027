@@ -21,7 +21,7 @@
 
 - Pods plug into the **Pinpoint**, not motor encoder ports.
 - Pinpoint uses its own IMU. Mount it sticker-side up, following its manual.
-- Motor names: `fl.motor`, `fr.motor`, `bl.motor`, `br.motor`.
+- Motor names: `fl_motor`, `fr_motor`, `bl_motor`, `br_motor`.
 
 ## Before tuning
 
