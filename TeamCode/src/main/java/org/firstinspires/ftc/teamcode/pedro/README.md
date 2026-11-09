@@ -10,6 +10,7 @@
 | --- | --- |
 | `Constants.java` | Waits up to 3 extra seconds for Pinpoint calibration. Stops and brakes the motors if initialization fails. |
 | `procedures/PinpointTuner.java` | Custom-pod tuning now uses real encoder counts, not calculated position. |
+| Direction tests | Use raw encoder travel and remember the largest push, even if you roll back to the starting point. Show X/Y ticks and Pinpoint status. |
 
 ## Wiring
 
@@ -47,6 +48,8 @@
 - Select your actual pod type: 4-bar, swingarm, or custom. The default is not confirmed.
 - Keep the robot **still during initialization/calibration**.
 - After Start, do the requested hand push. Press **Stop** to save each measurement.
+- Direction tests: push **6-12 inches forward**, then **6-12 inches left** in the next stage. Do not turn.
+- Watch **X/Y encoder travel (ticks)** on the Driver Station. X should change for forward; Y for left. A negative count is OK; the tuner will set the reversal.
 - For offsets: turn exactly **180° counterclockwise**, keeping the robot's center fixed.
 - Paste the Java `localizerConfig` into `Constants.java`.
 - Set `LOCALIZER_TUNED = true` only after entering those measured values.
@@ -79,6 +82,10 @@ Move the robot by hand:
 | Message | What to do |
 | --- | --- |
 | Pinpoint not ready | Keep still during calibration. Check both pod cables and the I2C connection. |
+| Travel less than one inch | Press Start **before** pushing. If ticks stay at 0, check pod wheel contact and the cable. |
+| Other encoder moved | Check for swapped X/Y pod cables and push in the requested direction. |
+| Movement on both sides | Repeat one straight push without crossing behind the starting point. |
+| Pinpoint reported a fault | Fix the displayed pod/I2C fault and retry. The tuner will not save a direction from bad readings. |
 | Run Pinpoint Tuner | Finish step 2. Do not guess offsets or just switch the flag to `true`. |
 | Run Foresight Tuner | Finish step 4 before autonomous. |
 
