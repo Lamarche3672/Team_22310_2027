@@ -98,6 +98,7 @@ Fix wrong readings before continuing. **Pose Test is not Odometry Test:** Odomet
 | **Run Pinpoint Tuner** | Finish step 3, copy the measured config and rebuild. Don't guess offsets or just flip the flag. |
 | **Run Foresight Tuner** / algorithm required | Finish step 5 and rebuild before follower or autonomous tests. |
 | **Braking timed out** | Stop. Check that Pose Test readings change correctly before trying Foresight again. |
+| **Invalid or incomplete result** | Check Pose Test readings and try Foresight again. Don't copy the failed result. |
 | **Web page won't open** | Check robot power, Robot Controller app, and computer Wi-Fi. Use `http://192.168.43.1:10158`. |
 
 If a pod fault remains, the **pod, cable, or port** may need further testing. The message alone cannot tell which part is faulty.

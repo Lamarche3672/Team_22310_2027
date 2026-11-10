@@ -39,8 +39,8 @@ public class ForesightTuner extends Procedure {
             return;
         }
 
-        double forwardVelocity = runOpMode(new ForwardVelocity(localizerFunction, drivetrainFunction, distance.get()));
-        double strafeVelocity = runOpMode(new StrafeVelocity(localizerFunction, drivetrainFunction, distance.get()));
+        double forwardVelocity = ForesightMeasurements.positive("Forward velocity", runOpMode(new ForwardVelocity(localizerFunction, drivetrainFunction, distance.get())));
+        double strafeVelocity = ForesightMeasurements.positive("Strafe velocity", runOpMode(new StrafeVelocity(localizerFunction, drivetrainFunction, distance.get())));
 
         Inputs velocityInput = inputs("Velocity", "The velocity to drive to in inches for the Max Achievable Forward and Strafe Deceleration Identifiers");
         Inputs.Field<Double> velocity = velocityInput.d("Velocity").withDefault(30.0);
@@ -50,11 +50,11 @@ public class ForesightTuner extends Procedure {
             return;
         }
 
-        double forwardDeceleration = runOpMode(new ForwardDeceleration(localizerFunction, drivetrainFunction, velocity.get()));
-        double strafeDeceleration = runOpMode(new StrafeDeceleration(localizerFunction, drivetrainFunction, velocity.get()));
+        double forwardDeceleration = ForesightMeasurements.positive("Forward deceleration", runOpMode(new ForwardDeceleration(localizerFunction, drivetrainFunction, velocity.get())));
+        double strafeDeceleration = ForesightMeasurements.positive("Strafe deceleration", runOpMode(new StrafeDeceleration(localizerFunction, drivetrainFunction, velocity.get())));
 
-        List<Double> headingBraking = runOpMode(new HeadingBraking(localizerFunction, drivetrainFunction));
-        double heading = runOpMode(new HeadingTuner(localizerFunction, drivetrainFunction));
+        List<Double> headingBraking = ForesightMeasurements.finite("Heading braking", runOpMode(new HeadingBraking(localizerFunction, drivetrainFunction)), 2);
+        double heading = ForesightMeasurements.positive("Heading tuning", runOpMode(new HeadingTuner(localizerFunction, drivetrainFunction)));
 
         double headingLinear = headingBraking.get(0);
         double headingQuadratic = headingBraking.get(1);
@@ -68,16 +68,18 @@ public class ForesightTuner extends Procedure {
         }
         double safeDistanceBraking = Math.max(distanceBraking.get(), 15.0);
 
-        List<Double> forwardBraking = runOpMode(new ForwardBraking(localizerFunction, drivetrainFunction, headingLinear, headingQuadratic, heading, safeDistanceBraking));
-        List<Double> strafeBraking = runOpMode(new StrafeBraking(localizerFunction, drivetrainFunction, headingLinear, headingQuadratic, heading, safeDistanceBraking));
+        List<Double> forwardBraking = ForesightMeasurements.finite("Forward braking", runOpMode(new ForwardBraking(localizerFunction, drivetrainFunction, headingLinear, headingQuadratic, heading, safeDistanceBraking)), 2);
+        List<Double> strafeBraking = ForesightMeasurements.finite("Strafe braking", runOpMode(new StrafeBraking(localizerFunction, drivetrainFunction, headingLinear, headingQuadratic, heading, safeDistanceBraking)), 2);
 
         double forwardLinear = forwardBraking.get(0);
         double forwardQuadratic = forwardBraking.get(1);
         double strafeLinear = strafeBraking.get(0);
         double strafeQuadratic = strafeBraking.get(1);
 
-        List<Double> forwardTranslational = runOpMode(new ForwardTranslational(localizerFunction, drivetrainFunction));
-        List<Double> strafeTranslational = runOpMode(new StrafeTranslational(localizerFunction, drivetrainFunction));
+        List<Double> forwardTranslational = ForesightMeasurements.finite("Forward tuning", runOpMode(new ForwardTranslational(localizerFunction, drivetrainFunction)), 4);
+        for (double value : forwardTranslational) ForesightMeasurements.positive("Forward tuning", value);
+        List<Double> strafeTranslational = ForesightMeasurements.finite("Strafe tuning", runOpMode(new StrafeTranslational(localizerFunction, drivetrainFunction)), 2);
+        for (double value : strafeTranslational) ForesightMeasurements.positive("Strafe tuning", value);
 
         double forwardTranslationalPrimary = forwardTranslational.get(0);
         double forwardTranslationalSecondary = forwardTranslational.get(1);
