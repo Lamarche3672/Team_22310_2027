@@ -47,7 +47,7 @@
 
 - Select your actual pod type: 4-bar, swingarm, or custom. The default is not confirmed.
 - Keep the robot **still during initialization/calibration**.
-- After Start, do the requested hand push. Press **Stop** to save each measurement.
+- After confirming a stage, it starts automatically. Keep still through initialization, then do the requested hand movement. Press **Stop** to save each measurement; don't wait for a separate Start button.
 - Direction tests: push **6-12 inches forward**, then **6-12 inches left** in the next stage. Do not turn.
 - Watch **X/Y encoder travel (ticks)** on the Driver Station. X should change for forward; Y for left. A negative count is OK; the tuner will set the reversal.
 - For offsets: turn exactly **180° counterclockwise**, keeping the robot's center fixed.
@@ -81,8 +81,11 @@ Move the robot by hand:
 
 | Message | What to do |
 | --- | --- |
-| Pinpoint not ready | Keep still during calibration. Check both pod cables and the I2C connection. |
-| Travel less than one inch | Press Start **before** pushing. If ticks stay at 0, check pod wheel contact and the cable. |
+| `FAULT_X_POD_NOT_DETECTED` | The Pinpoint reports that the forward pod is not detected. Power off the robot, then check the forward pod and its cable at the Pinpoint **X** port. Retry; if it persists, diagnose the pod, cable and port. |
+| `FAULT_Y_POD_NOT_DETECTED` / `FAULT_NO_PODS_DETECTED` | Power off and check the affected pod cables and Pinpoint ports. |
+| `CALIBRATING` / `NOT_READY` | Keep still during calibration and retry. If it persists, record the exact status and check connections. |
+| `FAULT_BAD_READ` | Check the Pinpoint I2C connection with robot power off; retry. |
+| Travel less than one inch | After initialization, push in the requested direction. If ticks stay at 0, check pod wheel contact and the cable. |
 | Other encoder moved | Check for swapped X/Y pod cables and push in the requested direction. |
 | Movement on both sides | Repeat one straight push without crossing behind the starting point. |
 | Pinpoint reported a fault | Fix the displayed pod/I2C fault and retry. The tuner will not save a direction from bad readings. |
