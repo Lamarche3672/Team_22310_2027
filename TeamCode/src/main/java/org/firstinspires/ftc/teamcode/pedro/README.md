@@ -40,7 +40,7 @@ Put the robot on the floor so **both pod wheels touch the floor**.
 2. Enter `pinpoint`. Select your **actual** pod type; the default isn't confirmed.
 3. For custom pods, enter a measured forward push distance and complete that extra step first.
 
-> **Every stage:** confirm the prompt → **keep still during initialization** → move by hand → press **Stop** in the tuner. Stages start automatically; don't wait for a separate Start button.
+> **Every stage:** confirm the prompt → **keep still until Driver Station telemetry says READY** → move by hand → press **Stop** in the tuner. Stages start automatically; don't wait for a separate Start button.
 
 | Stage | Move by hand | Check |
 | --- | --- | --- |
