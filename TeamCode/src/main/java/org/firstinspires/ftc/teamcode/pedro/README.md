@@ -1,97 +1,61 @@
-# Pedro: 2 Pods + Pinpoint
+# Pedro setup: Pinpoint + 2 pods
 
-**Team 22310 · Pedro 3**
+**Not tuned yet.** Do not run autonomous until the steps below are complete. A successful build alone does not mean the robot is ready.
 
-> The build passes. **The robot still needs tuning before autonomous.**
+## 1. Before you start
 
-## What's fixed
+1. In Android Studio, build and **install the latest TeamCode app on the Control Hub**. A GitHub push alone does not update the robot. Installing restarts Robot Controller.
+2. Connect the computer to the robot's Wi-Fi. Open **[192.168.43.1:10158](http://192.168.43.1:10158)**.
+3. Check Robot Configuration: the Pinpoint is an I2C device named `pinpoint`. Its **X** port connects to the forward pod; **Y** connects to the sideways pod. Both pods connect to the Pinpoint, not motor ports.
+4. Keep the Driver Station nearby so you can stop the robot. Keep hands clear of wheels.
 
-| File | What changed |
+Mount the Pinpoint sticker-side up. Pedro recommends a Control Hub I2C port **other than port 0** (used by the built-in IMU).
+
+## 2. Check the motors
+
+Run **Mecanum Tuner** with the robot safely raised and drive wheels off the ground. It spins each motor. Follow the screen and stop if the wrong wheel spins. If you change `drivetrainConfig` in `Constants.java`, keep `c.manualBrakeMode.set(true);`, then rebuild and install.
+
+## 3. Tune the Pinpoint
+
+Put the robot on the floor so both pod wheels touch it. Select **Pinpoint Tuner** (not Two Wheel or Three Wheel). Enter `pinpoint` and select your **actual** pod type; the default is not confirmed. For custom pods, enter the measured push distance and follow that step first.
+
+For each stage, confirm the prompt, then **keep the robot still while it initializes**. The stage starts automatically; there is no separate Start button to wait for. Then:
+
+1. Push **forward** 6–12 inches in a straight line. Press **Stop** in the tuner.
+2. At the next stage, push **left** 6–12 inches without turning. Press **Stop**.
+3. At the offset stage, turn exactly **180° counterclockwise** around the robot's fixed center. Press **Stop**.
+
+These movements are by hand; Pinpoint Tuner does not drive the motors. Watch the Driver Station telemetry: **X ticks** should change during the forward push, **Y ticks** during the left push. Negative ticks are OK.
+
+When finished, copy the Java `localizerConfig` result into `Constants.java`, replacing the existing block. Set `LOCALIZER_TUNED = true` **only after** entering the measured results. Rebuild and install.
+
+## 4. Check position, then tune driving
+
+Run **Tests → Pose Test**. Move the robot by hand: forward should increase X, left should increase Y, and a counterclockwise turn should increase heading. Check a measured distance too. Fix wrong readings before continuing.
+
+Then run **Foresight Tuner** on a clear floor. **It drives the robot, including at full power, and can coast past the requested distance.** Allow plenty of space and be ready to stop it from the Driver Station. Follow the prompts, paste its Java `foresightConfig` into `Constants.java`, set `FORESIGHT_TUNED = true`, then rebuild and install. Try short Line/Curve tests before autonomous.
+
+**Do not confuse Pose Test with Odometry Test:** Odometry Test drives the robot automatically. Mecanum Tuner, Foresight Tuner, and the driving/path tests also power motors.
+
+## If something goes wrong
+
+Turn robot power **off before unplugging or reseating cables**. After checking, power on and retry. If a message persists, take a photo of the **full message** and Pinpoint LED.
+
+| Message or symptom | What to do |
 | --- | --- |
-| `Constants.java` | Waits up to 3 extra seconds for Pinpoint calibration. Stops and brakes the motors if initialization fails. |
-| `procedures/PinpointTuner.java` | Custom-pod tuning now uses real encoder counts, not calculated position. |
-| Direction tests | Use raw encoder travel and remember the largest push, even if you roll back to the starting point. Show X/Y ticks and Pinpoint status. |
+| `FAULT_X_POD_NOT_DETECTED` / blue LED | Pinpoint cannot detect the forward pod. Check the pod and cable at the **X** port. |
+| `FAULT_Y_POD_NOT_DETECTED` / orange LED | Check the sideways pod and cable at the **Y** port. |
+| `FAULT_NO_PODS_DETECTED` / purple LED | Check both pod cables and their Pinpoint ports. |
+| `CALIBRATING` or `NOT_READY` | Keep the robot still during initialization and retry. If it persists, record the exact status and check connections. |
+| `FAULT_BAD_READ` | Check the Pinpoint's I2C cable and connection. |
+| `FAULT_IMU_RUNAWAY` | Keep still during calibration and retry. If it persists, consult the Pinpoint manual. |
+| `pinpoint` not found | Check the I2C connection and the exact device name in Robot Configuration. |
+| Less than one inch / ticks stay at zero | Wait until initialization finishes, then push 6–12 inches. Check the pod wheel touches the floor and its cable is connected. |
+| Other encoder moved / swapped pods | Push straight without turning; check forward pod is X and sideways pod is Y. |
+| Movement on both sides | Retry with one straight push; don't roll past the starting point in the opposite direction. |
+| Invalid offset measurement | Retry the offset step: keep the center fixed and turn exactly 180° counterclockwise. |
+| `Run Pinpoint Tuner` | Complete step 3, copy the measured config and rebuild. Do not guess offsets or just flip the flag. |
+| `Run Foresight Tuner` / algorithm required | Complete step 4 and rebuild before follower or autonomous tests. |
+| Web page won't open | Check robot power, Robot Controller app and computer Wi-Fi; use `http://192.168.43.1:10158`. |
 
-## Wiring
-
-| Part | Connect to |
-| --- | --- |
-| Forward pod | Pinpoint **X** input |
-| Sideways pod | Pinpoint **Y** input |
-| Pinpoint | REV Hub **I2C** port; name it `pinpoint` |
-
-- Pods plug into the **Pinpoint**, not motor encoder ports.
-- Pinpoint uses its own IMU. Mount it sticker-side up, following its manual.
-- Motor names: `fl_motor`, `fr_motor`, `bl_motor`, `br_motor`.
-
-## Before tuning
-
-- [ ] Build and install the Robot Controller app.
-- [ ] Connect to the robot's Wi-Fi.
-- [ ] Open **http://192.168.43.1:10158**.
-
-## Tune in this order
-
-**After each change to `Constants.java`, rebuild and install before the next step.**
-
-### 1. Motors — Mecanum Tuner
-
-- Raise the robot so the drive wheels are clear of the floor.
-- Check motor names and directions.
-- If changed, paste `drivetrainConfig` into `Constants.java`.
-- Keep `c.manualBrakeMode.set(true);`.
-
-### 2. Pods — Pinpoint Tuner
-
-**Use Pinpoint Tuner, NOT Two Wheel Tuner or Three Wheel Tuner.**
-
-- Select your actual pod type: 4-bar, swingarm, or custom. The default is not confirmed.
-- Keep the robot **still during initialization/calibration**.
-- After confirming a stage, it starts automatically. Keep still through initialization, then do the requested hand movement. Press **Stop** to save each measurement; don't wait for a separate Start button.
-- Direction tests: push **6-12 inches forward**, then **6-12 inches left** in the next stage. Do not turn.
-- Watch **X/Y encoder travel (ticks)** on the Driver Station. X should change for forward; Y for left. A negative count is OK; the tuner will set the reversal.
-- For offsets: turn exactly **180° counterclockwise**, keeping the robot's center fixed.
-- Paste the Java `localizerConfig` into `Constants.java`.
-- Set `LOCALIZER_TUNED = true` only after entering those measured values.
-
-*This tuner does not power the drive motors.*
-
-### 3. Check position — Tests → Pose Test
-
-Move the robot by hand:
-
-| Movement | Expected reading |
-| --- | --- |
-| Forward | X increases |
-| Left | Y increases |
-| Turn counterclockwise | Heading increases; X/Y barely change |
-| Push a measured distance | The same distance in inches |
-
-**Fix incorrect readings before continuing.**
-
-### 4. Driving — Foresight Tuner
-
-> **This tuner drives the robot, including at full power.** Clear the floor and be ready to Stop.
-
-- Paste its Java `foresightConfig` into `Constants.java`.
-- Set `FORESIGHT_TUNED = true` after entering the measured values.
-- Try short Line/Curve tests before the sample autonomous in `PedroAuto.java`.
-
-## If setup stops
-
-| Message | What to do |
-| --- | --- |
-| `FAULT_X_POD_NOT_DETECTED` | The Pinpoint reports that the forward pod is not detected. Power off the robot, then check the forward pod and its cable at the Pinpoint **X** port. Retry; if it persists, diagnose the pod, cable and port. |
-| `FAULT_Y_POD_NOT_DETECTED` / `FAULT_NO_PODS_DETECTED` | Power off and check the affected pod cables and Pinpoint ports. |
-| `CALIBRATING` / `NOT_READY` | Keep still during calibration and retry. If it persists, record the exact status and check connections. |
-| `FAULT_BAD_READ` | Check the Pinpoint I2C connection with robot power off; retry. |
-| Travel less than one inch | After initialization, push in the requested direction. If ticks stay at 0, check pod wheel contact and the cable. |
-| Other encoder moved | Check for swapped X/Y pod cables and push in the requested direction. |
-| Movement on both sides | Repeat one straight push without crossing behind the starting point. |
-| Pinpoint reported a fault | Fix the displayed pod/I2C fault and retry. The tuner will not save a direction from bad readings. |
-| Run Pinpoint Tuner | Finish step 2. Do not guess offsets or just switch the flag to `true`. |
-| Run Foresight Tuner | Finish step 4 before autonomous. |
-
-**Units:** distances = inches · headings = radians · custom resolution = ticks per inch.
-
-**A successful build does not mean the robot is calibrated.**
+If an X/Y pod fault remains after checking connections, the pod, cable, or port may need further testing. Code cannot confirm which part is faulty without testing the robot.

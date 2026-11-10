@@ -30,6 +30,7 @@ public final class PinpointDirectionMeasurementRegression {
         m = measurement(false, 0, -3000);
         check(m.failure() == null && m.reversed(), "strafe negative");
         check(measurement(true, 0, 0).failure() != null, "no motion rejected");
+        check(!measurement(true, 0, 0).failure().contains("Press Start"), "automatic start instructions");
         check(measurement(true, 499, 0).failure() != null, "sub-inch noise rejected");
         check(measurement(true, 500, 0).failure() == null, "one-inch threshold preserved");
         check(measurement(true, 0, 3000).failure().contains("swapped"), "wrong X axis diagnosed");

@@ -41,7 +41,7 @@ final class PinpointDirectionMeasurement {
             if (otherTicks / ticksPerInch >= 1.0)
                 return other + " encoder moved, but " + axis + " did not reach one inch. "
                         + "Check for swapped X/Y pod cables or the wrong push direction.";
-            return axis + " travel was less than one inch. Press Start BEFORE pushing 6-12 inches "
+            return axis + " travel was less than one inch. After initialization, push 6-12 inches "
                     + push + ", then Stop. If ticks stay at zero, check wheel contact and the pod cable.";
         }
         if (positiveTicks >= ticksPerInch && negativeTicks >= ticksPerInch)
