@@ -112,8 +112,8 @@ public final class Constants {
                         || status == GoBildaPinpointDriver.DeviceStatus.NOT_READY
                         || status == GoBildaPinpointDriver.DeviceStatus.FAULT_BAD_READ;
                 if (!waiting || System.nanoTime() >= deadline)
-                    throw new IllegalStateException("Pinpoint not ready: " + status
-                            + ". Check both pods, I2C connection, and keep still during calibration.");
+                    throw new IllegalStateException("Pinpoint not ready: " + status + ". "
+                            + pinpointFaultHelp(status));
                 try {
                     Thread.sleep(20);
                 } catch (InterruptedException error) {
@@ -124,6 +124,23 @@ public final class Constants {
         } catch (RuntimeException error) {
             drivetrain.stop(true);
             throw error;
+        }
+    }
+
+    private static String pinpointFaultHelp(GoBildaPinpointDriver.DeviceStatus status) {
+        switch (status) {
+            case FAULT_X_POD_NOT_DETECTED:
+                return "X pod not detected. Power off the robot and check the forward pod and its cable at the Pinpoint X port.";
+            case FAULT_Y_POD_NOT_DETECTED:
+                return "Y pod not detected. Power off the robot and check the sideways pod and its cable at the Pinpoint Y port.";
+            case FAULT_NO_PODS_DETECTED:
+                return "Neither pod detected. Power off the robot and check both pod cables at the Pinpoint.";
+            case FAULT_BAD_READ:
+                return "Repeated bad I2C reads. Power off and check the Pinpoint I2C cable and connections.";
+            case FAULT_IMU_RUNAWAY:
+                return "IMU fault. Keep the robot still during calibration and retry; consult the Pinpoint manual if it persists.";
+            default:
+                return "Keep the robot still during calibration and check the Pinpoint and pod connections.";
         }
     }
 

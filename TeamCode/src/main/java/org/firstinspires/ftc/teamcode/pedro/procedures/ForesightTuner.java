@@ -34,6 +34,10 @@ public class ForesightTuner extends Procedure {
         Inputs distanceInput = inputs("Distance", "The distance to drive in inches for the Max Achievable Forward and Strafe Identifiers");
         Inputs.Field<Double> distance = distanceInput.d("Distance").withDefault(48.0);
         awaitInputs(distanceInput);
+        if (!Double.isFinite(distance.get()) || distance.get() <= 0) {
+            abort("Enter a positive, finite distance in inches.");
+            return;
+        }
 
         double forwardVelocity = runOpMode(new ForwardVelocity(localizerFunction, drivetrainFunction, distance.get()));
         double strafeVelocity = runOpMode(new StrafeVelocity(localizerFunction, drivetrainFunction, distance.get()));
@@ -41,6 +45,10 @@ public class ForesightTuner extends Procedure {
         Inputs velocityInput = inputs("Velocity", "The velocity to drive to in inches for the Max Achievable Forward and Strafe Deceleration Identifiers");
         Inputs.Field<Double> velocity = velocityInput.d("Velocity").withDefault(30.0);
         awaitInputs(velocityInput);
+        if (!Double.isFinite(velocity.get()) || velocity.get() <= 0) {
+            abort("Enter a positive, finite target velocity.");
+            return;
+        }
 
         double forwardDeceleration = runOpMode(new ForwardDeceleration(localizerFunction, drivetrainFunction, velocity.get()));
         double strafeDeceleration = runOpMode(new StrafeDeceleration(localizerFunction, drivetrainFunction, velocity.get()));
@@ -54,6 +62,10 @@ public class ForesightTuner extends Procedure {
         Inputs distanceBrakingInput = inputs("Distance", "The distance to drive in inches for the Forward and Strafe Braking Identifiers. Distance must be at least 15 inches for accurate results.");
         Inputs.Field<Double> distanceBraking = distanceBrakingInput.d("Distance").withDefault(36.0);
         awaitInputs(distanceBrakingInput);
+        if (!Double.isFinite(distanceBraking.get()) || distanceBraking.get() <= 0) {
+            abort("Enter a positive, finite braking distance in inches.");
+            return;
+        }
         double safeDistanceBraking = Math.max(distanceBraking.get(), 15.0);
 
         List<Double> forwardBraking = runOpMode(new ForwardBraking(localizerFunction, drivetrainFunction, headingLinear, headingQuadratic, heading, safeDistanceBraking));
@@ -659,8 +671,8 @@ class HeadingTuner extends TuningOpMode<Double> {
 
                 if (timer.seconds() >= RUNTIME) {
                     done = true;
-                    systemIdentification();
                     drivetrain.drive(new DrivePowers(0.0, 0.0, 0.0), false);
+                    systemIdentification();
                 }
             }
         }
@@ -761,9 +773,14 @@ class ForwardBraking extends TuningOpMode<List<Double>> {
         localizer.update();
         timer.reset();
 
+        if (isStopRequested()) throw new InterruptedException("Forward braking stopped before driving.");
         drivetrain.drive(new DrivePowers(maxPower,0,0), false);
 
         while (state != State.DONE && !isStopRequested()) {
+            if (state == State.DRIVE && timer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Forward braking timed out. Stop and check localization before retrying.");
+            }
             localizer.update();
             direction = (iteration % 2 == 0) ? 1 : -1;
             if (iteration < POWERS.length) {
@@ -795,13 +812,17 @@ class ForwardBraking extends TuningOpMode<List<Double>> {
                 }
                 case WAIT: {
                     drivetrain.stop();
-                    if (timer.seconds() > IDLE_SECONDS) state = State.DRIVE;
+                    if (timer.seconds() > IDLE_SECONDS) {
+                        timer.reset();
+                        state = State.DRIVE;
+                    }
                     break;
                 }
                 case DONE: {}
             }
         }
 
+        drivetrain.stop();
         if (state == State.DONE) {
             double[] c = quadraticFit(velocityToBrakingDistance);
             coefficients = List.of(c[0], c[1]);
@@ -929,9 +950,14 @@ class StrafeBraking extends TuningOpMode<List<Double>> {
         localizer.update();
         timer.reset();
 
+        if (isStopRequested()) throw new InterruptedException("Strafe braking stopped before driving.");
         drivetrain.drive(new DrivePowers(0,maxPower,0), false);
 
         while (state != State.DONE && !isStopRequested()) {
+            if (state == State.DRIVE && timer.seconds() >= 15.0) {
+                drivetrain.stop();
+                throw new IllegalStateException("Strafe braking timed out. Stop and check localization before retrying.");
+            }
             localizer.update();
             direction = (iteration % 2 == 0) ? 1 : -1;
             if (iteration < POWERS.length) {
@@ -964,13 +990,17 @@ class StrafeBraking extends TuningOpMode<List<Double>> {
                 }
                 case WAIT: {
                     drivetrain.stop();
-                    if (timer.seconds() > IDLE_SECONDS) state = State.DRIVE;
+                    if (timer.seconds() > IDLE_SECONDS) {
+                        timer.reset();
+                        state = State.DRIVE;
+                    }
                     break;
                 }
                 case DONE: {}
             }
         }
 
+        drivetrain.stop();
         if (state == State.DONE) {
             double[] c = quadraticFit(velocityToBrakingDistance);
             coefficients = List.of(c[0], c[1]);
@@ -1110,8 +1140,8 @@ class ForwardTranslational extends TuningOpMode<List<Double>> {
 
                 if (timer.seconds() >= RUNTIME) {
                     done = true;
-                    systemIdentification();
                     drivetrain.drive(new DrivePowers(0.0, 0.0, 0.0), false);
+                    systemIdentification();
                 }
             }
         }
@@ -1228,8 +1258,8 @@ class StrafeTranslational extends TuningOpMode<List<Double>> {
 
                 if (timer.seconds() >= RUNTIME) {
                     done = true;
-                    systemIdentification();
                     drivetrain.drive(new DrivePowers(0.0, 0.0, 0.0), false);
+                    systemIdentification();
                 }
             }
         }
