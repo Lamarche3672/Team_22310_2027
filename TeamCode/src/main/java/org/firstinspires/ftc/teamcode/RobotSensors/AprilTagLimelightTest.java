@@ -6,10 +6,17 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.openftc.apriltag.AprilTagDetection;
+
 import java.util.List;
+
 
 @TeleOp(name = "AprilTag Limelight Test", group = "TeamCode")
 public class AprilTagLimelightTest extends OpMode {
+    
+    
+    public LLResult callId = null;
+    
     private Limelight3A limelight;
 
     @Override
@@ -40,11 +47,29 @@ public class AprilTagLimelightTest extends OpMode {
         } else {
             telemetry.addData("AprilTag", "No tag found");
         }
+        callId = llResult;
+    }
+    
+    
+    public void update() {
         telemetry.update();
     }
 
     @Override
     public void stop() {
         limelight.stop();
+    }
+
+    public LLResultTypes.FiducialResult getTagBySpecificId(int fiducialId) {
+        if (callId == null || !callId.isValid()) {
+            return null;
+        }
+
+        for (LLResultTypes.FiducialResult tag : callId.getFiducialResults()) {
+            if (tag.getFiducialId() == fiducialId) {
+                return tag;
+            }
+        }
+        return null;
     }
 }

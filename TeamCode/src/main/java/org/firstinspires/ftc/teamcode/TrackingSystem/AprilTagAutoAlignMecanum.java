@@ -1,12 +1,12 @@
 package org.firstinspires.ftc.teamcode.TrackingSystem;
 
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.RobotSensors.AprilTagLimelightTest;
-import org.openftc.apriltag.AprilTagDetection;
 
 @TeleOp
 public class AprilTagAutoAlignMecanum extends OpMode {
@@ -35,8 +35,8 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
     @Override
     public void init() {
-        aprilTagLimelightTest.init(hardwareMap, telemetry);
-        drive.init(hardwareMap, false);
+        aprilTagLimelightTest.init();
+        drive.init(hardwareMap);
 
         telemetry.addLine("Initialized");
     }
@@ -54,13 +54,14 @@ public class AprilTagAutoAlignMecanum extends OpMode {
         rotate = gamepad1.right_stick_x;
         // ------------get april tag info-------------------
         aprilTagLimelightTest.update();
-        AprilTagDetection id20 /*change name id based on our ids*/ = aprilTagLimelightTest.getTagBySpecificId(20//change id based on our april tags);
+        LLResultTypes.FiducialResult id20 = aprilTagLimelightTest.getTagBySpecificId(20);
 
         //--------------------auto align rotation logic -----------
 
         if(gamepad1.left_trigger > 0.3) {
             if (id20 != null) {
-                error = goalX - id20.ftcPose.bearing; //tx
+                // Limelight exposes a fiducial's horizontal angle in degrees.
+                error = goalX - id20.getTargetXDegrees();
 
                 if (Math.abs(error) < angleTolerance) {
                     rotate = 0;
@@ -112,7 +113,6 @@ public class AprilTagAutoAlignMecanum extends OpMode {
             if (gamepad1.left_trigger > 0.3) {
                 telemetry.addLine("AUTO ALIGN");
             }
-            aprilTagLimelightTest.diplayDetectionTelemetry(id20);
             telemetry.addData("Error", error);
         } else {
             telemetry.addLine("MANUAL Rotate Mode");
