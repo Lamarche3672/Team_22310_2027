@@ -2,13 +2,11 @@ package org.firstinspires.ftc.teamcode.TrackingSystem;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.RobotSensors.AprilTagLimelightTest;
 
-@TeleOp
 public class AprilTagAutoAlignMecanum extends OpMode {
     private final AprilTagLimelightTest aprilTagLimelightTest = new AprilTagLimelightTest();
     private final MecanumDriveFinal drive = new MecanumDriveFinal();

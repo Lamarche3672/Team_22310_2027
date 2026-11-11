@@ -4,11 +4,13 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
+import org.firstinspires.ftc.teamcode.TrackingSystem.AprilTagAutoAlignMecanum;
 
-@TeleOp(name = "TeleOpCodeTestTwo", group = "TeamCode")
+@TeleOp(name = "MAIN TELEOP", group = "TeamCode")
 public class MainTeleOp extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
+    private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
 
     @Override
@@ -17,6 +19,7 @@ public class MainTeleOp extends OpMode {
         intakeIndex.init(hardwareMap);
         //mecanum
         drive.init(hardwareMap);
+        aprilTag.init();
     }
 
     @Override
@@ -42,6 +45,8 @@ public class MainTeleOp extends OpMode {
         addDriveTelemetry();
         // IndexIntake.loop also sends the combined telemetry packet.
         intakeIndex.loop(gamepad1, telemetry);
+
+        aprilTag.loop();
     }
 
     private void addDriveTelemetry() {

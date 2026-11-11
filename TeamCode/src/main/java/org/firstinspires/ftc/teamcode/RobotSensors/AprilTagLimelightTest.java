@@ -10,8 +10,6 @@ import org.openftc.apriltag.AprilTagDetection;
 
 import java.util.List;
 
-
-@TeleOp(name = "AprilTag Limelight Test", group = "TeamCode")
 public class AprilTagLimelightTest extends OpMode {
     
     
