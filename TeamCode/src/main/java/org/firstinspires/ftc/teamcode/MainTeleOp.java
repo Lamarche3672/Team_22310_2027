@@ -1,7 +1,17 @@
+/*
+LEFT BUMPER: Index inwards
+LEFT TRIGGER: Outtakes everything (index, intake, shooter)
+RIGHT TRIGGER: Intake
+RIGHT BUMPER: Flywheels/shooter
+*/
+
 package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTesting;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.LeftFlywheelTuner;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.RightFlywheelTuner;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
 import org.firstinspires.ftc.teamcode.TrackingSystem.AprilTagAutoAlignMecanum;
@@ -10,16 +20,24 @@ import org.firstinspires.ftc.teamcode.TrackingSystem.AprilTagAutoAlignMecanum;
 public class MainTeleOp extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
+    private final FlywheelTesting flywheelTesting = new FlywheelTesting();
+
+    private final RightFlywheelTuner RightFlywheelTuner = new RightFlywheelTuner();
+    private final LeftFlywheelTuner LeftFlywheelTuner = new LeftFlywheelTuner();
+
+
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
 
     @Override
     public void init() {
-        //intake and index
         intakeIndex.init(hardwareMap);
-        //mecanum
+        flywheelTesting.init(hardwareMap);
+
+        //RightFlywheelTuner.init(hardwareMap, telemetry);
+        //LeftFlywheelTuner.init(hardwareMap, telemetry);
         drive.init(hardwareMap);
-        aprilTag.init();
+        //aprilTag.init();
     }
 
     @Override
@@ -32,7 +50,6 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void loop() {
-        //mecanum
         double forward = -gamepad1.left_stick_y;
         double strafe = gamepad1.left_stick_x;
         double rotate = gamepad1.right_stick_x;
@@ -43,10 +60,13 @@ public class MainTeleOp extends OpMode {
 
         drive.driveFieldRelative(forward, strafe, rotate);
         addDriveTelemetry();
-        // IndexIntake.loop also sends the combined telemetry packet.
-        intakeIndex.loop(gamepad1, telemetry);
 
-        aprilTag.loop();
+        intakeIndex.loop(gamepad1, telemetry);
+        flywheelTesting.loop(gamepad1, telemetry);
+
+        //RightFlywheelTuner.loop(telemetry, gamepad1);
+        //LeftFlywheelTuner.loop(telemetry, gamepad1);
+        //aprilTag.loop();
     }
 
     private void addDriveTelemetry() {
@@ -60,6 +80,7 @@ public class MainTeleOp extends OpMode {
     public void stop() {
         //intake and index
         intakeIndex.stop();
+        flywheelTesting.stop();
         //mecanum
         drive.stop();
     }

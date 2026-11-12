@@ -1,0 +1,91 @@
+package org.firstinspires.ftc.teamcode.FinalTeleOp;
+
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+
+public class RightFlywheelTuner {
+
+    public DcMotorEx flywheelMotor;
+
+    public double highVelocity = 1500;
+    public double lowVelocity = 900;
+
+    double curTargetVelocity = highVelocity;
+
+    double F = 0;
+    double P = 0;
+
+    double[] stepSizes = {10.0, 1.0, 0.1, 0.01, 0.001, 0.0001};
+
+    int stepIndex = 1;
+
+    public void init(HardwareMap hardwareMap, Telemetry telemetry) {
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
+        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
+        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        telemetry.addLine("Init Complete");
+    }
+
+
+    public void loop(Telemetry telemetry, Gamepad gamepad1) {
+        //get all our gampad commands
+        //get target velocity
+        //update telemetery
+        if (gamepad1.right_bumper) {
+            if (curTargetVelocity == highVelocity) {
+                curTargetVelocity = lowVelocity;
+            } else {
+                curTargetVelocity = highVelocity;
+            }
+        }
+
+        if (gamepad1.xWasPressed()) {
+            stepIndex = (stepIndex + 1) % stepSizes.length;
+        }
+
+        if (gamepad1.dpadLeftWasPressed()) {
+            F -= stepSizes[stepIndex];
+        }
+
+        if (gamepad1.dpadRightWasPressed()) {
+            F += stepSizes[stepIndex];
+        }
+
+        if (gamepad1.dpadUpWasPressed()) {
+            F += stepSizes[stepIndex];
+        }
+
+        if (gamepad1.dpadDownWasPressed()) {
+            F -= stepSizes[stepIndex];
+        }
+
+        //set new PIDF coefficients
+        PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
+        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+
+        //set target velocity
+        flywheelMotor.setVelocity(curTargetVelocity);
+
+        double currentVelocity = flywheelMotor.getVelocity();
+        double error = curTargetVelocity - currentVelocity;
+
+        telemetry.addData("Target Velocity", curTargetVelocity);
+        telemetry.addData("Current Velocity", "%.2f", currentVelocity);
+        telemetry.addData("Error", "%.2f", error);
+        telemetry.addLine("--------------------");
+        telemetry.addData("Tuning P", "%.4f (D-Pad U/D)", P);
+        telemetry.addData("Tuning F", "%.4f (D-Pad L/R)", F);
+        telemetry.addData("Step Size", "%.4f (B Button)", stepSizes[stepIndex]);
+    }
+}
+// keep watching video to see how to tun cuz it wont likely work the first time boiiiiiii
+// also fix Velcity in Lib

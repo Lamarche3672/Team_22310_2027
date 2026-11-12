@@ -1,12 +1,16 @@
-package org.firstinspires.ftc.teamcode.TrackingSystem;
+package org.firstinspires.ftc.teamcode.FinalTeleOp;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
-public class FlywheelTuner extends OpMode {
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+
+public class LeftFlywheelTuner {
 
     public DcMotorEx flywheelMotor;
 
@@ -22,9 +26,8 @@ public class FlywheelTuner extends OpMode {
 
     int stepIndex = 1;
 
-    @Override
-    public void init() {
-        flywheelMotor = hardwareMap.get(DcMotorEx.class, "flywheel");
+    public void init(HardwareMap hardwareMap, Telemetry telemetry) {
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "left_flywheel");
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -33,12 +36,12 @@ public class FlywheelTuner extends OpMode {
         telemetry.addLine("Init Complete");
     }
 
-    @Override
-    public void loop() {
+
+    public void loop(Telemetry telemetry, Gamepad gamepad1) {
         //get all our gampad commands
         //get target velocity
         //update telemetery
-        if (gamepad1.yWasPressed()) {
+        if (gamepad1.right_bumper) {
             if (curTargetVelocity == highVelocity) {
                 curTargetVelocity = lowVelocity;
             } else {
@@ -46,7 +49,7 @@ public class FlywheelTuner extends OpMode {
             }
         }
 
-        if (gamepad1.bWasPressed()) {
+        if (gamepad1.xWasPressed()) {
             stepIndex = (stepIndex + 1) % stepSizes.length;
         }
 

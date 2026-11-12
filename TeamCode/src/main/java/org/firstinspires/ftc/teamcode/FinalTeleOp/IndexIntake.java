@@ -28,17 +28,17 @@ public class IndexIntake {
 
     public void loop(Gamepad gamepad, Telemetry telemetry) {
         double intakePower = 0.0;
-        if (gamepad.right_bumper) {
+        if (gamepad.right_trigger > 0.1) {
             intakePower = INTAKE_POWER;
-        } else if (gamepad.left_bumper) {
+        } else if (gamepad.left_trigger > 0.1) {
             intakePower = -INTAKE_POWER;
         }
 
         double indexPower = 0.0;
-        if (gamepad.a) {
+        if (gamepad.left_bumper) {
             indexPower = INDEX_POWER;
-        } else if (gamepad.b) {
-            indexPower = -INDEX_POWER;
+        } else if (gamepad.left_trigger > 0.1) {
+            indexPower = -INDEX_POWER + 0.5;
         }
 
         intakeMotor.setPower(intakePower);
