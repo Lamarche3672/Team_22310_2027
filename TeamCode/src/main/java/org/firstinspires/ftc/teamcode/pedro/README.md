@@ -88,6 +88,7 @@ Fix wrong readings before continuing. **Pose Test is not Odometry Test:** Odomet
 | **Y pod not detected** / orange LED | Check the sideways pod and cable at Pinpoint **Y**. |
 | **No pods detected** / purple LED | Check both pod cables and Pinpoint ports. |
 | **CALIBRATING** or **NOT_READY** | Keep still during initialization; retry. Check connections if it persists. |
+| **NOT_READY right after pressing Stop** | Make sure the latest app is installed. Older tuner code could treat the stop-time read as a fault. Retry, keeping still during initialization. |
 | **FAULT_BAD_READ** | Check the Pinpoint's I2C cable and connection. |
 | **FAULT_IMU_RUNAWAY** | Keep still during calibration; retry. If it persists, consult the Pinpoint manual. |
 | **`pinpoint` not found** | Check the I2C connection and exact name in Robot Configuration. |

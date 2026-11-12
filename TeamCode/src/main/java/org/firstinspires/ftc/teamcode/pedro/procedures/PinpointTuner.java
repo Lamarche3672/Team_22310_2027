@@ -13,6 +13,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 import java.util.*;
+import java.util.function.BooleanSupplier;
 
 public class PinpointTuner extends Procedure {
     enum PodType {
@@ -148,7 +149,7 @@ class PinpointCustomPodScalar extends TuningOpMode<Double> {
         telemetry.update();
         while (!isStopRequested()) {
             pinpoint.update();
-            requireReady(pinpoint);
+            if (!readyOrStopped(pinpoint, this::isStopRequested)) break;
             // Use actual counts, not pose inches with a fake one-tick/inch scale.
             // That fake scale can trip the SDK driver's position corruption checks.
             travelTicks = pinpoint.getEncoderX() - startTicks;
@@ -165,6 +166,14 @@ class PinpointCustomPodScalar extends TuningOpMode<Double> {
         if (status != GoBildaPinpointDriver.DeviceStatus.READY)
             throw new IllegalStateException("Pinpoint reported " + status
                     + ". Measurement rejected; check the Pinpoint and pod connections, then retry.");
+    }
+
+    /** True when READY; false only when Stop arrived during the read, so a shutdown status is not a fault. */
+    static boolean readyOrStopped(GoBildaPinpointDriver pinpoint, BooleanSupplier stopRequested) {
+        if (pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY) return true;
+        if (stopRequested.getAsBoolean()) return false;
+        requireReady(pinpoint);
+        return true;
     }
 }
 
@@ -219,7 +228,16 @@ class PinpointDirection extends TuningOpMode<PinpointDirectionMeasurement> {
         int startX = pinpoint.getEncoderX();
         int startY = pinpoint.getEncoderY();
         while (!isStopRequested()) {
-            GoBildaPinpointDriver.DeviceStatus status = readStatus(pinpoint);
+            GoBildaPinpointDriver.DeviceStatus status;
+            try {
+                status = readStatus(pinpoint);
+            } catch (InterruptedException error) {
+                if (isStopRequested()) break;
+                throw error;
+            }
+            // Stop can arrive during I2C polling. Ignore that in-flight read rather
+            // than treating its shutdown status as a fault or encoder sample.
+            if (isStopRequested()) break;
             if (status != GoBildaPinpointDriver.DeviceStatus.READY) {
                 measurement.fail("Pinpoint reported " + status + ". Measurement rejected; check pods and I2C wiring, then retry.");
                 return measurement;
@@ -326,7 +344,7 @@ class PinpointOffsets extends TuningOpMode<List<Double>> {
         while (!isStopRequested()) {
             previous = localizer.pose();
             localizer.update();
-            PinpointCustomPodScalar.requireReady(pinpoint);
+            if (!PinpointCustomPodScalar.readyOrStopped(pinpoint, this::isStopRequested)) break;
             double heading = localizer.pose().heading();
             totalHeading += Angle.normalizeSigned(heading - previousHeading);
             previousHeading = heading;
