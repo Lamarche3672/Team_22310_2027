@@ -13,6 +13,8 @@ public class FlywheelTunerPIDF {
 
     public DcMotorEx flywheelMotor;
 
+    public DcMotorEx flywheelMotor2;
+
     public double highVelocity = 1500;
     public double lowVelocity = 900;
 
@@ -30,12 +32,14 @@ public class FlywheelTunerPIDF {
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        flywheelMotor = hardwareMap.get(DcMotorEx.class, "left_flywheel");
-        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        flywheelMotor2 = hardwareMap.get(DcMotorEx.class, "left_flywheel");
+        flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
 
         PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+
         telemetry.addLine("Init Complete");
     }
 
@@ -65,26 +69,38 @@ public class FlywheelTunerPIDF {
         }
 
         if (gamepad1.dpadUpWasPressed()) {
-            F += stepSizes[stepIndex];
+            P += stepSizes[stepIndex];
         }
 
         if (gamepad1.dpadDownWasPressed()) {
-            F -= stepSizes[stepIndex];
+            P -= stepSizes[stepIndex];
         }
 
         //set new PIDF coefficients
         PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
 
+        flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+
         //set target velocity
         flywheelMotor.setVelocity(curTargetVelocity);
 
+        flywheelMotor2.setVelocity(curTargetVelocity);
+
         double currentVelocity = flywheelMotor.getVelocity();
+        double currentVelocity2 = flywheelMotor2.getVelocity();
+
         double error = curTargetVelocity - currentVelocity;
+        double error2 = curTargetVelocity - currentVelocity;
+
 
         telemetry.addData("Target Velocity", curTargetVelocity);
         telemetry.addData("Current Velocity", "%.2f", currentVelocity);
+        telemetry.addData("Current Velocity", "%.2f", currentVelocity2);
+
         telemetry.addData("Error", "%.2f", error);
+        telemetry.addData("Error", "%.2f", error2);
+
         telemetry.addLine("--------------------");
         telemetry.addData("Tuning P", "%.4f (D-Pad U/D)", P);
         telemetry.addData("Tuning F", "%.4f (D-Pad L/R)", F);
