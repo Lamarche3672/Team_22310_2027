@@ -1,6 +1,6 @@
 /*
 LEFT BUMPER: Index inwards
-LEFT TRIGGER: Outtakes everything (index, intake, shooter)
+LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
 RIGHT TRIGGER: Intake
 RIGHT BUMPER: Flywheels/shooter
 */
