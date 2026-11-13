@@ -10,7 +10,11 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
+<<<<<<< Updated upstream:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/FinalTeleOp/LeftFlywheelTuner.java
 public class LeftFlywheelTuner {
+=======
+public class FlywheelTuner {
+>>>>>>> Stashed changes:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/TrackingSystem/FlywheelTuner.java
 
     public DcMotorEx flywheelMotor;
 
@@ -28,6 +32,13 @@ public class LeftFlywheelTuner {
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "left_flywheel");
+<<<<<<< Updated upstream:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/FinalTeleOp/LeftFlywheelTuner.java
+=======
+        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
+>>>>>>> Stashed changes:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/TrackingSystem/FlywheelTuner.java
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -36,8 +47,12 @@ public class LeftFlywheelTuner {
         telemetry.addLine("Init Complete");
     }
 
+<<<<<<< Updated upstream:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/FinalTeleOp/LeftFlywheelTuner.java
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
+=======
+    public void loop(Gamepad gamepad1, Telemetry telemetry) {
+>>>>>>> Stashed changes:TeamCode/src/main/java/org/firstinspires/ftc/teamcode/TrackingSystem/FlywheelTuner.java
         //get all our gampad commands
         //get target velocity
         //update telemetery
