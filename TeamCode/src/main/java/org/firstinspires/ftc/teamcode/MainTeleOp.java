@@ -10,8 +10,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTesting;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.LeftFlywheelTuner;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.RightFlywheelTuner;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTunerPIDF;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
 import org.firstinspires.ftc.teamcode.TrackingSystem.AprilTagAutoAlignMecanum;
@@ -22,9 +21,7 @@ public class MainTeleOp extends OpMode {
     private final IndexIntake intakeIndex = new IndexIntake();
     private final FlywheelTesting flywheelTesting = new FlywheelTesting();
 
-    private final RightFlywheelTuner RightFlywheelTuner = new RightFlywheelTuner();
-    private final LeftFlywheelTuner LeftFlywheelTuner = new LeftFlywheelTuner();
-
+    private final FlywheelTunerPIDF FlywheelTunerPIDF = new FlywheelTunerPIDF();
 
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
@@ -32,10 +29,9 @@ public class MainTeleOp extends OpMode {
     @Override
     public void init() {
         intakeIndex.init(hardwareMap);
-        flywheelTesting.init(hardwareMap);
+        //flywheelTesting.init(hardwareMap);
 
-        //RightFlywheelTuner.init(hardwareMap, telemetry);
-        //LeftFlywheelTuner.init(hardwareMap, telemetry);
+        FlywheelTunerPIDF.init(hardwareMap, telemetry);
         drive.init(hardwareMap);
         //aprilTag.init();
     }
@@ -62,10 +58,9 @@ public class MainTeleOp extends OpMode {
         addDriveTelemetry();
 
         intakeIndex.loop(gamepad1, telemetry);
-        flywheelTesting.loop(gamepad1, telemetry);
+        //flywheelTesting.loop(gamepad1, telemetry);
 
-        //RightFlywheelTuner.loop(telemetry, gamepad1);
-        //LeftFlywheelTuner.loop(telemetry, gamepad1);
+        FlywheelTunerPIDF.loop(telemetry, gamepad1);
         //aprilTag.loop();
     }
 
@@ -78,10 +73,8 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void stop() {
-        //intake and index
         intakeIndex.stop();
-        flywheelTesting.stop();
-        //mecanum
+        //flywheelTesting.stop();
         drive.stop();
     }
 }

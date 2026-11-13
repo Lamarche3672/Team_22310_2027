@@ -1,5 +1,7 @@
-package org.firstinspires.ftc.teamcode.FinalTeleOp;
+package org.firstinspires.ftc.teamcode.SavedBackupCode.Drive.Mechanisms;
 
+import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -9,7 +11,9 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
-public class RightFlywheelTuner {
+@TeleOp(name = "Flywheel Test", group = "TeamCode")
+
+public class FlywheelTunerPIDFTesting extends OpMode {
 
     public DcMotorEx flywheelMotor;
 
@@ -25,8 +29,13 @@ public class RightFlywheelTuner {
 
     int stepIndex = 1;
 
-    public void init(HardwareMap hardwareMap, Telemetry telemetry) {
+    @Override
+    public void init() {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
+        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        flywheelMotor = hardwareMap.get(DcMotorEx.class, "left_flywheel");
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
@@ -35,8 +44,8 @@ public class RightFlywheelTuner {
         telemetry.addLine("Init Complete");
     }
 
-
-    public void loop(Telemetry telemetry, Gamepad gamepad1) {
+    @Override
+    public void loop() {
         //get all our gampad commands
         //get target velocity
         //update telemetery
