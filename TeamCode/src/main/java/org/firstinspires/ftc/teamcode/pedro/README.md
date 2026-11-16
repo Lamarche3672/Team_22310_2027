@@ -1,105 +1,71 @@
-# Pedro setup 🤖
+# Pedro setup
 
-> **Not ready for autonomous yet.** Finish the steps below first. A successful build does not mean the robot is tuned.
+Do the six steps in order. Each one has a picture.
 
-## At a glance
+![The six steps: install app, check motors, tune Pinpoint, check position, tune driving, run auto](images/roadmap.svg)
 
-**Install app** → **Check motors** → **Tune Pinpoint** → **Check position** → **Tune Foresight**
+**Opening the tuners:** connect your laptop to the robot's Wi-Fi, then open **http://192.168.43.1:10158**.
+Keep the Driver Station in your hand so you can press Stop.
 
-## 1️⃣ Get ready
+## Before you start: wiring
 
-- [ ] In Android Studio, build and **install TeamCode on the Control Hub**. A GitHub push does not update the robot. Installing restarts Robot Controller.
-- [ ] Connect your computer to the robot's Wi-Fi.
-- [ ] Open **[192.168.43.1:10158](http://192.168.43.1:10158)** in a browser.
-- [ ] Keep the Driver Station nearby so you can stop the robot.
+![Both pods plug into the Pinpoint. The Pinpoint plugs into a Control Hub I2C port.](images/wiring.svg)
 
-### Check the wiring
+## 1. Install the app
 
-```text
-Forward pod  ───────▶  Pinpoint X
-Sideways pod ───────▶  Pinpoint Y
-Pinpoint     ── I2C ─▶  Control Hub
-```
+In Android Studio press **Run** with the Control Hub connected. Pushing to GitHub does **not** update the robot.
 
-- In Robot Configuration, name the Pinpoint **`pinpoint`**.
-- Plug pods into the **Pinpoint**, not motor ports.
-- Mount the Pinpoint **sticker-side up**. Pedro recommends a Control Hub I2C port **other than port 0** (used by its built-in IMU).
+## 2. Check motors
 
-## 2️⃣ Check the motors
+Lift the robot so the **wheels are off the floor**. Open **Mecanum Tuner** and answer its questions. Each wheel spins by itself.
 
-1. Safely raise the robot so its **drive wheels are off the ground**.
-2. Open **Mecanum Tuner**. It spins each motor—keep hands clear.
-3. Follow the screen. If the wrong wheel spins, stop and check the wiring/configuration.
-4. If you change `drivetrainConfig` in `Constants.java`, keep `c.manualBrakeMode.set(true);`, then rebuild and install.
+## 3. Tune Pinpoint
 
-## 3️⃣ Tune the Pinpoint
+Put the robot **on the floor**. Open **Pinpoint Tuner**. You push the robot by hand; no motor moves.
 
-Put the robot on the floor so **both pod wheels touch the floor**.
+![Push forward, push left, then turn half a turn](images/pinpoint-moves.svg)
 
-1. Choose **Pinpoint Tuner**—not Two Wheel or Three Wheel.
-2. Enter `pinpoint`. Select your **actual** pod type; the default isn't confirmed.
-3. For custom pods, enter a measured forward push distance and complete that extra step first.
+The Driver Station shows live numbers while you push. `Bad reads skipped` going up slowly is normal.
 
-> **Every stage:** confirm the prompt → **keep still until Driver Station telemetry says READY** → move by hand → press **Stop** in the tuner. Stages start automatically; don't wait for a separate Start button.
+When the tuner finishes, save the result:
 
-| Stage | Move by hand | Check |
-| --- | --- | --- |
-| Forward | ⬆️ Push **forward** 6–12 inches, straight | X ticks change |
-| Strafe | ⬅️ Push **left** 6–12 inches, straight | Y ticks change |
-| Offset | ↺ Turn **180° counterclockwise** around a fixed center | Don't slide the center |
+![Copy the Java code, paste it over the marked block in Constants.java, install the app](images/paste-result.svg)
 
-Watch X/Y ticks on the Driver Station. **Negative ticks are OK.** Pinpoint Tuner does not drive the motors.
+## 4. Check position
 
-### Save the result
+Open **Tests**, choose **Pose Test**. Push the robot by hand and watch the Driver Station.
 
-1. Copy the **Java `localizerConfig`** result into `Constants.java`, replacing the old block.
-2. Set `LOCALIZER_TUNED = true` **only after** entering those measured results.
-3. **Rebuild and install** the app.
+![Forward raises X, left raises Y, counter-clockwise raises heading](images/pose-check.svg)
 
-## 4️⃣ Check position
+Anything wrong here? Run step 3 again before going on.
 
-Open **Tests → Pose Test**. Move the robot **by hand**:
+## 5. Tune driving
 
-| Move | Should happen |
+> **The robot drives by itself in this step, sometimes at full power.** Clear the floor. Be ready to press Stop.
+
+Open **Foresight Tuner** and follow it. Save the result the same way as step 3, but over the **FORESIGHT TUNER RESULT** block.
+
+## 6. Run auto
+
+Open **Tests** and try **Line Test** with a short distance first. Then run **22310 Pedro Auto Test** from the Driver Station.
+
+## If something goes wrong
+
+Look at the light on the Pinpoint first.
+
+![What each Pinpoint light colour means](images/pinpoint-light.svg)
+
+| The screen says | Do this |
 | --- | --- |
-| ⬆️ Forward | X increases |
-| ⬅️ Left | Y increases |
-| ↺ Turn counterclockwise | Heading increases |
-| 📏 Push a measured distance | Reading matches the distance |
+| No goBILDA Pinpoint called "pinpoint" | In **Configure Robot**, add a *goBILDA Pinpoint Odometry Computer* named `pinpoint`. Save and activate. |
+| Gets no answer from the Pinpoint | In **Configure Robot**, the I2C port number must match the port the cable is in. |
+| Still calibrating | Hands off the robot while a step starts. |
+| Travel was less than one inch | Push further (6 to 12 inches). Check the pod wheel touches the floor. |
+| The other encoder moved | The two pod cables are swapped, or you pushed the wrong way. |
+| You turned … degrees | Turn about half a turn, then press Stop. |
+| Pods came out bigger than the robot | The robot slid while turning. Spin it on the spot. |
+| Pinpoint is not tuned yet | Finish step 3 and install the app again. |
+| Driving is not tuned yet | Finish step 5 and install the app again. |
+| Web page won't open | Laptop must be on the robot's Wi-Fi. Use `http://192.168.43.1:10158`. |
 
-Fix wrong readings before continuing. **Pose Test is not Odometry Test:** Odometry Test drives the robot automatically.
-
-## 5️⃣ Tune driving
-
-> ⚠️ **Foresight Tuner drives the robot, sometimes at full power.** Clear plenty of floor space; it may coast past the requested distance. Be ready to stop it from the Driver Station.
-
-1. Run **Foresight Tuner** and follow the prompts.
-2. Copy its Java `foresightConfig` into `Constants.java`.
-3. Set `FORESIGHT_TUNED = true`, then **rebuild and install**.
-4. Try short Line/Curve tests before autonomous. These tests also drive the robot.
-
-## 🛠️ Something went wrong?
-
-**Power the robot off before unplugging or reseating cables.** Then power on and retry. If it still fails, take a photo of the **full error and Pinpoint LED**.
-
-| What you see | What to try |
-| --- | --- |
-| **X pod not detected** / blue LED | Check the forward pod and cable at Pinpoint **X**. |
-| **Y pod not detected** / orange LED | Check the sideways pod and cable at Pinpoint **Y**. |
-| **No pods detected** / purple LED | Check both pod cables and Pinpoint ports. |
-| **CALIBRATING** or **NOT_READY** | Keep still during initialization; retry. Check connections if it persists. |
-| **NOT_READY right after pressing Stop** | Make sure the latest app is installed. Older tuner code could treat the stop-time read as a fault. Retry, keeping still during initialization. |
-| **FAULT_BAD_READ** | Check the Pinpoint's I2C cable and connection. |
-| **FAULT_IMU_RUNAWAY** | Keep still during calibration; retry. If it persists, consult the Pinpoint manual. |
-| **`pinpoint` not found** | Check the I2C connection and exact name in Robot Configuration. |
-| **Less than one inch** or ticks stay at 0 | Wait for initialization, then push 6–12 inches. Check pod wheel contact and cable. |
-| **Other encoder moved** / swapped pods | Push straight without turning. Check forward pod = X, sideways pod = Y. |
-| **Movement on both sides** | Retry one straight push. Don't roll past the starting point in the opposite direction. |
-| **Invalid offset measurement** | Turn exactly 180° counterclockwise with the center fixed; retry. |
-| **Run Pinpoint Tuner** | Finish step 3, copy the measured config and rebuild. Don't guess offsets or just flip the flag. |
-| **Run Foresight Tuner** / algorithm required | Finish step 5 and rebuild before follower or autonomous tests. |
-| **Braking timed out** | Stop. Check that Pose Test readings change correctly before trying Foresight again. |
-| **Invalid or incomplete result** | Check Pose Test readings and try Foresight again. Don't copy the failed result. |
-| **Web page won't open** | Check robot power, Robot Controller app, and computer Wi-Fi. Use `http://192.168.43.1:10158`. |
-
-If a pod fault remains, the **pod, cable, or port** may need further testing. The message alone cannot tell which part is faulty.
+**Always turn the robot off before unplugging a cable.**

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 910 290" width="910" role="img" aria-label="Wiring: both pods plug into the Pinpoint, the Pinpoint plugs into a Control Hub I2C port" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<title>Wiring: both pods plug into the Pinpoint, the Pinpoint plugs into a Control Hub I2C port</title>
+<defs><marker id="arrow-16A34A" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16A34A"/></marker><marker id="arrow-2563EB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2563EB"/></marker><marker id="arrow-EA580C" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#EA580C"/></marker></defs>
+<rect x="1" y="1" width="908" height="288" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="24" y="36" width="210" height="68" rx="12" fill="#FFFFFF" stroke="#2563EB" stroke-width="3"/>
+<circle cx="58" cy="70" r="18" fill="none" stroke="#2563EB" stroke-width="5"/><circle cx="58" cy="70" r="4" fill="#2563EB"/>
+<text x="88" y="66" font-size="15" font-weight="700" fill="#0F172A" text-anchor="start">Forward pod</text>
+<text x="88" y="85" font-size="12" font-weight="400" fill="#475569" text-anchor="start">wheel rolls front-to-back</text>
+<line x1="238" y1="70" x2="352" y2="108" stroke="#2563EB" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-2563EB)"/>
+<rect x="24" y="136" width="210" height="68" rx="12" fill="#FFFFFF" stroke="#EA580C" stroke-width="3"/>
+<circle cx="58" cy="170" r="18" fill="none" stroke="#EA580C" stroke-width="5"/><circle cx="58" cy="170" r="4" fill="#EA580C"/>
+<text x="88" y="166" font-size="15" font-weight="700" fill="#0F172A" text-anchor="start">Sideways pod</text>
+<text x="88" y="185" font-size="12" font-weight="400" fill="#475569" text-anchor="start">wheel rolls left-to-right</text>
+<line x1="238" y1="170" x2="352" y2="132" stroke="#EA580C" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-EA580C)"/>
+<rect x="360" y="60" width="200" height="120" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/>
+<text x="472" y="96" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle">Pinpoint</text>
+<text x="472" y="116" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">sticker side up</text>
+<rect x="360" y="97" width="30" height="22" rx="4" fill="#2563EB"/><text x="375" y="113" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">X</text>
+<rect x="360" y="121" width="30" height="22" rx="4" fill="#EA580C"/><text x="375" y="137" font-size="13" font-weight="700" fill="#FFFFFF" text-anchor="middle">Y</text>
+<rect x="512" y="139" width="48" height="22" rx="4" fill="#16A34A"/><text x="536" y="155" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">I2C</text>
+<line x1="564" y1="150" x2="668" y2="150" stroke="#16A34A" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-16A34A)"/>
+<rect x="676" y="60" width="210" height="120" rx="12" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/>
+<text x="781" y="96" font-size="17" font-weight="700" fill="#0F172A" text-anchor="middle">Control Hub</text>
+<text x="781" y="116" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">any I2C port except 0</text>
+<rect x="676" y="139" width="48" height="22" rx="4" fill="#16A34A"/><text x="700" y="155" font-size="12" font-weight="700" fill="#FFFFFF" text-anchor="middle">I2C</text>
+<rect x="24" y="222" width="862" height="46" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.5"/>
+<text x="455" y="250" font-size="13.5" font-weight="600" fill="#0F172A" text-anchor="middle">In Configure Robot, on that same I2C port:  type = goBILDA Pinpoint Odometry Computer,  name = pinpoint</text>
+</svg>

@@ -8,363 +8,369 @@ import com.pedropathing.tuning.autotune.Procedure;
 import com.pedropathing.tuning.autotune.TuningOpMode;
 import com.pedropathing.utils.Angle;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+import org.firstinspires.ftc.teamcode.pedro.PinpointGuard;
 
-import java.util.*;
-import java.util.function.BooleanSupplier;
+import java.util.OptionalDouble;
 
+/**
+ * Measures the Pinpoint settings by hand. No motor ever gets power here.
+ *
+ * <p>Three steps, each one starts by itself: keep still for a second, do the move, press Stop.
+ * <ol>
+ *   <li>Push FORWARD  - is the forward pod counting the right way?</li>
+ *   <li>Push LEFT     - is the sideways pod counting the right way?</li>
+ *   <li>Turn HALF a turn on the spot - where do the pods sit on the robot?</li>
+ * </ol>
+ * A single bad Pinpoint read is skipped (see {@link PinpointGuard}); it no longer fails the step.
+ */
 public class PinpointTuner extends Procedure {
     enum PodType {
         SWING_ARM,
         FOUR_BAR,
         CUSTOM
     }
+
+    /** Largest believable pod distance from the robot's center, inches. */
+    private static final double MAX_OFFSET_INCHES = 18.0;
+
     public PinpointTuner() {
-        super("Pinpoint Tuner", "A procedure for tuning the Pinpoint localizer.");
+        super("Pinpoint Tuner", "Measures the Pinpoint pod directions and positions. You push the robot by hand.");
     }
 
     @Override
     public void run() throws InterruptedException {
-        Inputs inputs = inputs("Setup", "Set the goBILDA Pinpoint I2C device name and actual pod type. Keep the robot STILL during each stage's initialization/calibration.");
+        Inputs inputs = inputs("Setup", "Type the Pinpoint's name from Configure Robot and pick your pod type. "
+                + "Every step starts by itself: keep the robot still for one second, do the move, then press Stop.");
         Inputs.Field<String> pinpointName = inputs.s("HardwareMap Name").withDefault(Constants.localizerConfig.name.get());
         Inputs.Field<PodType> podType = inputs.e("Odometry Pod Type", PodType.class).withDefault(PodType.FOUR_BAR);
         awaitInputs(inputs);
-        if (pinpointName.get().trim().isEmpty()) {
-            abort("Enter the Pinpoint I2C device name from Robot Configuration, normally pinpoint.");
+        String name = pinpointName.get().trim();
+        if (name.isEmpty()) {
+            abort("Type the Pinpoint's name from Configure Robot. It is normally: pinpoint");
             return;
         }
-        String name = pinpointName.get().trim();
 
-        OptionalDouble customPodScalar = OptionalDouble.empty();
-
+        OptionalDouble customTicksPerInch = OptionalDouble.empty();
         if (podType.get() == PodType.CUSTOM) {
-            Inputs inputsCustom = inputs("Custom Scalar Identification Push Distance", "Set the distance you will push your robot forward in inches");
+            Inputs inputsCustom = inputs("Custom pods", "How far will you push the robot forward, in inches? Measure it with a tape.");
             Inputs.Field<Double> distance = inputsCustom.d("Distance").withDefault(48.0);
             awaitInputs(inputsCustom);
             if (!Double.isFinite(distance.get()) || distance.get() <= 0.0) {
-                abort("Enter a finite positive push distance in inches.");
+                abort("The push distance must be a number of inches above zero.");
                 return;
             }
-            Double scalar = runOpMode(new PinpointCustomPodScalar(distance.get(), name));
-            if (scalar == null || !Double.isFinite(scalar) || scalar <= 0.0) {
-                abort("No valid forward encoder measurement. Check pod connections, complete the push, then press Stop.");
-                return;
-            }
-            customPodScalar = OptionalDouble.of(scalar);
+            Double ticksPerInch = finish(runOpMode(new PinpointCustomScale(name, distance.get())));
+            if (ticksPerInch == null) return;
+            customTicksPerInch = OptionalDouble.of(ticksPerInch);
         }
 
-        PinpointDirectionMeasurement forward = runOpMode(new PinpointForwardDirection(name, podType.get(), customPodScalar));
-        if (forward == null || forward.failure() != null) {
-            abort(forward == null ? "Forward test stopped before measurement. Retry, push FORWARD after initialization, then Stop." : forward.failure());
+        PinpointDirectionMeasurement forward = finish(runOpMode(new PinpointDirection(name, podType.get(), customTicksPerInch, true)));
+        if (forward == null) return;
+        if (forward.failure() != null) {
+            abort(forward.failure());
             return;
         }
-        boolean forwardPodReversed = forward.reversed();
-        PinpointDirectionMeasurement strafe = runOpMode(new PinpointStrafeDirection(name, podType.get(), customPodScalar));
-        if (strafe == null || strafe.failure() != null) {
-            abort(strafe == null ? "Strafe test stopped before measurement. Retry, push LEFT after initialization, then Stop." : strafe.failure());
-            return;
-        }
-        boolean strafePodReversed = strafe.reversed();
+        boolean xReversed = forward.reversed();
 
-        List<Double> offsets = runOpMode(new PinpointOffsets(name, podType.get(), customPodScalar, forwardPodReversed, strafePodReversed));
-        if (offsets == null || !Double.isFinite(offsets.get(0)) || !Double.isFinite(offsets.get(1))) {
-            abort("Invalid offset measurement. After initialization, keep the center fixed and rotate exactly 180 degrees CCW, then Stop.");
+        PinpointDirectionMeasurement strafe = finish(runOpMode(new PinpointDirection(name, podType.get(), customTicksPerInch, false)));
+        if (strafe == null) return;
+        if (strafe.failure() != null) {
+            abort(strafe.failure());
             return;
         }
+        boolean yReversed = strafe.reversed();
+
+        PinpointOffsetMeasurement offsets = finish(runOpMode(new PinpointOffsets(name, podType.get(), customTicksPerInch, xReversed, yReversed)));
+        if (offsets == null) return;
+        if (offsets.failure() != null) {
+            abort(offsets.failure());
+            return;
+        }
+        if (Math.abs(offsets.xPodOffset()) > MAX_OFFSET_INCHES || Math.abs(offsets.yPodOffset()) > MAX_OFFSET_INCHES) {
+            abort(String.format("The pods came out %.1f and %.1f inches from the center, which is bigger than the robot. "
+                    + "The robot slid while turning. Run it again and spin it on the spot.",
+                    offsets.xPodOffset(), offsets.yPodOffset()));
+            return;
+        }
+
+        String podTypeJava = "GoBildaPinpointDriver.GoBildaOdometryPods."
+                + (podType.get() == PodType.SWING_ARM ? "goBILDA_SWINGARM_POD" : "goBILDA_4_BAR_POD");
+        String xDirection = "GoBildaPinpointDriver.EncoderDirection." + (xReversed ? "REVERSED" : "FORWARD");
+        String yDirection = "GoBildaPinpointDriver.EncoderDirection." + (yReversed ? "REVERSED" : "FORWARD");
 
         result("name", name);
-
-        if (customPodScalar.isPresent()) {
+        if (customTicksPerInch.isPresent()) {
             result("podType", "Custom");
-            result("ticksPerUnit", customPodScalar.getAsDouble());
+            result("ticksPerUnit", customTicksPerInch.getAsDouble());
         } else {
-            result("podType", podType.get() == PodType.SWING_ARM ? GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD : GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+            result("podType", podType.get());
         }
+        result("xPodDirection", xReversed ? "REVERSED" : "FORWARD");
+        result("yPodDirection", yReversed ? "REVERSED" : "FORWARD");
+        result("xPodOffset", offsets.xPodOffset());
+        result("yPodOffset", offsets.yPodOffset());
 
-        result("xPodDirection", forwardPodReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        result("yPodDirection", strafePodReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        result("xPodOffset", offsets.get(0));
-        result("yPodOffset", offsets.get(1));
-
-        code(Language.JAVA,"public static PinpointConfig localizerConfig = new PinpointConfig(c -> {\n" +
+        code(Language.JAVA, "public static final boolean LOCALIZER_TUNED = true;\n" +
+                "public static final PinpointConfig localizerConfig = new PinpointConfig(c -> {\n" +
                 "    c.name.set(\"" + name + "\");\n" +
-                (customPodScalar.isPresent() ? "    c.ticksPerUnit.set(OptionalDouble.of(" + customPodScalar.getAsDouble() + "));\n" : "    c.podType.set(" + (podType.get() == PodType.SWING_ARM ? "GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD" : "GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD") + ");\n") +
-                "    c.xPodOffset.set(" + offsets.get(0) + ");\n" +
-                "    c.yPodOffset.set(" + offsets.get(1) + ");\n" +
-                "    c.xPodDirection.set(" + (forwardPodReversed ? "GoBildaPinpointDriver.EncoderDirection.REVERSED" : "GoBildaPinpointDriver.EncoderDirection.FORWARD") + ");\n" +
-                "    c.yPodDirection.set(" + (strafePodReversed ? "GoBildaPinpointDriver.EncoderDirection.REVERSED" : "GoBildaPinpointDriver.EncoderDirection.FORWARD") + ");\n" +
+                (customTicksPerInch.isPresent()
+                        ? "    c.ticksPerUnit.set(OptionalDouble.of(" + customTicksPerInch.getAsDouble() + "));\n"
+                        : "    c.podType.set(" + podTypeJava + ");\n") +
+                "    c.xPodOffset.set(" + offsets.xPodOffset() + ");\n" +
+                "    c.yPodOffset.set(" + offsets.yPodOffset() + ");\n" +
+                "    c.xPodDirection.set(" + xDirection + ");\n" +
+                "    c.yPodDirection.set(" + yDirection + ");\n" +
                 "    c.globalDistanceUnit.set(DistanceUnit.INCH);\n" +
                 "    c.offsetUnits.set(DistanceUnit.INCH);\n" +
                 "    c.encoderResolutionUnit.set(DistanceUnit.INCH);\n" +
                 "    c.resetMode.set(PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);\n" +
                 "});");
-        result("Next step", "Paste the Java localizerConfig into Constants.java, set LOCALIZER_TUNED = true, and rebuild before Foresight tuning.");
+        result("Next step", "Copy the Java code. In Constants.java paste it over everything between "
+                + "PINPOINT TUNER RESULT: START and END. Install the app again, then run Tests > Pose Test.");
     }
 
-    static PinpointLocalizer localizer(HardwareMap map, PinpointConfig config) {
-        // No motor power is applied by the manual Pinpoint tuner.
-        config.globalDistanceUnit.set(DistanceUnit.INCH);
-        config.offsetUnits.set(DistanceUnit.INCH);
-        config.encoderResolutionUnit.set(DistanceUnit.INCH);
-        config.resetMode.set(PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
-        return Constants.initializePinpoint(map, config);
+    /** Unwraps a step's answer; aborts the procedure with a clear reason when there is none. */
+    private <T> T finish(PinpointStageResult<T> result) throws InterruptedException {
+        if (result == null) {
+            abort("That step was stopped before the Pinpoint finished starting. Run the tuner again and "
+                    + "wait for the Driver Station to say what to do before pressing Stop.");
+            return null;
+        }
+        if (result.failure != null) {
+            abort(result.failure);
+            return null;
+        }
+        return result.value;
+    }
+
+    /** The settings every step shares. Pod offsets stay at zero until the last step measures them. */
+    static PinpointConfig config(String name, PodType podType, OptionalDouble customTicksPerInch,
+                                 boolean xReversed, boolean yReversed) {
+        return new PinpointConfig(c -> {
+            c.name.set(name);
+            c.xPodDirection.set(xReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
+            c.yPodDirection.set(yReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
+            c.xPodOffset.set(0.0);
+            c.yPodOffset.set(0.0);
+            if (customTicksPerInch.isPresent()) {
+                c.ticksPerUnit.set(OptionalDouble.of(customTicksPerInch.getAsDouble()));
+            } else if (podType == PodType.SWING_ARM) {
+                c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
+            } else {
+                c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+            }
+            c.globalDistanceUnit.set(DistanceUnit.INCH);
+            c.offsetUnits.set(DistanceUnit.INCH);
+            c.encoderResolutionUnit.set(DistanceUnit.INCH);
+            c.resetMode.set(PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
+        });
     }
 }
 
-class PinpointCustomPodScalar extends TuningOpMode<Double> {
+/** What a step hands back: a value, or the reason there is none. */
+final class PinpointStageResult<T> {
+    final T value;
+    final String failure;
 
-    String name;
-    double distance;
+    private PinpointStageResult(T value, String failure) {
+        this.value = value;
+        this.failure = failure;
+    }
 
-    public PinpointCustomPodScalar(Double distance, String name) {
-        super("Custom Scalar Identification",
-                "Determines the scalar for the custom pods of the Pinpoint localizer. \n"
-                        + "Push your robot forward " + distance + " inches exactly and then stop the Opmode",
-                true);
+    static <T> PinpointStageResult<T> ok(T value) {
+        return new PinpointStageResult<>(value, null);
+    }
+
+    static <T> PinpointStageResult<T> fail(String failure) {
+        return new PinpointStageResult<>(null, failure);
+    }
+}
+
+/** Shared start-up for every step: start the Pinpoint, wait until it is ready, then measure. */
+abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
+    PinpointStage(String title, String description) {
+        super(title, description, true);
+    }
+
+    abstract PinpointConfig config();
+
+    abstract T measure(PinpointGuard pinpoint) throws InterruptedException;
+
+    @Override
+    protected final PinpointStageResult<T> runTuningOpMode() throws InterruptedException {
+        telemetry.addLine("KEEP THE ROBOT STILL - the Pinpoint is starting (about 1 second)");
+        telemetry.update();
+        try {
+            // true = hand-pushed tuning: a pod warning is shown, not fatal.
+            PinpointGuard pinpoint = PinpointGuard.open(hardwareMap, config(), true);
+            waitForStart();
+            if (isStopRequested()) return null;
+            return PinpointStageResult.ok(measure(pinpoint));
+        } catch (IllegalStateException problem) {
+            if (isStopRequested()) return null;
+            return PinpointStageResult.fail(problem.getMessage());
+        }
+    }
+
+    /** One loop: read the Pinpoint. False means Stop was pressed and the step is over. */
+    boolean read(PinpointGuard pinpoint) {
+        if (isStopRequested()) return false;
+        pinpoint.update();
+        // Stop can land in the middle of a read; that read is thrown away.
+        return !isStopRequested();
+    }
+
+    void show(PinpointGuard pinpoint, String whatToDo) {
+        telemetry.addData("DO THIS", whatToDo);
+        telemetry.addData("Pinpoint", pinpoint.lastReadGood() ? "OK" : "skipping a bad read (" + pinpoint.status() + ")");
+        if (pinpoint.warning() != null) telemetry.addData("WARNING", pinpoint.warning());
+    }
+}
+
+/** Custom pods only: how many encoder ticks is one inch? */
+class PinpointCustomScale extends PinpointStage<Double> {
+    private final String name;
+    private final double distance;
+
+    PinpointCustomScale(String name, double distance) {
+        super("Custom Pod Scale",
+                "Keep still for one second. Then push the robot straight FORWARD exactly " + distance
+                        + " inches and press Stop.");
         this.name = name;
         this.distance = distance;
     }
 
     @Override
-    protected Double runTuningOpMode() throws InterruptedException {
-        PinpointConfig config = new PinpointConfig(c -> {
-            c.name.set(name);
-            c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            c.xPodOffset.set(0.0);
-            c.yPodOffset.set(0.0);
-        });
-        PinpointTuner.localizer(hardwareMap, config);
-        GoBildaPinpointDriver pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, name);
-        Thread.sleep(1000);
-        waitForStart();
-        if (isStopRequested()) return null;
-        pinpoint.update();
-        requireReady(pinpoint);
-        int startTicks = pinpoint.getEncoderX();
-        int travelTicks = 0;
-        telemetry.addData("Status", "READY - push forward the measured distance, then Stop");
-        telemetry.update();
-        while (!isStopRequested()) {
-            pinpoint.update();
-            if (!readyOrStopped(pinpoint, this::isStopRequested)) break;
-            // Use actual counts, not pose inches with a fake one-tick/inch scale.
-            // That fake scale can trip the SDK driver's position corruption checks.
-            travelTicks = pinpoint.getEncoderX() - startTicks;
-            telemetry.addData("Status", "READY - push forward the measured distance, then Stop");
-            telemetry.addData("Forward travel (raw ticks)", travelTicks);
+    PinpointConfig config() {
+        return PinpointTuner.config(name, PinpointTuner.PodType.FOUR_BAR, OptionalDouble.empty(), false, false);
+    }
+
+    @Override
+    Double measure(PinpointGuard pinpoint) {
+        int start = pinpoint.ticksX();
+        int travel = 0;
+        while (read(pinpoint)) {
+            // Int subtraction on purpose: it stays correct if the 32-bit counter wraps.
+            if (pinpoint.lastReadGood()) travel = pinpoint.ticksX() - start;
+            show(pinpoint, "Push FORWARD exactly " + distance + " inches, then press Stop");
+            telemetry.addData("Forward pod (ticks)", travel);
             telemetry.update();
             idle();
         }
-        return Math.abs((double) travelTicks) / distance;
-    }
-
-    static void requireReady(GoBildaPinpointDriver pinpoint) {
-        GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
-        if (status != GoBildaPinpointDriver.DeviceStatus.READY)
-            throw new IllegalStateException("Pinpoint reported " + status
-                    + ". Measurement rejected; check the Pinpoint and pod connections, then retry.");
-    }
-
-    /** True when READY; false only when Stop arrived during the read, so a shutdown status is not a fault. */
-    static boolean readyOrStopped(GoBildaPinpointDriver pinpoint, BooleanSupplier stopRequested) {
-        if (pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY) return true;
-        if (stopRequested.getAsBoolean()) return false;
-        requireReady(pinpoint);
-        return true;
+        if (travel == 0)
+            throw new IllegalStateException("The forward pod did not count at all. Check the pod wheel "
+                    + "touches the floor and its cable is in the Pinpoint X port.");
+        return Math.abs((double) travel) / distance;
     }
 }
 
-class PinpointDirection extends TuningOpMode<PinpointDirectionMeasurement> {
-    String name;
-    PinpointTuner.PodType podType;
-    OptionalDouble customPodScalar;
-    final boolean forward;
+/** Push forward (or left): which way does that pod count? */
+class PinpointDirection extends PinpointStage<PinpointDirectionMeasurement> {
+    private final String name;
+    private final PinpointTuner.PodType podType;
+    private final OptionalDouble customTicksPerInch;
+    private final boolean forward;
 
-    PinpointDirection(String name, PinpointTuner.PodType podType, OptionalDouble customPodScalar, boolean forward) {
-        super(forward ? "Forward Direction Identification" : "Strafe Direction Identification",
-                "Keep still during initialization. The test starts automatically; then push 6-12 inches "
-                        + (forward ? "FORWARD" : "LEFT")
-                        + " in a straight line without turning. Watch the raw ticks, then press Stop.",
-                true);
+    PinpointDirection(String name, PinpointTuner.PodType podType, OptionalDouble customTicksPerInch, boolean forward) {
+        super(forward ? "Push Forward" : "Push Left",
+                "Keep still for one second. Then push the robot 6 to 12 inches straight "
+                        + (forward ? "FORWARD" : "to the LEFT")
+                        + " without turning it, and press Stop.");
         this.name = name;
         this.podType = podType;
-        this.customPodScalar = customPodScalar;
+        this.customTicksPerInch = customTicksPerInch;
         this.forward = forward;
     }
 
     @Override
-    protected PinpointDirectionMeasurement runTuningOpMode() throws InterruptedException {
-        PinpointConfig config = new PinpointConfig(c -> {
-            c.name.set(name);
-            c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            c.xPodOffset.set(0.0);
-            c.yPodOffset.set(0.0);
-            if (customPodScalar.isPresent()) {
-                c.encoderResolutionUnit.set(DistanceUnit.INCH);
-                c.ticksPerUnit.set(OptionalDouble.of(customPodScalar.getAsDouble()));
-            } else {
-                c.podType.set(podType == PinpointTuner.PodType.SWING_ARM ? GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD : GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-            }
-        });
-        PinpointTuner.localizer(hardwareMap, config);
-        GoBildaPinpointDriver pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, name);
-        // These are the FTC SDK's manufacturer resolutions, not measured robot offsets.
-        double ticksPerInch = customPodScalar.isPresent() ? customPodScalar.getAsDouble()
+    PinpointConfig config() {
+        return PinpointTuner.config(name, podType, customTicksPerInch, false, false);
+    }
+
+    @Override
+    PinpointDirectionMeasurement measure(PinpointGuard pinpoint) {
+        // goBILDA's published ticks per millimetre. Only used to show inches on screen.
+        double ticksPerInch = customTicksPerInch.isPresent() ? customTicksPerInch.getAsDouble()
                 : (podType == PinpointTuner.PodType.SWING_ARM ? 13.26291192 : 19.89436789) * 25.4;
         PinpointDirectionMeasurement measurement = new PinpointDirectionMeasurement(forward, ticksPerInch);
-        telemetry.addData("Next", "After initialization, push %s 6-12 inches", forward ? "FORWARD" : "LEFT");
-        telemetry.update();
-        waitForStart();
-        if (isStopRequested()) return null;
-        GoBildaPinpointDriver.DeviceStatus initialStatus = readStatus(pinpoint);
-        if (initialStatus != GoBildaPinpointDriver.DeviceStatus.READY) {
-            measurement.fail("Pinpoint is " + initialStatus + ". Keep still and retry; check pods and I2C wiring.");
-            return measurement;
-        }
-        int startX = pinpoint.getEncoderX();
-        int startY = pinpoint.getEncoderY();
-        while (!isStopRequested()) {
-            GoBildaPinpointDriver.DeviceStatus status;
-            try {
-                status = readStatus(pinpoint);
-            } catch (InterruptedException error) {
-                if (isStopRequested()) break;
-                throw error;
+        String whatToDo = "Push " + (forward ? "FORWARD" : "LEFT") + " 6-12 inches, then press Stop";
+        int startX = pinpoint.ticksX();
+        int startY = pinpoint.ticksY();
+        int xTicks = 0;
+        int yTicks = 0;
+        while (read(pinpoint)) {
+            if (pinpoint.lastReadGood()) {
+                // Int subtraction on purpose: it stays correct if the 32-bit counter wraps.
+                xTicks = pinpoint.ticksX() - startX;
+                yTicks = pinpoint.ticksY() - startY;
+                measurement.sample(xTicks, yTicks);
             }
-            // Stop can arrive during I2C polling. Ignore that in-flight read rather
-            // than treating its shutdown status as a fault or encoder sample.
-            if (isStopRequested()) break;
-            if (status != GoBildaPinpointDriver.DeviceStatus.READY) {
-                measurement.fail("Pinpoint reported " + status + ". Measurement rejected; check pods and I2C wiring, then retry.");
-                return measurement;
-            }
-            // Int subtraction intentionally handles a 32-bit counter wrap over a short push.
-            int xTicks = pinpoint.getEncoderX() - startX;
-            int yTicks = pinpoint.getEncoderY() - startY;
-            measurement.sample(xTicks, yTicks);
-            telemetry.addData("Pinpoint status", status);
-            telemetry.addData("X encoder travel (ticks)", xTicks);
-            telemetry.addData("Y encoder travel (ticks)", yTicks);
-            telemetry.addData("Largest valid-axis travel (in)", measurement.peakInches());
-            telemetry.addData("Action", "READY - push %s 6-12 inches, then Stop", forward ? "FORWARD" : "LEFT");
+            show(pinpoint, whatToDo);
+            telemetry.addData("Forward pod, X port (ticks)", xTicks);
+            telemetry.addData("Sideways pod, Y port (ticks)", yTicks);
+            telemetry.addData("Pushed so far (inches)", "%.1f", measurement.peakInches());
+            telemetry.addData("Bad reads skipped", pinpoint.skippedReads());
             telemetry.update();
             idle();
         }
         return measurement;
     }
-
-    private static GoBildaPinpointDriver.DeviceStatus readStatus(GoBildaPinpointDriver pinpoint)
-            throws InterruptedException {
-        // Retry transient corrupt reads, but never use their cached encoder values.
-        long deadline = System.nanoTime() + 500_000_000L;
-        while (true) {
-            if (Thread.currentThread().isInterrupted()) throw new InterruptedException();
-            pinpoint.update();
-            GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
-            if (status != GoBildaPinpointDriver.DeviceStatus.FAULT_BAD_READ
-                    || System.nanoTime() >= deadline) return status;
-            Thread.sleep(20);
-        }
-    }
 }
 
-class PinpointForwardDirection extends PinpointDirection {
-    PinpointForwardDirection(String name, PinpointTuner.PodType podType, OptionalDouble customPodScalar) {
-        super(name, podType, customPodScalar, true);
-    }
-}
+/** Spin on the spot: where do the pods sit on the robot? */
+class PinpointOffsets extends PinpointStage<PinpointOffsetMeasurement> {
+    private final String name;
+    private final PinpointTuner.PodType podType;
+    private final OptionalDouble customTicksPerInch;
+    private final boolean xReversed;
+    private final boolean yReversed;
 
-class PinpointStrafeDirection extends PinpointDirection {
-    public PinpointStrafeDirection(String name, PinpointTuner.PodType podType, OptionalDouble customPodScalar) {
-        super(name, podType, customPodScalar, false);
-    }
-}
-
-class PinpointOffsets extends TuningOpMode<List<Double>> {
-    String name;
-    PinpointTuner.PodType podType;
-    OptionalDouble customPodScalar =  OptionalDouble.empty();
-    boolean forwardPodReversed, strafePodReversed;
-    private Pose previous = Pose.zero();
-
-    public PinpointOffsets(String name, PinpointTuner.PodType podType, OptionalDouble customPodScalar, Boolean forwardPodReversed, Boolean strafePodReversed) {
-        super("Offsets Identification",
-                "Automatically identifies the offsets for your Pinpoint localizer. \n"
-                        + "After initialization, rotate exactly 180 degrees counterclockwise about a FIXED center, then Stop. Keep still during initialization.",
-                true);
+    PinpointOffsets(String name, PinpointTuner.PodType podType, OptionalDouble customTicksPerInch,
+                    boolean xReversed, boolean yReversed) {
+        super("Turn Half a Turn",
+                "Keep still for one second. Then turn the robot HALF a turn (180 degrees) counterclockwise "
+                        + "on the spot, keeping its center over the same place on the floor, and press Stop. "
+                        + "The Driver Station shows how far you have turned.");
         this.name = name;
         this.podType = podType;
-        if (customPodScalar.isPresent()) {
-            this.customPodScalar = customPodScalar;
-        }
-        this.forwardPodReversed = forwardPodReversed;
-        this.strafePodReversed = strafePodReversed;
+        this.customTicksPerInch = customTicksPerInch;
+        this.xReversed = xReversed;
+        this.yReversed = yReversed;
     }
 
     @Override
-    protected List<Double> runTuningOpMode() throws InterruptedException {
-        PinpointConfig config = new PinpointConfig(c -> {
-            c.name.set(name);
-            c.xPodDirection.set(forwardPodReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            c.yPodDirection.set(strafePodReversed ? GoBildaPinpointDriver.EncoderDirection.REVERSED : GoBildaPinpointDriver.EncoderDirection.FORWARD);
-            if (customPodScalar.isPresent()) {
-                c.encoderResolutionUnit.set(DistanceUnit.INCH);
-                c.ticksPerUnit.set(OptionalDouble.of(customPodScalar.getAsDouble()));
-                c.resetMode.set(PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
-            } else {
-                c.podType.set(podType == PinpointTuner.PodType.SWING_ARM ? GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD : GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+    PinpointConfig config() {
+        return PinpointTuner.config(name, podType, customTicksPerInch, xReversed, yReversed);
+    }
+
+    @Override
+    PinpointOffsetMeasurement measure(PinpointGuard pinpoint) {
+        Pose start = pinpoint.pose();
+        Pose last = start;
+        double previousHeading = start.heading();
+        double turned = 0.0;
+        while (read(pinpoint)) {
+            if (pinpoint.lastReadGood()) {
+                last = pinpoint.pose();
+                // Add up small changes so the total keeps counting past 180 degrees.
+                turned += Angle.normalizeSigned(last.heading() - previousHeading);
+                previousHeading = last.heading();
             }
-            c.xPodOffset.set(0.0);
-            c.yPodOffset.set(0.0);
-            c.globalDistanceUnit.set(DistanceUnit.INCH);
-            c.offsetUnits.set(DistanceUnit.INCH);
-        });
-        PinpointLocalizer localizer = PinpointTuner.localizer(hardwareMap, config);
-        GoBildaPinpointDriver pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, name);
-        localizer.setPose(Pose.zero());
-        localizer.update();
-
-
-        Thread.sleep(1000);
-        waitForStart();
-        if (isStopRequested()) return null;
-        localizer.setPose(Pose.zero());
-        localizer.update();
-        PinpointCustomPodScalar.requireReady(pinpoint);
-
-        double previousHeading = localizer.pose().heading();
-        double totalHeading = 0.0;
-        telemetry.addData("Action", "READY - turn 180 degrees counterclockwise, then Stop");
-        telemetry.update();
-
-        while (!isStopRequested()) {
-            previous = localizer.pose();
-            localizer.update();
-            if (!PinpointCustomPodScalar.readyOrStopped(pinpoint, this::isStopRequested)) break;
-            double heading = localizer.pose().heading();
-            totalHeading += Angle.normalizeSigned(heading - previousHeading);
-            previousHeading = heading;
-
-            telemetry.addData("CCW turn (degrees)", Math.toDegrees(totalHeading));
-            telemetry.addData("Action", "READY - turn 180 degrees counterclockwise, then Stop");
-            telemetry.addData("pose", localizer.pose());
-            telemetry.addData("previous", previous);
+            show(pinpoint, "Turn HALF a turn on the spot, then press Stop");
+            telemetry.addData("Turned so far (degrees)", "%.0f   (stop between %.0f and %.0f)",
+                    Math.abs(Math.toDegrees(turned)),
+                    PinpointOffsetMeasurement.MIN_TURN_DEGREES, PinpointOffsetMeasurement.MAX_TURN_DEGREES);
+            telemetry.addData("Bad reads skipped", pinpoint.skippedReads());
             telemetry.update();
+            idle();
         }
-
-        // The endpoint formula below assumes a half-turn, not an arbitrary spin.
-        if (!Double.isFinite(totalHeading) || Math.abs(totalHeading - Math.PI) > Math.toRadians(5)) {
-            return null;
-        }
-
-        if (localizer.pose().x() != Pose.zero().x() || localizer.pose().y() != Pose.zero().y()) {
-            previous =  localizer.pose();
-        }
-
-        return List.of(((-previous.y()) / 2.0), ((-previous.x()) / 2.0));
+        // Express the final position in the frame the robot started in.
+        double dx = last.x() - start.x();
+        double dy = last.y() - start.y();
+        double cos = Math.cos(-start.heading());
+        double sin = Math.sin(-start.heading());
+        return PinpointOffsetMeasurement.solve(dx * cos - dy * sin, dx * sin + dy * cos, turned);
     }
 }

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 958 204" width="958" role="img" aria-label="The six Pedro setup steps in order" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<title>The six Pedro setup steps in order</title>
+
+<rect x="1" y="1" width="956" height="202" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="10" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="79" cy="44" r="15" fill="#0F172A"/><text x="79" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="79" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Install app</text>
+<text x="79" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Android Studio: Run</text>
+<rect x="25.0" y="116" width="108" height="20" rx="10" fill="#64748B"/><text x="79" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">nothing moves</text>
+<path d="M154,88 l8,8 l-8,8" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="168" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="237" cy="44" r="15" fill="#0F172A"/><text x="237" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="237" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Check motors</text>
+<text x="237" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Mecanum Tuner</text>
+<rect x="183.0" y="116" width="108" height="20" rx="10" fill="#EA580C"/><text x="237" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">wheels spin</text>
+<path d="M312,88 l8,8 l-8,8" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="326" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="395" cy="44" r="15" fill="#0F172A"/><text x="395" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="395" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Tune Pinpoint</text>
+<text x="395" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Pinpoint Tuner</text>
+<rect x="341.0" y="116" width="108" height="20" rx="10" fill="#2563EB"/><text x="395" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">you push it</text>
+<path d="M470,88 l8,8 l-8,8" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="484" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="553" cy="44" r="15" fill="#0F172A"/><text x="553" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+<text x="553" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Check position</text>
+<text x="553" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Tests &gt; Pose Test</text>
+<rect x="499.0" y="116" width="108" height="20" rx="10" fill="#2563EB"/><text x="553" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">you push it</text>
+<path d="M628,88 l8,8 l-8,8" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="642" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="711" cy="44" r="15" fill="#0F172A"/><text x="711" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+<text x="711" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Tune driving</text>
+<text x="711" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Foresight Tuner</text>
+<rect x="657.0" y="116" width="108" height="20" rx="10" fill="#DC2626"/><text x="711" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">ROBOT DRIVES</text>
+<path d="M786,88 l8,8 l-8,8" fill="none" stroke="#64748B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="800" y="44" width="138" height="104" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="869" cy="44" r="15" fill="#0F172A"/><text x="869" y="49" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+<text x="869" y="84" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Run auto</text>
+<text x="869" y="104" font-size="12" font-weight="400" fill="#475569" text-anchor="middle">Pedro Auto Test</text>
+<rect x="815.0" y="116" width="108" height="20" rx="10" fill="#DC2626"/><text x="869" y="130" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">ROBOT DRIVES</text>
+<text x="479" y="180" font-size="13" font-weight="400" fill="#475569" text-anchor="middle">After steps 3 and 5: copy the tuner's code into Constants.java, then install the app again.</text>
+</svg>
