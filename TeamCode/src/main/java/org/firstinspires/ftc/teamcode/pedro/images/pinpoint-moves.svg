@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 910 378" width="910" role="img" aria-label="The three Pinpoint Tuner moves: push forward, push left, turn half a turn" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<title>The three Pinpoint Tuner moves: push forward, push left, turn half a turn</title>
+<rect x="1" y="1" width="908" height="376" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="24" y="20" width="862" height="40" rx="10" fill="#EFF6FF" stroke="#2563EB" stroke-width="1.5"/>
+<text x="455" y="45" font-size="15" font-weight="700" fill="#0F172A" text-anchor="middle">Every step:   keep still for 1 second   &gt;   do the move   &gt;   press Stop</text>
+<rect x="24" y="76" width="274" height="282" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="50" cy="102" r="15" fill="#2563EB"/><text x="50" y="107" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="74" y="108" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Push FORWARD</text>
+<rect x="110.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="110.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="200.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="200.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="119.0" y="198.0" width="84" height="84" rx="10" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/><path d="M149,216.0 L161,203.0 L173,216.0 z" fill="#0F172A"/><text x="161" y="252" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">FRONT</text>
+<line x1="161" y1="186" x2="161.0" y2="146.0" stroke="#2563EB" stroke-width="7" stroke-linecap="round"/><path d="M161.0,132.0 L172.2,152.0 L149.8,152.0 z" fill="#2563EB"/>
+<text x="161" y="338" font-size="12.5" font-weight="400" fill="#475569" text-anchor="middle">6 to 12 inches, straight</text>
+<rect x="318" y="76" width="274" height="282" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="344" cy="102" r="15" fill="#EA580C"/><text x="344" y="107" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="368" y="108" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Push LEFT</text>
+<rect x="404.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="404.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="494.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="494.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="413.0" y="198.0" width="84" height="84" rx="10" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/><path d="M443,216.0 L455,203.0 L467,216.0 z" fill="#0F172A"/><text x="455" y="252" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">FRONT</text>
+<line x1="395" y1="240" x2="353.0" y2="240.0" stroke="#EA580C" stroke-width="7" stroke-linecap="round"/><path d="M339.0,240.0 L359.0,228.8 L359.0,251.2 z" fill="#EA580C"/>
+<text x="455" y="338" font-size="12.5" font-weight="400" fill="#475569" text-anchor="middle">6 to 12 inches, straight</text>
+<rect x="612" y="76" width="274" height="282" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<circle cx="638" cy="102" r="15" fill="#7C3AED"/><text x="638" y="107" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="662" y="108" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Turn HALF a turn</text>
+<rect x="698.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="698.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="788.0" y="201.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="788.0" y="253.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="707.0" y="198.0" width="84" height="84" rx="10" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/><path d="M737,216.0 L749,203.0 L761,216.0 z" fill="#0F172A"/><text x="749" y="252" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">FRONT</text>
+<path d="M822.3,266.7 A78,78 0 1 0 672.4,254.9" fill="none" stroke="#7C3AED" stroke-width="7" stroke-linecap="round"/><path d="M675.7,266.7 L658.3,251.7 L679.4,244.1 z" fill="#7C3AED"/>
+<circle cx="749" cy="232" r="4.5" fill="#7C3AED"/>
+<text x="749" y="338" font-size="12.5" font-weight="400" fill="#475569" text-anchor="middle">on the spot: 150 to 210 degrees is fine</text>
+</svg>

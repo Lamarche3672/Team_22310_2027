@@ -108,7 +108,8 @@ public class ForesightTuner extends Procedure {
         result("brake kV", brake);
 
         code(Language.JAVA,
-        "public static ForesightConfig foresightConfig = new ForesightConfig(\n" +
+        "public static final boolean FORESIGHT_TUNED = true;\n" +
+        "public static final ForesightConfig foresightConfig = new ForesightConfig(\n" +
                 "            c -> {\n" +
                 "                Controller primaryTranslationalForward = Controller.proportional("+forwardTranslationalPrimary+");\n" +
                 "                Controller secondaryTranslationalForward = Controller.proportional("+forwardTranslationalSecondary+");\n" +
@@ -133,6 +134,8 @@ public class ForesightTuner extends Procedure {
                 "                c.naturalStrafeDeceleration.set("+strafeDeceleration+");\n" +
                 "            }\n" +
                 "    );");
+        result("Next step", "Copy the Java code. In Constants.java paste it over everything between "
+                + "FORESIGHT TUNER RESULT: START and END. Install the app again, then try Tests > Line Test.");
     }
 }
 
