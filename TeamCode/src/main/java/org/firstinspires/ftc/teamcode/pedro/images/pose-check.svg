@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 910 310" width="910" role="img" aria-label="Pose Test: forward raises X, left raises Y, counter-clockwise raises heading" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<title>Pose Test: forward raises X, left raises Y, counter-clockwise raises heading</title>
+<rect x="1" y="1" width="908" height="308" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="123.0" y="127.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="123.0" y="191.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="225.0" y="127.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="225.0" y="191.0" width="12" height="26" rx="3" fill="#0F172A"/><rect x="132.0" y="124.0" width="96" height="96" rx="10" fill="#FFFFFF" stroke="#0F172A" stroke-width="3"/><path d="M168,142.0 L180,129.0 L192,142.0 z" fill="#0F172A"/><text x="180" y="184" font-size="11" font-weight="700" fill="#475569" text-anchor="middle">FRONT</text>
+<line x1="180" y1="112" x2="180.0" y2="62.0" stroke="#2563EB" stroke-width="7" stroke-linecap="round"/><path d="M180.0,48.0 L191.2,68.0 L168.8,68.0 z" fill="#2563EB"/><text x="196" y="68" font-size="16" font-weight="700" fill="#2563EB" text-anchor="start">X +</text>
+<line x1="116" y1="172" x2="66.0" y2="172.0" stroke="#EA580C" stroke-width="7" stroke-linecap="round"/><path d="M52.0,172.0 L72.0,160.8 L72.0,183.2 z" fill="#EA580C"/><text x="80" y="156" font-size="16" font-weight="700" fill="#EA580C" text-anchor="middle">Y +</text>
+<path d="M250.5,231.1 A92,92 0 0 0 249.4,111.6" fill="none" stroke="#7C3AED" stroke-width="7" stroke-linecap="round"/><path d="M239.1,101.5 L261.7,105.8 L247.3,123.0 z" fill="#7C3AED"/>
+<text x="242" y="270" font-size="15" font-weight="700" fill="#7C3AED" text-anchor="middle">Heading +</text>
+<text x="384" y="62" font-size="13" font-weight="700" fill="#475569" text-anchor="start">You do this</text><text x="660" y="62" font-size="13" font-weight="700" fill="#475569" text-anchor="start">Driver Station shows</text>
+<rect x="364" y="76" width="520" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="364" y="76" width="8" height="44" rx="4" fill="#2563EB"/>
+<text x="384" y="103" font-size="14.5" font-weight="600" fill="#0F172A" text-anchor="start">Push it FORWARD</text>
+<path d="M636,91 l7,7 l-7,7" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="660" y="103" font-size="14.5" font-weight="700" fill="#2563EB" text-anchor="start">X goes up</text>
+<rect x="364" y="130" width="520" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="364" y="130" width="8" height="44" rx="4" fill="#EA580C"/>
+<text x="384" y="157" font-size="14.5" font-weight="600" fill="#0F172A" text-anchor="start">Push it LEFT</text>
+<path d="M636,145 l7,7 l-7,7" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="660" y="157" font-size="14.5" font-weight="700" fill="#EA580C" text-anchor="start">Y goes up</text>
+<rect x="364" y="184" width="520" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="364" y="184" width="8" height="44" rx="4" fill="#7C3AED"/>
+<text x="384" y="211" font-size="14.5" font-weight="600" fill="#0F172A" text-anchor="start">Turn it counter-clockwise</text>
+<path d="M636,199 l7,7 l-7,7" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="660" y="211" font-size="14.5" font-weight="700" fill="#7C3AED" text-anchor="start">Heading goes up</text>
+<rect x="364" y="238" width="520" height="44" rx="10" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="364" y="238" width="8" height="44" rx="4" fill="#16A34A"/>
+<text x="384" y="265" font-size="14.5" font-weight="600" fill="#0F172A" text-anchor="start">Push it 24 inches (tape measure)</text>
+<path d="M636,253 l7,7 l-7,7" fill="none" stroke="#64748B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="660" y="265" font-size="14.5" font-weight="700" fill="#16A34A" text-anchor="start">reads about 24</text>
+</svg>

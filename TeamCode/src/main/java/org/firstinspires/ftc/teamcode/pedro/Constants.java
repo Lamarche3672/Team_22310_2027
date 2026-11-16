@@ -24,8 +24,7 @@ import java.util.OptionalDouble;
 public final class Constants {
     private Constants() { }
 
-    // Pedro's wheel mix has the same signs as DriveMath.wheels when turn is CCW.
-    // Keep the existing drive motor names and polarities; verify with Mecanum Tuner.
+    // Drive motor names and directions. Check them with Mecanum Tuner.
     public static final MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
         c.frontLeftName.set("fl_motor");
         c.frontRightName.set("fr_motor");
@@ -38,17 +37,16 @@ public final class Constants {
         c.manualBrakeMode.set(true);
     });
 
-    // After the Pinpoint Tuner, replace localizerConfig with its Java output,
-    // then set LOCALIZER_TUNED to true. Do NOT guess the measured values.
-    // Both pods plug into the Pinpoint, NOT the drive-motor encoder sockets.
-    // The Pinpoint has its own IMU; no REV Hub IMU name/orientation is needed.
+    // ======================= PINPOINT TUNER RESULT: START =======================
+    // The Pinpoint Tuner gives you a block of Java. Select from the START line to
+    // the END line, and paste the tuner's block over it. Nothing else to edit.
+    // Until then the offsets are "not measured yet" and autonomous refuses to run.
     public static final boolean LOCALIZER_TUNED = false;
     public static final PinpointConfig localizerConfig = new PinpointConfig(c -> {
-        c.name.set("pinpoint"); // goBILDA Pinpoint I2C device name in Robot Configuration
-        // Provisional pod type; select your actual pods in the Pinpoint Tuner.
+        c.name.set("pinpoint"); // the Pinpoint's name in Configure Robot
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        c.xPodOffset.set(Double.NaN);
-        c.yPodOffset.set(Double.NaN);
+        c.xPodOffset.set(Double.NaN); // not measured yet
+        c.yPodOffset.set(Double.NaN); // not measured yet
         c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
         c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
@@ -56,11 +54,14 @@ public final class Constants {
         c.encoderResolutionUnit.set(DistanceUnit.INCH);
         c.resetMode.set(PinpointLocalizer.ResetMode.RESET_AND_RECALIBRATE_IMU);
     });
+    // ======================= PINPOINT TUNER RESULT: END =========================
 
-    // After the Foresight Tuner, replace this block with its Java output.
-    // No sample robot's motion constants are valid for this robot.
+    // ======================= FORESIGHT TUNER RESULT: START ======================
+    // Same idea: paste the Foresight Tuner's block over START..END.
+    // No other robot's numbers are valid for this robot.
     public static final boolean FORESIGHT_TUNED = false;
     public static final ForesightConfig foresightConfig = new ForesightConfig(c -> { });
+    // ======================= FORESIGHT TUNER RESULT: END ========================
 
     public static Mecanum createDrivetrain(HardwareMap map) {
         for (LynxModule hub : map.getAll(LynxModule.class)) {
@@ -77,82 +78,29 @@ public final class Constants {
         return new Mecanum(map, drivetrainConfig);
     }
 
-    public static PinpointLocalizer createLocalizer(HardwareMap map) {
+    /**
+     * The tuned Pinpoint, ready to use. Keep the robot still while this runs (about 1 s).
+     * A single bad read is skipped, not fatal; see PinpointGuard.
+     */
+    public static PinpointGuard createLocalizer(HardwareMap map) {
         if (!LOCALIZER_TUNED || !Double.isFinite(localizerConfig.xPodOffset.get())
-                || !Double.isFinite(localizerConfig.yPodOffset.get())
-                || localizerConfig.name.get().trim().isEmpty()
-                || localizerConfig.xPodDirection.get() == null
-                || localizerConfig.yPodDirection.get() == null
-                || localizerConfig.globalDistanceUnit.get() != DistanceUnit.INCH
-                || (localizerConfig.ticksPerUnit.get().isPresent()
-                && (!Double.isFinite(localizerConfig.ticksPerUnit.get().getAsDouble())
-                || localizerConfig.ticksPerUnit.get().getAsDouble() <= 0.0)))
-            throw new IllegalStateException("Run Pinpoint Tuner, paste its config, then set LOCALIZER_TUNED = true in Constants.java");
-        return initializePinpoint(map, localizerConfig);
-    }
-
-    /** Shared initialization for the calibrated localizer and manual Pinpoint tuner. */
-    public static PinpointLocalizer initializePinpoint(HardwareMap map, PinpointConfig config) {
-        // Stop the drivetrain before the Pinpoint calibrates. Keep the robot still.
-        Mecanum drivetrain = createDrivetrain(map);
-        drivetrain.stop(false);
-        try {
-            PinpointLocalizer localizer = new PinpointLocalizer(map, config);
-            GoBildaPinpointDriver pinpoint = map.get(GoBildaPinpointDriver.class, config.name.get());
-            // Pedro waits a fixed 500 ms. Refresh status and allow slower calibration,
-            // but never continue with a missing pod, IMU fault, or an endless wait.
-            long deadline = System.nanoTime() + 3_000_000_000L;
-            while (true) {
-                if (Thread.currentThread().isInterrupted())
-                    throw new IllegalStateException("Pinpoint initialization interrupted.");
-                localizer.update();
-                GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
-                if (status == GoBildaPinpointDriver.DeviceStatus.READY) return localizer;
-                boolean waiting = status == GoBildaPinpointDriver.DeviceStatus.CALIBRATING
-                        || status == GoBildaPinpointDriver.DeviceStatus.NOT_READY
-                        || status == GoBildaPinpointDriver.DeviceStatus.FAULT_BAD_READ;
-                if (!waiting || System.nanoTime() >= deadline)
-                    throw new IllegalStateException("Pinpoint not ready: " + status + ". "
-                            + pinpointFaultHelp(status));
-                try {
-                    Thread.sleep(20);
-                } catch (InterruptedException error) {
-                    Thread.currentThread().interrupt();
-                    throw new IllegalStateException("Pinpoint initialization interrupted.", error);
-                }
-            }
-        } catch (RuntimeException error) {
-            drivetrain.stop(true);
-            throw error;
-        }
-    }
-
-    private static String pinpointFaultHelp(GoBildaPinpointDriver.DeviceStatus status) {
-        switch (status) {
-            case FAULT_X_POD_NOT_DETECTED:
-                return "X pod not detected. Power off the robot and check the forward pod and its cable at the Pinpoint X port.";
-            case FAULT_Y_POD_NOT_DETECTED:
-                return "Y pod not detected. Power off the robot and check the sideways pod and its cable at the Pinpoint Y port.";
-            case FAULT_NO_PODS_DETECTED:
-                return "Neither pod detected. Power off the robot and check both pod cables at the Pinpoint.";
-            case FAULT_BAD_READ:
-                return "Repeated bad I2C reads. Power off and check the Pinpoint I2C cable and connections.";
-            case FAULT_IMU_RUNAWAY:
-                return "IMU fault. Keep the robot still during calibration and retry; consult the Pinpoint manual if it persists.";
-            default:
-                return "Keep the robot still during calibration and check the Pinpoint and pod connections.";
-        }
+                || !Double.isFinite(localizerConfig.yPodOffset.get()))
+            throw new IllegalStateException("Pinpoint is not tuned yet. Run Pinpoint Tuner, paste its"
+                    + " result over the PINPOINT TUNER RESULT block in Constants.java, then install the app again.");
+        // false = this localizer is used to drive the robot, so a missing pod is an error.
+        return PinpointGuard.open(map, localizerConfig, false);
     }
 
     public static Foresight createAlgorithm() {
         if (!FORESIGHT_TUNED)
-            throw new IllegalStateException("Run Foresight Tuner, paste its config, then set FORESIGHT_TUNED = true in Constants.java");
+            throw new IllegalStateException("Driving is not tuned yet. Run Foresight Tuner, paste its"
+                    + " result over the FORESIGHT TUNER RESULT block in Constants.java, then install the app again.");
         return new Foresight(foresightConfig);
     }
 
     public static Follower create(HardwareMap map) {
         Foresight algorithm = createAlgorithm();
-        // Stop the motors before initializing/calibrating the Pinpoint.
+        // Create the drivetrain first so the motors are stopped while the Pinpoint calibrates.
         Mecanum drivetrain = createDrivetrain(map);
         try {
             return new Follower(createLocalizer(map), drivetrain, algorithm);
