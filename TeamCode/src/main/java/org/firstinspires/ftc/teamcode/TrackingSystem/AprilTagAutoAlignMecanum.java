@@ -2,10 +2,13 @@ package org.firstinspires.ftc.teamcode.TrackingSystem;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
+import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.RobotSensors.AprilTagLimelightTest;
+
+@TeleOp(name = "April Tag Limelight Test", group = "TeamCode")
 
 public class AprilTagAutoAlignMecanum extends OpMode {
     private final AprilTagLimelightTest aprilTagLimelightTest = new AprilTagLimelightTest();
@@ -56,7 +59,7 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
         //--------------------auto align rotation logic -----------
 
-        if(gamepad1.left_trigger > 0.3) {
+        if(gamepad1.y) {
             if (id20 != null) {
                 // Limelight exposes a fiducial's horizontal angle in degrees.
                 error = goalX - id20.getTargetXDegrees();

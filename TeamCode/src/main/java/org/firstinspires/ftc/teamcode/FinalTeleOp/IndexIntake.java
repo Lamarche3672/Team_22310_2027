@@ -36,9 +36,9 @@ public class IndexIntake {
 
         double indexPower = 0.0;
         if (gamepad.left_bumper) {
-            indexPower = INDEX_POWER;
+            indexPower = -INDEX_POWER;
         } else if (gamepad.left_trigger > 0.1) {
-            indexPower = -INDEX_POWER + 0.5;
+            indexPower = INDEX_POWER - 0.5;
         }
 
         intakeMotor.setPower(intakePower);
