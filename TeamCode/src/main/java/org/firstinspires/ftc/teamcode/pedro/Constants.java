@@ -41,14 +41,14 @@ public final class Constants {
     // The Pinpoint Tuner gives you a block of Java. Select from the START line to
     // the END line, and paste the tuner's block over it. Nothing else to edit.
     // Until then the offsets are "not measured yet" and autonomous refuses to run.
-    public static final boolean LOCALIZER_TUNED = false;
+    public static final boolean LOCALIZER_TUNED = true;
     public static final PinpointConfig localizerConfig = new PinpointConfig(c -> {
-        c.name.set("pinpoint"); // the Pinpoint's name in Configure Robot
-        c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        c.xPodOffset.set(Double.NaN); // not measured yet
-        c.yPodOffset.set(Double.NaN); // not measured yet
+        c.name.set("pinpoint");
+        c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
+        c.xPodOffset.set(5.5263735956980895);
+        c.yPodOffset.set(-8.446726359653011);
         c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
+        c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
         c.offsetUnits.set(DistanceUnit.INCH);
         c.encoderResolutionUnit.set(DistanceUnit.INCH);
@@ -59,8 +59,32 @@ public final class Constants {
     // ======================= FORESIGHT TUNER RESULT: START ======================
     // Same idea: paste the Foresight Tuner's block over START..END.
     // No other robot's numbers are valid for this robot.
-    public static final boolean FORESIGHT_TUNED = false;
-    public static final ForesightConfig foresightConfig = new ForesightConfig(c -> { });
+    public static final boolean FORESIGHT_TUNED = true;
+    public static final ForesightConfig foresightConfig = new ForesightConfig(
+            c -> {
+                Controller primaryTranslationalForward = Controller.proportional(0.30078298292902134);
+                Controller secondaryTranslationalForward = Controller.proportional(0.11113127512294871);
+                Controller primaryTranslationalLateral = Controller.proportional(1.40975155077643);
+                Controller secondaryTranslationalLateral = Controller.proportional(0.5208655287566896);
+
+                c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
+                c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
+
+                c.coast.set(Controller.proportionalFeedforward(0.014892579408484572));
+                c.brake.set(Controller.proportionalFeedforward(0.012658692497211885));
+
+                c.headingFeedback.set(Controller.proportional(12.094054764853505));
+                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.07026220876642071, 0.006250301405713637));
+
+                c.linearBrakeCoefficients.set(Matrix.diag(0.09095549856530728, 0.05434702874498082));
+                c.quadraticBrakeCoefficients.set(Matrix.diag(1.7678550001128628E-5, 0.0010477444897540357));
+
+                c.maxAchievableForwardVelocity.set(71.47597503909132);
+                c.maxAchievableStrafeVelocity.set(57.67222945919879);
+                c.naturalForwardDeceleration.set(45.412487473875736);
+                c.naturalStrafeDeceleration.set(91.202772388894);
+            }
+    );
     // ======================= FORESIGHT TUNER RESULT: END ========================
 
     public static Mecanum createDrivetrain(HardwareMap map) {
