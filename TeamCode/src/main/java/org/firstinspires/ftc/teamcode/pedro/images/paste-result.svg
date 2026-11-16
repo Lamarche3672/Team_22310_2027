@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 910 296" width="910" role="img" aria-label="Copy the tuner's Java code and paste it over the marked block in Constants.java, then install the app" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+<title>Copy the tuner's Java code and paste it over the marked block in Constants.java, then install the app</title>
+<defs><marker id="arrow-64748B" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#64748B"/></marker></defs>
+<rect x="1" y="1" width="908" height="294" rx="14" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+<rect x="24" y="24" width="256" height="112" rx="12" fill="#FFFFFF" stroke="#2563EB" stroke-width="3"/>
+<circle cx="52" cy="52" r="15" fill="#2563EB"/><text x="52" y="57" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+<text x="76" y="58" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Tuner page</text>
+<text x="44" y="92" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">Finish the tuner.</text>
+<text x="44" y="112" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">Copy the Java code it shows.</text>
+<line x1="286" y1="80" x2="310" y2="80" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-64748B)"/>
+<rect x="318" y="24" width="256" height="112" rx="12" fill="#FFFFFF" stroke="#7C3AED" stroke-width="3"/>
+<circle cx="346" cy="52" r="15" fill="#7C3AED"/><text x="346" y="57" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+<text x="370" y="58" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Constants.java</text>
+<text x="338" y="92" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">Select everything from the</text>
+<text x="338" y="112" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">START line to the END line. Paste.</text>
+<line x1="580" y1="80" x2="604" y2="80" stroke="#64748B" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow-64748B)"/>
+<rect x="612" y="24" width="256" height="112" rx="12" fill="#FFFFFF" stroke="#16A34A" stroke-width="3"/>
+<circle cx="640" cy="52" r="15" fill="#16A34A"/><text x="640" y="57" font-size="15" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+<text x="664" y="58" font-size="17" font-weight="700" fill="#0F172A" text-anchor="start">Android Studio</text>
+<text x="632" y="92" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">Press Run to install the app</text>
+<text x="632" y="112" font-size="13.5" font-weight="400" fill="#475569" text-anchor="start">on the robot again.</text>
+<rect x="24" y="156" width="862" height="118" rx="10" fill="#0F172A"/>
+<text x="44" y="184" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#4ADE80">// ============ PINPOINT TUNER RESULT: START ============</text>
+<text x="44" y="208" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#E2E8F0">public static final boolean LOCALIZER_TUNED = false;</text>
+<text x="44" y="232" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#E2E8F0">public static final PinpointConfig localizerConfig = ...</text>
+<text x="44" y="256" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5" fill="#4ADE80">// ============ PINPOINT TUNER RESULT: END ==============</text>
+<path d="M700,176 L712,176 L712,254 L700,254" fill="none" stroke="#FACC15" stroke-width="2.5"/>
+<text x="722" y="211" font-size="13" font-weight="700" fill="#FACC15" text-anchor="start">replace all</text><text x="722" y="229" font-size="13" font-weight="700" fill="#FACC15" text-anchor="start">of this</text>
+</svg>
