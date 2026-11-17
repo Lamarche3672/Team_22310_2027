@@ -23,7 +23,7 @@ public final class Constants {
     private Constants() { }
 
     // Drive motor names and directions. Check them with Mecanum Tuner.
-    public static final MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
+    public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
         c.frontLeftName.set("fl_motor");
         c.frontRightName.set("fr_motor");
         c.backLeftName.set("bl_motor");
@@ -32,7 +32,6 @@ public final class Constants {
         c.frontRightDirection.set(DcMotorSimple.Direction.FORWARD);
         c.backLeftDirection.set(DcMotorSimple.Direction.REVERSE);
         c.backRightDirection.set(DcMotorSimple.Direction.FORWARD);
-        c.manualBrakeMode.set(true);
     });
 
     // ======================= PINPOINT TUNER RESULT: START =======================
@@ -43,8 +42,8 @@ public final class Constants {
     public static final PinpointConfig localizerConfig = new PinpointConfig(c -> {
         c.name.set("pinpoint");
         c.podType.set(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_SWINGARM_POD);
-        c.xPodOffset.set(5.5263735956980895);
-        c.yPodOffset.set(-8.446726359653011);
+        c.xPodOffset.set(5.508228706414574);
+        c.yPodOffset.set(-12.357994176674342);
         c.xPodDirection.set(GoBildaPinpointDriver.EncoderDirection.FORWARD);
         c.yPodDirection.set(GoBildaPinpointDriver.EncoderDirection.REVERSED);
         c.globalDistanceUnit.set(DistanceUnit.INCH);
@@ -60,27 +59,27 @@ public final class Constants {
     public static final boolean FORESIGHT_TUNED = true;
     public static final ForesightConfig foresightConfig = new ForesightConfig(
             c -> {
-                Controller primaryTranslationalForward = Controller.proportional(0.30078298292902134);
-                Controller secondaryTranslationalForward = Controller.proportional(0.11113127512294871);
-                Controller primaryTranslationalLateral = Controller.proportional(1.40975155077643);
-                Controller secondaryTranslationalLateral = Controller.proportional(0.5208655287566896);
+                Controller primaryTranslationalForward = Controller.proportional(0.20535422765262534);
+                Controller secondaryTranslationalForward = Controller.proportional(0.07587289995162362);
+                Controller primaryTranslationalLateral = Controller.proportional(0.4899651926313773);
+                Controller secondaryTranslationalLateral = Controller.proportional(0.18102904656622595);
 
                 c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
                 c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
 
-                c.coast.set(Controller.proportionalFeedforward(0.014892579408484572));
-                c.brake.set(Controller.proportionalFeedforward(0.012658692497211885));
+                c.coast.set(Controller.proportionalFeedforward(0.009580578794314563));
+                c.brake.set(Controller.proportionalFeedforward(0.008143491975167378));
 
-                c.headingFeedback.set(Controller.proportional(12.094054764853505));
-                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.07026220876642071, 0.006250301405713637));
+                c.headingFeedback.set(Controller.proportional(6.359810674477428));
+                c.headingBrakeCoefficients.set(Vector2D.cartesian(0.039229888274301364, 0.010511051527930236));
 
-                c.linearBrakeCoefficients.set(Matrix.diag(0.09095549856530728, 0.05434702874498082));
-                c.quadraticBrakeCoefficients.set(Matrix.diag(1.7678550001128628E-5, 0.0010477444897540357));
+                c.linearBrakeCoefficients.set(Matrix.diag(0.08222615406263734, 0.020477282947824794));
+                c.quadraticBrakeCoefficients.set(Matrix.diag(5.714933804491514E-4, 0.0014979838538168005));
 
-                c.maxAchievableForwardVelocity.set(71.47597503909132);
-                c.maxAchievableStrafeVelocity.set(57.67222945919879);
-                c.naturalForwardDeceleration.set(45.412487473875736);
-                c.naturalStrafeDeceleration.set(91.202772388894);
+                c.maxAchievableForwardVelocity.set(90.61170634831896);
+                c.maxAchievableStrafeVelocity.set(73.10512269571213);
+                c.naturalForwardDeceleration.set(55.8730971963151);
+                c.naturalStrafeDeceleration.set(63.44716781893875);
             }
     );
     // ======================= FORESIGHT TUNER RESULT: END ========================

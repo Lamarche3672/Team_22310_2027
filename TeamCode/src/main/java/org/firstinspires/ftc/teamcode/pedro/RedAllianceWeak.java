@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.pedro.PedroTuning.Constants;
 
-@Autonomous(name = "RedAllianceWeak", group = "Autonomous")
+@Autonomous(name = "Red Alliance Weak", group = "Autonomous")
 public class RedAllianceWeak extends LinearOpMode {
 
     private Follower follower;
