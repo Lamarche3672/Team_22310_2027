@@ -2,14 +2,14 @@
 
 Do the six steps in order. Each one has a picture.
 
-![The six steps: install app, check motors, tune Pinpoint, check position, tune driving, run auto](images/roadmap.svg)
+![The six steps: install app, check motors, tune Pinpoint, check position, tune driving, run auto](../images/roadmap.svg)
 
 **Opening the tuners:** connect your laptop to the robot's Wi-Fi, then open **http://192.168.43.1:10158**.
 Keep the Driver Station in your hand so you can press Stop.
 
 ## Before you start: wiring
 
-![Both pods plug into the Pinpoint. The Pinpoint plugs into a Control Hub I2C port.](images/wiring.svg)
+![Both pods plug into the Pinpoint. The Pinpoint plugs into a Control Hub I2C port.](../images/wiring.svg)
 
 ## 1. Install the app
 
@@ -23,19 +23,19 @@ Lift the robot so the **wheels are off the floor**. Open **Mecanum Tuner** and a
 
 Put the robot **on the floor**. Open **Pinpoint Tuner**. You push the robot by hand; no motor moves.
 
-![Push forward, push left, then turn half a turn](images/pinpoint-moves.svg)
+![Push forward, push left, then turn half a turn](../images/pinpoint-moves.svg)
 
 The Driver Station shows live numbers while you push. `Bad reads skipped` going up slowly is normal.
 
 When the tuner finishes, save the result:
 
-![Copy the Java code, paste it over the marked block in Constants.java, install the app](images/paste-result.svg)
+![Copy the Java code, paste it over the marked block in Constants.java, install the app](../images/paste-result.svg)
 
 ## 4. Check position
 
 Open **Tests**, choose **Pose Test**. Push the robot by hand and watch the Driver Station.
 
-![Forward raises X, left raises Y, counter-clockwise raises heading](images/pose-check.svg)
+![Forward raises X, left raises Y, counter-clockwise raises heading](../images/pose-check.svg)
 
 Anything wrong here? Run step 3 again before going on.
 
@@ -53,7 +53,7 @@ Open **Tests** and try **Line Test** with a short distance first. Then run **223
 
 Look at the light on the Pinpoint first.
 
-![What each Pinpoint light colour means](images/pinpoint-light.svg)
+![What each Pinpoint light colour means](../images/pinpoint-light.svg)
 
 | The screen says | Do this |
 | --- | --- |

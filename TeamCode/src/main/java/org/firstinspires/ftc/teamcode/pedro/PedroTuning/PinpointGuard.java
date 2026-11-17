@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro;
+package org.firstinspires.ftc.teamcode.pedro.PedroTuning;
 
 import com.pedropathing.localization.Localizer;
 import com.pedropathing.localization.MotionState;
