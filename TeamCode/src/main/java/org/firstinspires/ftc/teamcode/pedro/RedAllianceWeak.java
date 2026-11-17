@@ -24,7 +24,6 @@ public class RedAllianceWeak extends LinearOpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(56, 8, 90);
-    private final Pose rotateDeadSide1 = poseFactory.of(56, 8, 270);
     private final Pose rotateDeadSide2 = poseFactory.of(60, 46, 270);
     private final Pose rotateforShooting = poseFactory.of(60, 95, 270);
     private final Pose shootStart = poseFactory.of(60, 95, 270);
@@ -36,7 +35,6 @@ public class RedAllianceWeak extends LinearOpMode {
     // Autonomous routine
     public Command autoRoutine() {
         return sequential(
-                follow(follower, rotateDeadSide1()),
                 follow(follower, rotateDeadSide2()),
                 follow(follower, rotateforShooting()),
                 follow(follower, shoot()),
@@ -73,12 +71,8 @@ public class RedAllianceWeak extends LinearOpMode {
         }
     }
 
-    public Path rotateDeadSide1() {
-        return Paths.line(start, rotateDeadSide1).constant(rotateDeadSide1);
-    }
-
     public Path rotateDeadSide2() {
-        return Paths.line(rotateDeadSide1, rotateDeadSide2).constant(rotateDeadSide2);
+        return Paths.line(start, rotateDeadSide2).constant(rotateDeadSide2);
     }
 
     public Path rotateforShooting() {
