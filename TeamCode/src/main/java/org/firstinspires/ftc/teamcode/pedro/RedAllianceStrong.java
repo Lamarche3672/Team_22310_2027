@@ -23,16 +23,14 @@ public class RedAllianceStrong extends LinearOpMode {
 
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
-    private final Pose start = poseFactory.of(56, 8, 90);
-    private final Pose point11Shoot = poseFactory.of(56, 8, 270);
-    private final Pose point22CollectLeftGardenStart = poseFactory.of(56, 8, 270);
-    private final Pose point22CollectLeftGarden = poseFactory.of(10.7481, 10.2282, 200);
+    private final Pose start = poseFactory.of(56, 8, 270);
+    private final Pose point12CollectLeftGarden = poseFactory.of(10.7481, 10.2282, 200);
     private final Pose turningPointStart = poseFactory.of(10.7481, 10.2282, 200);
     private final Pose turningPoint = poseFactory.of(15.6752, 42.082, 100);
-    private final Pose point43GoforSecondshotStart = poseFactory.of(15.6752, 42.082, 100);
-    private final Pose point43GoforSecondshot = poseFactory.of(43.0508, 118.3084, 100);
-    private final Pose point54CollectflowersStart = poseFactory.of(43.0508, 118.3084, 100);
-    private final Pose point54Collectflowers = poseFactory.of(42.4066, 132.2775, 45);
+    private final Pose point33GoforSecondshotStart = poseFactory.of(15.6752, 42.082, 100);
+    private final Pose point33GoforSecondshot = poseFactory.of(43.0508, 118.3084, 100);
+    private final Pose point44CollectflowersStart = poseFactory.of(43.0508, 118.3084, 100);
+    private final Pose point44Collectflowers = poseFactory.of(42.4066, 132.2775, 45);
     private final Pose goforthirdshotStart = poseFactory.of(42.4066, 132.2775, 45);
     private final Pose goforthirdshot = poseFactory.of(56.42, 118.68, 90);
     private final Pose parkingStart = poseFactory.of(56.42, 118.68, 90);
@@ -41,11 +39,10 @@ public class RedAllianceStrong extends LinearOpMode {
     // Autonomous routine
     public Command autoRoutine() {
         return sequential(
-                follow(follower, path11Shoot()),
-                follow(follower, path22CollectLeftGarden()),
+                follow(follower, path12CollectLeftGarden()),
                 follow(follower, turningPoint()),
-                follow(follower, path43GoforSecondshot()),
-                follow(follower, path54Collectflowers()),
+                follow(follower, path33GoforSecondshot()),
+                follow(follower, path44Collectflowers()),
                 follow(follower, goforthirdshot()),
                 follow(follower, parking())
         );
@@ -78,24 +75,20 @@ public class RedAllianceStrong extends LinearOpMode {
         }
     }
 
-    public Path path11Shoot() {
-        return Paths.line(start, point11Shoot).constant(point11Shoot);
-    }
-
-    public Path path22CollectLeftGarden() {
-        return Paths.line(point22CollectLeftGardenStart, point22CollectLeftGarden).linear(point22CollectLeftGardenStart, point22CollectLeftGarden);
+    public Path path12CollectLeftGarden() {
+        return Paths.line(start, point12CollectLeftGarden).linear(start, point12CollectLeftGarden);
     }
 
     public Path turningPoint() {
         return Paths.line(turningPointStart, turningPoint).linear(turningPointStart, turningPoint);
     }
 
-    public Path path43GoforSecondshot() {
-        return Paths.line(point43GoforSecondshotStart, point43GoforSecondshot).linear(point43GoforSecondshotStart, point43GoforSecondshot);
+    public Path path33GoforSecondshot() {
+        return Paths.line(point33GoforSecondshotStart, point33GoforSecondshot).linear(point33GoforSecondshotStart, point33GoforSecondshot);
     }
 
-    public Path path54Collectflowers() {
-        return Paths.line(point54CollectflowersStart, point54Collectflowers).linear(point54CollectflowersStart, point54Collectflowers);
+    public Path path44Collectflowers() {
+        return Paths.line(point44CollectflowersStart, point44Collectflowers).linear(point44CollectflowersStart, point44Collectflowers);
     }
 
     public Path goforthirdshot() {
