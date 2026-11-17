@@ -9,8 +9,8 @@ import com.pedropathing.tuning.autotune.TuningOpMode;
 import com.pedropathing.utils.Angle;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.pedro.Constants;
-import org.firstinspires.ftc.teamcode.pedro.PinpointGuard;
+import org.firstinspires.ftc.teamcode.pedro.PedroTuning.Constants;
+import org.firstinspires.ftc.teamcode.pedro.PedroTuning.PinpointGuard;
 
 import java.util.OptionalDouble;
 
