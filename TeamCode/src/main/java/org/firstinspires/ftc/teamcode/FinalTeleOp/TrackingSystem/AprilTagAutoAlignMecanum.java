@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors.AprilTagLimelightTest;
 
 @TeleOp(name = "April Tag Limelight Test", group = "TeamCode")

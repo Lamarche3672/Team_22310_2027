@@ -10,6 +10,9 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTesting;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTunerPIDF;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.IndexIntake;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.TrackingSystem.AprilTagAutoAlignMecanum;
 
 @TeleOp(name = "MAIN TELEOP", group = "TeamCode")
