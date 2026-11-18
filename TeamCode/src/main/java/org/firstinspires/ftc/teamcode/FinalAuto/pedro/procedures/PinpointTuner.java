@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro.procedures;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 import com.pedropathing.math.Pose;
 import com.pedropathing.revhub.localizers.PinpointConfig;
@@ -9,8 +9,8 @@ import com.pedropathing.tuning.autotune.TuningOpMode;
 import com.pedropathing.utils.Angle;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.pedro.PedroTuning.Constants;
-import org.firstinspires.ftc.teamcode.pedro.PedroTuning.PinpointGuard;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.PinpointGuard;
 
 import java.util.OptionalDouble;
 

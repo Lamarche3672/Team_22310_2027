@@ -1,12 +1,12 @@
-package org.firstinspires.ftc.teamcode.pedro.PedroTuning;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning;
 
 import com.pedropathing.tuning.autotune.Procedure;
 import com.pedropathing.tuning.autotune.Tuner;
 
-import org.firstinspires.ftc.teamcode.pedro.procedures.ForesightTuner;
-import org.firstinspires.ftc.teamcode.pedro.procedures.MecanumTuner;
-import org.firstinspires.ftc.teamcode.pedro.procedures.Tests;
-import org.firstinspires.ftc.teamcode.pedro.procedures.PinpointTuner;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.ForesightTuner;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.MecanumTuner;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.Tests;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.PinpointTuner;
 
 /** Only register the procedures needed by this two-pod + Pinpoint robot. */
 public final class Tuning {

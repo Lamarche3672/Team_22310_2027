@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro.procedures;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 /**
  * Works out where the two pods sit on the robot from one spin on the spot.
