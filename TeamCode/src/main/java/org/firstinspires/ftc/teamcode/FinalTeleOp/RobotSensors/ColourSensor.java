@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.RobotSensors;
+package org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;

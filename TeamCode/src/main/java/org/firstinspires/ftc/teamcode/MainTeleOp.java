@@ -13,25 +13,33 @@ import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTesting;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTunerPIDF;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
-import org.firstinspires.ftc.teamcode.TrackingSystem.AprilTagAutoAlignMecanum;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.TrackingSystem.AprilTagAutoAlignMecanum;
 
 @TeleOp(name = "MAIN TELEOP", group = "TeamCode")
+
+
+
+
 public class MainTeleOp extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
     private final IndexIntake intakeIndex = new IndexIntake();
     private final FlywheelTesting flywheelTesting = new FlywheelTesting();
-
     private final FlywheelTunerPIDF FlywheelTunerPIDF = new FlywheelTunerPIDF();
-
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
 
+
+
     @Override
     public void init() {
+        //----------PLAYER ONE-------------
+
         intakeIndex.init(hardwareMap);
         //flywheelTesting.init(hardwareMap);
-
         FlywheelTunerPIDF.init(hardwareMap, telemetry);
+
+        //----------PLAYER TWO-------------
+
         drive.init(hardwareMap);
         //aprilTag.init();
     }
@@ -46,22 +54,25 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void loop() {
-        double forward = -gamepad1.left_stick_y;
-        double strafe = gamepad1.left_stick_x;
-        double rotate = gamepad1.right_stick_x;
-        if (gamepad1.options && !headingResetPressed) {
-            drive.resetFieldHeading();
-        }
-        headingResetPressed = gamepad1.options;
-
-        drive.driveFieldRelative(forward, strafe, rotate);
-        addDriveTelemetry();
+        //----------PLAYER ONE-------------
 
         intakeIndex.loop(gamepad1, telemetry);
         //flywheelTesting.loop(gamepad1, telemetry);
-
         FlywheelTunerPIDF.loop(telemetry, gamepad1);
+
+        //----------PLAYER TWO-------------
+
         //aprilTag.loop();
+        double forward = -gamepad2.left_stick_y;
+        double strafe = gamepad2.left_stick_x;
+        double rotate = gamepad2.right_stick_x;
+        if (gamepad2.options && !headingResetPressed) {
+            drive.resetFieldHeading();
+        }
+        headingResetPressed = gamepad2.options;
+
+        drive.driveFieldRelative(forward, strafe, rotate);
+        addDriveTelemetry();
     }
 
     private void addDriveTelemetry() {
@@ -73,8 +84,14 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void stop() {
+        //----------PLAYER ONE-------------
+
         intakeIndex.stop();
         //flywheelTesting.stop();
+
+        //----------PLAYER TWO-------------
+
         drive.stop();
+
     }
 }

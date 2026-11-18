@@ -1,8 +1,7 @@
-package org.firstinspires.ftc.teamcode.RobotSensors;
+package org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 
 @TeleOp(name = "Colour Sensor Test", group = "TeamCode")
 public class ColourSensorTest extends OpMode {
