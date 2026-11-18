@@ -1,9 +1,9 @@
-package org.firstinspires.ftc.teamcode.pedro.procedures;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 import com.pedropathing.tuning.autotune.*;
 import com.pedropathing.tuning.autotune.Display.FourWheelBot.Wheel;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import org.firstinspires.ftc.teamcode.pedro.PedroTuning.Constants;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
 
 enum Direction {
     @DisplayName("Forward") FORWARD,

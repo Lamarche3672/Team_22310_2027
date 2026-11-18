@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro.PedroTuning;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning;
 
 import com.pedropathing.algorithm.Foresight;
 import com.pedropathing.algorithm.ForesightConfig;

@@ -5,14 +5,11 @@ RIGHT TRIGGER: Intake
 RIGHT BUMPER: Flywheels/shooter
 */
 
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.FinalTeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTesting;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.FlywheelTunerPIDF;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.MecanumDriveFinal;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.IndexIntake;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTesting;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.TrackingSystem.AprilTagAutoAlignMecanum;
 
 @TeleOp(name = "MAIN TELEOP", group = "TeamCode")
