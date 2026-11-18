@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.FinalTeleOp;
+package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
