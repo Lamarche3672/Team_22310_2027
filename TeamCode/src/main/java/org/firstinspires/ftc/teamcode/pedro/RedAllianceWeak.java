@@ -16,7 +16,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import org.firstinspires.ftc.teamcode.pedro.PedroTuning.Constants;
 
-@Autonomous(name = "Red Alliance Weak", group = "Autonomous")
+@Autonomous(name = "RedAllianceWeak", group = "Autonomous")
 public class RedAllianceWeak extends LinearOpMode {
 
     private Follower follower;
@@ -24,15 +24,17 @@ public class RedAllianceWeak extends LinearOpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
     private final Pose start = poseFactory.of(56, 8, 90);
-    private final Pose rotateDeadSide2 = poseFactory.of(60, 46, 270);
-    private final Pose rotateforShooting = poseFactory.of(60, 95, 270);
-    private final Pose shootStart = poseFactory.of(60, 95, 270);
+    private final Pose rotateDeadSide2 = poseFactory.of(65.222, 46.3369, 270);
+    private final Pose rotateforShooting = poseFactory.of(66.0643, 95.3369, 270);
+    private final Pose shootStart = poseFactory.of(66.0643, 95.3369, 270);
     private final Pose shoot = poseFactory.of(56.6, 113.4287, 90);
-    private final Pose pickUpRefresh = poseFactory.of(46.8, 132.1253, 90);
-    private final Pose getFrontZoneForShooting = poseFactory.of(56.6, 118, 90);
+    private final Pose pickUpRefresh = poseFactory.of(45.4524, 133.9783, 90);
+    private final Pose getFrontZoneForShooting = poseFactory.of(57.1054, 124.7381, 90);
     private final Pose parkatSpawn = poseFactory.of(7.8665, 106.3905, 90);
 
     // Autonomous routine
+    //if (robot = pedro coordinita up top ) thnen: run intake
+
     public Command autoRoutine() {
         return sequential(
                 follow(follower, rotateDeadSide2()),
