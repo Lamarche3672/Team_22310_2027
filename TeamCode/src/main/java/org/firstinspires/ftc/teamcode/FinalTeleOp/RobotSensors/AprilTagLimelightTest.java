@@ -10,6 +10,14 @@ import org.openftc.apriltag.AprilTagDetection;
 
 import java.util.List;
 
+/*
+Limelight results:
+Red hive FRONT : 34, 35, 36, 37
+Red hive BACK : 30, 31, 32, 33
+Blue hive FRONT : 38, 39, 40, 41
+Blue hive BACK : 42, 43, 44, 45
+ */
+
 
 public class AprilTagLimelightTest extends OpMode {
     
