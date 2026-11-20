@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.FinalTeleOp.TrackingSystem;
+package org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors.TrackingSystem;
 
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -50,19 +50,19 @@ public class AprilTagAutoAlignMecanum extends OpMode {
     @Override
     public void loop() {
         //----------------get mecanum drive inputs ----------------
-        forward = gamepad1.left_stick_y;
-        strafe = gamepad1.left_stick_x;
-        rotate = gamepad1.right_stick_x;
+        forward = gamepad2.left_stick_y;
+        strafe = gamepad2.left_stick_x;
+        rotate = gamepad2.right_stick_x;
         // ------------get april tag info-------------------
         aprilTagLimelightTest.update();
-        LLResultTypes.FiducialResult id20 = aprilTagLimelightTest.getTagBySpecificId(20);
+        LLResultTypes.FiducialResult id35 = aprilTagLimelightTest.getTagBySpecificId(20);
 
         //--------------------auto align rotation logic -----------
 
-        if(gamepad1.y) {
-            if (id20 != null) {
+        if(gamepad2.y) {
+            if (id35 != null) {
                 // Limelight exposes a fiducial's horizontal angle in degrees.
-                error = goalX - id20.getTargetXDegrees();
+                error = goalX - id35.getTargetXDegrees();
 
                 if (Math.abs(error) < angleTolerance) {
                     rotate = 0;
@@ -92,26 +92,26 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
         //update P and D on the fly
         //'B' button cycles through the different step sizes for tuning precision.
-        if(gamepad1.bWasPressed()) {
+        if(gamepad2.bWasPressed()) {
             stepIndex = (stepIndex + 1) % stepSizes.length; // Modulo wraps the index back to 0.
         }
 
-        if (gamepad1.dpadLeftWasPressed()) {
+        if (gamepad2.dpadLeftWasPressed()) {
             kP -= stepSizes[stepIndex];
         }
-        if (gamepad1.dpadRightWasPressed()) {
+        if (gamepad2.dpadRightWasPressed()) {
             kP += stepSizes[stepIndex];
         }
-        if (gamepad1.dpadUpWasPressed()) {
+        if (gamepad2.dpadUpWasPressed()) {
             kD += stepSizes[stepIndex];
         }
-        if (gamepad1.dpadDownWasPressed()) {
+        if (gamepad2.dpadDownWasPressed()) {
             kD -= stepSizes[stepIndex];
         }
 
         //-----------telemetry----------
-        if (id20 != null) {
-            if (gamepad1.left_trigger > 0.3) {
+        if (id35 != null) {
+            if (gamepad2.left_trigger > 0.3) {
                 telemetry.addLine("AUTO ALIGN");
             }
             telemetry.addData("Error", error);
