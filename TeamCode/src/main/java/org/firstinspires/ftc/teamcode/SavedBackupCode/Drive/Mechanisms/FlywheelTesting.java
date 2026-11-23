@@ -29,16 +29,16 @@ public class FlywheelTesting {
     public void loop(Gamepad gamepad, Telemetry telemetry) {
         double leftPower = 0.0;
         if (gamepad.right_bumper) {
-            leftPower = -LEFT_POWER;
-        } else if (gamepad.left_trigger > 0.1) {
             leftPower = LEFT_POWER;
+        } else if (gamepad.left_trigger > 0.1) {
+            leftPower = -LEFT_POWER;
         }
 
         double rightPower = 0.0;
-        if (gamepad.right_bumper) {
-            rightPower = -RIGHT_POWER;
+        if (gamepad.a) {
+            rightPower = RIGHT_POWER;
         } else if (gamepad.left_trigger > 0.1) {
-            rightPower = RIGHT_POWER + 0.5;
+            rightPower = -RIGHT_POWER + 0.5;
         }
 
         leftMotor.setPower(leftPower);

@@ -21,23 +21,13 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
  *
  * Call update() once per loop. isReady() then says when the wheels are fast enough to shoot.
  */
-public class FlywheelTunerPIDF {
+public class FlywheelAuto {
+    public static final double HIGH_VELOCITY = 3000;
+    public static final double LOW_VELOCITY = 1800;
 
-    /** Same as highVelocity / lowVelocity in teleop, in encoder ticks per second. */
-    public static final double HIGH_VELOCITY = 1500;
-    public static final double LOW_VELOCITY = 900;
-
-    /**
-     * PASTE YOUR TUNED NUMBERS HERE: the "Tuning P" and "Tuning F" the teleop tuner shows
-     * once the wheels hold their speed. Leave both at 0 until you have them; the wheels then
-     * use starting values worked out from the motor type (see startingCoefficients()).
-     */
     public static final double P = 0;
     public static final double F = 0;
-
-    /** Both wheels must be this close to the target speed (ticks per second) to count as "at speed". */
     public static final double READY_TOLERANCE = 75;
-    /** ...and stay there this long before the first pollen is fed, so the speed has stopped swinging. */
     public static final double READY_HOLD_MS = 100;
 
     private DcMotorEx rightFlywheel;
@@ -54,7 +44,7 @@ public class FlywheelTunerPIDF {
         leftFlywheel = hardwareMap.get(DcMotorEx.class, "left_flywheel");
         for (DcMotorEx motor : new DcMotorEx[] {rightFlywheel, leftFlywheel}) {
             motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            motor.setDirection(DcMotorSimple.Direction.REVERSE);
+            motor.setDirection(DcMotorSimple.Direction.FORWARD);
             // Let the wheels spin down by themselves instead of slamming to a stop.
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             motor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, coefficientsFor(motor));
@@ -76,7 +66,7 @@ public class FlywheelTunerPIDF {
         // 28 ticks per turn x 6000 rpm x 85 % is what almost every FTC motor reports.
         if (!(maxTicksPerSecond > 0) || Double.isInfinite(maxTicksPerSecond)) maxTicksPerSecond = 2380;
         double f = 32767.0 / maxTicksPerSecond;
-        return new PIDFCoefficients(0.1 * f, 0.01 * f, 0, f);
+        return new PIDFCoefficients(0.5 * f, 0.01 * f, 0, f);
     }
 
     // ------------------------------------------------------------------ direct control

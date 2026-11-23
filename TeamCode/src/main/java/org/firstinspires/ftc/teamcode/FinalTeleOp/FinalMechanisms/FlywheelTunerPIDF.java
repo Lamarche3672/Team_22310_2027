@@ -107,5 +107,3 @@ public class FlywheelTunerPIDF {
         telemetry.addData("Step Size", "%.4f (B Button)", stepSizes[stepIndex]);
     }
 }
-// keep watching video to see how to tun cuz it wont likely work the first time boiiiiiii
-// also fix Velcity in Lib
