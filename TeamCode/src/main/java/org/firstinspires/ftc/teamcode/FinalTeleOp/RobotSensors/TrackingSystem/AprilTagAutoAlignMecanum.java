@@ -15,6 +15,9 @@ public class AprilTagAutoAlignMecanum extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
 
 
+    // Red hive, audience side: tags 34 to 37 (see AprilTagLimelightTest).
+    private static final int TARGET_TAG_ID = 35;
+
     //-------------------- PD controller -------------------------
     double kP = 0.002;
     double error = 0;
@@ -36,33 +39,46 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
     @Override
     public void init() {
-        aprilTagLimelightTest.init();
+        aprilTagLimelightTest.init(hardwareMap);
         drive.init(hardwareMap);
 
         telemetry.addLine("Initialized");
     }
 
+    @Override
     public void start() {
+        aprilTagLimelightTest.start();
         resetRuntime();
         curTime = getRuntime();
+        lastTime = curTime;
+    }
+
+    @Override
+    public void stop() {
+        aprilTagLimelightTest.stop();
+        drive.stop();
     }
 
     @Override
     public void loop() {
         //----------------get mecanum drive inputs ----------------
-        forward = gamepad2.left_stick_y;
+        forward = -gamepad2.left_stick_y; // pushing the stick up is negative, same as MainTeleOp
         strafe = gamepad2.left_stick_x;
         rotate = gamepad2.right_stick_x;
         // ------------get april tag info-------------------
         aprilTagLimelightTest.update();
-        LLResultTypes.FiducialResult id35 = aprilTagLimelightTest.getTagBySpecificId(20);
+        LLResultTypes.FiducialResult id35 = aprilTagLimelightTest.getTagBySpecificId(TARGET_TAG_ID);
 
         //--------------------auto align rotation logic -----------
 
+        boolean autoAligning = gamepad2.y && id35 != null;
         if(gamepad2.y) {
             if (id35 != null) {
-                // Limelight exposes a fiducial's horizontal angle in degrees.
-                error = goalX - id35.getTargetXDegrees();
+                // Limelight exposes a fiducial's horizontal angle in degrees: positive = tag is to the RIGHT.
+                // Positive rotate turns this drive to the RIGHT, so the error must be positive then too.
+                // (It was goalX - angle, which turned away from the tag. If the Limelight is mounted
+                // upside down the angle flips sign: make kP negative with the d-pad.)
+                error = id35.getTargetXDegrees() - goalX;
 
                 if (Math.abs(error) < angleTolerance) {
                     rotate = 0;
@@ -71,7 +87,8 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
                     curTime = getRuntime();
                     double dT = curTime - lastTime;
-                    double dTerm = ((error - lastError) / dT) * kD;
+                    // Two loops can land on the same timestamp; dividing by 0 would stop the drive.
+                    double dTerm = dT > 0 ? ((error - lastError) / dT) * kD : 0;
 
                     rotate = Range.clip(pTerm + dTerm, -0.4, 0.4);
 
@@ -88,7 +105,12 @@ public class AprilTagAutoAlignMecanum extends OpMode {
         }
 
         //drive our motors!
-        drive.drive(forward, strafe, rotate);
+        if (autoAligning) {
+            // The controller's output is already a motor power: it must not go through the stick curve.
+            drive.driveWithRotatePower(forward, strafe, rotate);
+        } else {
+            drive.drive(forward, strafe, rotate);
+        }
 
         //update P and D on the fly
         //'B' button cycles through the different step sizes for tuning precision.
@@ -111,7 +133,7 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
         //-----------telemetry----------
         if (id35 != null) {
-            if (gamepad2.left_trigger > 0.3) {
+            if (gamepad2.y) {
                 telemetry.addLine("AUTO ALIGN");
             }
             telemetry.addData("Error", error);

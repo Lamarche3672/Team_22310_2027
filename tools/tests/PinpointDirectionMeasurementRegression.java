@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedro.procedures;
+package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 /** Standalone regression tests; no FTC hardware or test-library dependency needed. */
 public final class PinpointDirectionMeasurementRegression {

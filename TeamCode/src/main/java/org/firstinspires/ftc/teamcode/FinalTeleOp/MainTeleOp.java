@@ -79,7 +79,7 @@ public class MainTeleOp extends OpMode {
     private void addDriveTelemetry() {
         telemetry.addData("Pinpoint", drive.getHeadingStatus());
         telemetry.addData("Field heading (deg)", drive.getFieldHeadingDegrees());
-        telemetry.addData("Drive", drive.isHeadingReady() ? "Ready" : "STOPPED: heading unavailable");
+        telemetry.addData("Drive", drive.getDriveStatus());
         telemetry.addLine("Options: make current robot direction field-forward");
 
     }

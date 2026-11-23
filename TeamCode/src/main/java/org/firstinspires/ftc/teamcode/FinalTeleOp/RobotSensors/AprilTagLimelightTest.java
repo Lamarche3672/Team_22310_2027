@@ -4,9 +4,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
-import org.openftc.apriltag.AprilTagDetection;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import java.util.List;
 
@@ -22,14 +20,25 @@ Blue hive BACK : 42, 43, 44, 45
 public class AprilTagLimelightTest extends OpMode {
     
     
+    /** The Limelight keeps handing back its last result forever, so anything older than this is ignored. */
+    private static final long MAX_RESULT_AGE_MS = 250;
+
     public LLResult callId = null;
     
     private Limelight3A limelight;
 
-    @Override
-    public void init() {
+    /**
+     * Use this one when another OpMode owns this class as a helper: only the running OpMode
+     * has a hardwareMap, so it has to be passed in.
+     */
+    public void init(HardwareMap hardwareMap) {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0); // AprilTag pipeline
+    }
+
+    @Override
+    public void init() {
+        init(hardwareMap);
     }
 
     @Override
@@ -37,10 +46,18 @@ public class AprilTagLimelightTest extends OpMode {
         limelight.start();
     }
 
+    /** Fetches the newest result into callId (null when there is no fresh, valid one). Call once per loop. */
+    public void update() {
+        LLResult llResult = limelight.getLatestResult();
+        boolean fresh = llResult != null && llResult.isValid() && llResult.getStaleness() <= MAX_RESULT_AGE_MS;
+        callId = fresh ? llResult : null;
+    }
+
     @Override
     public void loop() {
-        LLResult llResult = limelight.getLatestResult();
-        if (llResult != null && llResult.isValid()) {
+        update();
+        LLResult llResult = callId;
+        if (llResult != null) {
             List<LLResultTypes.FiducialResult> tags = llResult.getFiducialResults();
             if (tags.isEmpty()) {
                 telemetry.addData("AprilTag", "No tag found");
@@ -54,17 +71,11 @@ public class AprilTagLimelightTest extends OpMode {
         } else {
             telemetry.addData("AprilTag", "No tag found");
         }
-        callId = llResult;
-    }
-    
-    
-    public void update() {
-        telemetry.update();
     }
 
     @Override
     public void stop() {
-        limelight.stop();
+        if (limelight != null) limelight.stop();
     }
 
     public LLResultTypes.FiducialResult getTagBySpecificId(int fiducialId) {

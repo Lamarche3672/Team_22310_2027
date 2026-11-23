@@ -8,6 +8,8 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 @TeleOp(name = "Turret April Tag Align", group = "TeamCode")
 public class TurretAutoAlignOpMode extends OpMode {
     private static final int LIMELIGHT_PIPELINE = 8;
+    /** The Limelight keeps handing back its last result forever, so anything older than this is ignored. */
+    private static final long MAX_RESULT_AGE_MS = 250;
 
     private Limelight3A limelight;
     private final TurretTracking turret = new TurretTracking();
@@ -28,7 +30,7 @@ public class TurretAutoAlignOpMode extends OpMode {
     @Override
     public void loop() {
         LLResult result = limelight.getLatestResult();
-        if (result != null && result.isValid()) {
+        if (result != null && result.isValid() && result.getStaleness() <= MAX_RESULT_AGE_MS) {
             double bearing = result.getTx();
             telemetry.addData("Limelight tx (deg)", bearing);
             turret.update(bearing);
@@ -40,7 +42,7 @@ public class TurretAutoAlignOpMode extends OpMode {
 
     @Override
     public void stop() {
-        turret.update(Double.NaN);
-        limelight.stop();
+        turret.stop();
+        if (limelight != null) limelight.stop();
     }
 }
