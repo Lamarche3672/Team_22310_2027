@@ -24,10 +24,10 @@ public class RedAllianceStrong extends LinearOpMode {
         private final Pose start = poseFactory.of(56, 8, 270);
         private final Pose point12CollectLeftGarden = poseFactory.of(10.7481, 10.2282, 200);
         private final Pose turningPointStart = poseFactory.of(10.7481, 10.2282, 200);
-        private final Pose turningPoint = poseFactory.of(19.3601, 46.8724, 100);
-        private final Pose point33GoforSecondshotStart = poseFactory.of(19.3601, 46.8724, 100);
-        private final Pose point33GoforSecondshot = poseFactory.of(43.6035, 119.4139, 280);
-        private final Pose parkingStart = poseFactory.of(43.6035, 119.4139, 90);
+        private final Pose turningPoint = poseFactory.of(13.28, 15.3665, 100);
+        private final Pose point33GoforSecondshotStart = poseFactory.of(13.28, 15.3665, 100);
+        private final Pose point33GoforSecondshot = poseFactory.of(42.6823, 124.02, 100);
+        private final Pose parkingStart = poseFactory.of(42.6823, 124.02, 100);
         private final Pose parking = poseFactory.of(7.1435, 107.982, 0);
 
         // Autonomous routine
