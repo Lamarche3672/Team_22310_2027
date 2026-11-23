@@ -22,7 +22,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
  *
  * The ...Command() methods wrap those so an autonomous routine can put them in a sequence.
  */
-public class IndexIntake {
+public class IndexIntakeAuto {
 
     /** Right trigger in teleop: pull pollen in. */
     public static final double INTAKE_POWER = 1.0;

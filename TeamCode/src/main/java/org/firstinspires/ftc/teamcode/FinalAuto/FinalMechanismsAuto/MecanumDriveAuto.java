@@ -30,7 +30,7 @@ import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
  * Every wait has a timeout, and a drive also ends early when the robot is blocked (not
  * moving at all for STALLED_MS), so a robot stuck against a wall moves on instead of freezing.
  */
-public class MecanumDriveFinal {
+public class MecanumDriveAuto {
 
     /** "Stopped at the spot" means all four of these are true. */
     public static final double SETTLED_DISTANCE_INCHES = 1.5;

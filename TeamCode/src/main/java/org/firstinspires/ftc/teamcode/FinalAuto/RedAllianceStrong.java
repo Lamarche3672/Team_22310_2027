@@ -19,9 +19,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 // The three autonomous mechanisms. Each is the auto version of the teleop class with the same name.
-import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelTunerPIDF;  // shooter wheels
-import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntake;        // intake + index
-import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveFinal;  // driving (Pedro)
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;  // shooter wheels
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;        // intake + index
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;  // driving (Pedro)
 
 /**
  * RED ALLIANCE STRONG
@@ -42,9 +42,7 @@ public class RedAllianceStrong extends LinearOpMode {
 
     // ------------------------------------------------------------------ numbers to tune
 
-    /** Flywheel speed for both shots, in encoder ticks per second (teleop "highVelocity"). */
-    private static final double SHOOT_VELOCITY = FlywheelTunerPIDF.HIGH_VELOCITY;
-    /** Longest wait for the flywheels to reach speed before shooting anyway. */
+    private static final double SHOOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
     private static final double SPIN_UP_TIMEOUT_MS = 2500;
     /** How long the index pushes pollen into the flywheels for one volley of 4. */
     private static final double FEED_MS = 3000;
@@ -54,7 +52,7 @@ public class RedAllianceStrong extends LinearOpMode {
     /** Start -> garden: how fast the robot drives while it intakes. Lower = more careful. */
     private static final double GARDEN_SPEED_INCHES_PER_SECOND = 20;
     /** Start -> garden: intake motor power (1.0 = same as holding the right trigger). */
-    private static final double GARDEN_INTAKE_POWER = IndexIntake.INTAKE_POWER;
+    private static final double GARDEN_INTAKE_POWER = IndexIntakeAuto.INTAKE_POWER;
     /**
      * Start -> garden: the index belt creeps inwards at this fraction of its shooting speed,
      * moving each pollen further in so there is room for the next. 0 = belt off while intaking.
@@ -81,9 +79,9 @@ public class RedAllianceStrong extends LinearOpMode {
 
     // ------------------------------------------------------------------ mechanisms
 
-    private final MecanumDriveFinal drive = new MecanumDriveFinal();
-    private final IndexIntake intake = new IndexIntake();
-    private final FlywheelTunerPIDF flywheel = new FlywheelTunerPIDF();
+    private final MecanumDriveAuto drive = new MecanumDriveAuto();
+    private final IndexIntakeAuto intake = new IndexIntakeAuto();
+    private final FlywheelAuto flywheel = new FlywheelAuto();
 
     private final ElapsedTime autoTimer = new ElapsedTime();
     private String currentStep = "Waiting for start";
