@@ -7,8 +7,10 @@ Y: Flywheel speed high / low
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.SavedBackupCode.Drive.Mechanisms.FlywheelTesting;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTunerPIDF;
@@ -28,11 +30,18 @@ public class MainTeleOp extends OpMode {
     private final FlywheelTunerPIDF FlywheelTunerPIDF = new FlywheelTunerPIDF();
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
+    private final ElapsedTime loopTimer = new ElapsedTime();
 
 
 
     @Override
     public void init() {
+        // Each hub answers all of its sensor reads for one loop with a single request,
+        // instead of one request per value. Fewer requests = a faster loop.
+        for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+
         //----------PLAYER ONE-------------
 
         intakeIndex.init(hardwareMap);
@@ -74,6 +83,9 @@ public class MainTeleOp extends OpMode {
 
         drive.driveFieldRelative(forward, strafe, rotate);
         addDriveTelemetry();
+
+        telemetry.addData("Loop time (ms)", "%.0f", loopTimer.milliseconds());
+        loopTimer.reset();
     }
 
     private void addDriveTelemetry() {

@@ -15,8 +15,9 @@ public class AprilTagAutoAlignMecanum extends OpMode {
     private final MecanumDriveFinal drive = new MecanumDriveFinal();
 
 
-    // Red hive, audience side: tags 34 to 37 (see AprilTagLimelightTest).
-    private static final int TARGET_TAG_ID = 35;
+    // Red hive, audience side: the four tags under that cell (see AprilTagLimelightTest).
+    // Any one of them will do, so the robot can align even when it only sees part of the cluster.
+    private static final int[] TARGET_TAG_IDS = {34, 35, 36, 37};
 
     //-------------------- PD controller -------------------------
     double kP = 0.002;
@@ -67,7 +68,11 @@ public class AprilTagAutoAlignMecanum extends OpMode {
         rotate = gamepad2.right_stick_x;
         // ------------get april tag info-------------------
         aprilTagLimelightTest.update();
-        LLResultTypes.FiducialResult id35 = aprilTagLimelightTest.getTagBySpecificId(TARGET_TAG_ID);
+        LLResultTypes.FiducialResult id35 = null;
+        for (int id : TARGET_TAG_IDS) {
+            id35 = aprilTagLimelightTest.getTagBySpecificId(id);
+            if (id35 != null) break;
+        }
 
         //--------------------auto align rotation logic -----------
 
