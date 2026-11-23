@@ -1,136 +1,137 @@
 package org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto;
 
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.robotcore.hardware.DcMotor;
+import static com.pedropathing.ivy.commands.Commands.instant;
+import static com.pedropathing.ivy.commands.Commands.waitMs;
+import static com.pedropathing.ivy.commands.Commands.waitUntil;
+
+import com.pedropathing.follower.Follower;
+import com.pedropathing.ivy.Command;
+import com.pedropathing.ivy.CommandBuilder;
+import com.pedropathing.ivy.pedro.PedroCommands;
+import com.pedropathing.math.Pose;
+import com.pedropathing.math.Velocity;
+import com.pedropathing.paths.Path;
+import com.pedropathing.utils.Angle;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
 
+/**
+ * Autonomous version of FinalTeleOp/FinalMechanisms/MecanumDriveFinal.
+ *
+ * In teleop the sticks drive the four wheels. In autonomous Pedro's Follower drives them
+ * along paths, using the same four motors and the same Pinpoint (set up in Constants.java).
+ * This class is the one place the routine talks to the drivetrain:
+ *
+ *   follow(path, timeout)                 drive a path at full speed
+ *   followSlowly(path, speed, timeout)    drive a path with a speed limit (for intaking)
+ *   waitUntilSettled(pose, timeout)       wait until the robot has really stopped at a spot
+ *
+ * Every wait has a timeout, and a drive also ends early when the robot is blocked (not
+ * moving at all for STALLED_MS), so a robot stuck against a wall moves on instead of freezing.
+ */
 public class MecanumDriveFinal {
-    private static final double DRIVE_DEADZONE = 0.05;
 
-    private DcMotor frontLeftMotor;
-    private DcMotor backLeftMotor;
-    private DcMotor frontRightMotor;
-    private DcMotor backRightMotor;
-    private GoBildaPinpointDriver pinpoint;
-    private double headingOffsetRadians;
-    private double headingRadians = Double.NaN;
-    private boolean headingReady;
+    /** "Stopped at the spot" means all four of these are true. */
+    public static final double SETTLED_DISTANCE_INCHES = 1.5;
+    public static final double SETTLED_HEADING_DEGREES = 3.0;
+    public static final double SETTLED_SPEED_INCHES_PER_SECOND = 2.0;
+    public static final double SETTLED_TURN_DEGREES_PER_SECOND = 10.0;
 
-    public void init(HardwareMap hardwareMap) {
-        frontLeftMotor = hardwareMap.get(DcMotor.class, "fl_motor");
-        frontRightMotor = hardwareMap.get(DcMotor.class, "fr_motor");
-        backLeftMotor = hardwareMap.get(DcMotor.class, "bl_motor");
-        backRightMotor = hardwareMap.get(DcMotor.class, "br_motor");
+    /** "Blocked" means slower than both of these for STALLED_MS in a row while following a path. */
+    public static final double STALLED_SPEED_INCHES_PER_SECOND = 1.0;
+    public static final double STALLED_TURN_DEGREES_PER_SECOND = 5.0;
+    public static final double STALLED_MS = 600;
 
-        frontLeftMotor.setDirection(DcMotor.Direction.REVERSE);
-        backLeftMotor.setDirection(DcMotor.Direction.REVERSE);
+    private Follower follower;
 
-        frontLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backLeftMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        frontRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        backRightMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
-        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-
-        stop();
-
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
-        headingOffsetRadians = 0;
-        headingRadians = Double.NaN;
-        headingReady = false;
-        // Keep the robot stationary during INIT while the IMU calibrates.
-        pinpoint.resetPosAndIMU();
+    /** Keep the robot still while this runs: the Pinpoint calibrates for about one second. */
+    public void init(HardwareMap hardwareMap, Pose startPose) {
+        follower = Constants.create(hardwareMap);
+        follower.setPose(startPose);
+        follower.update();
     }
 
-    public void drive(double forward, double strafe, double rotate) {
-        driveCubic(forward, strafe, rotate, 0);
+    /** Call once per loop: reads the Pinpoint and powers the wheels. */
+    public void update() {
+        follower.update();
     }
 
-    private void driveCubic(double forward, double strafe, double rotate, double heading) {
-        if (!Double.isFinite(forward) || !Double.isFinite(strafe) || !Double.isFinite(rotate)) {
-            stop();
-            return;
-        }
-
-        // Cube the stick magnitude, not each axis: preserve the requested direction.
-        double magnitude = Math.hypot(forward, strafe);
-        double limitedMagnitude = Math.min(1.0, magnitude);
-        double scale = magnitude > DRIVE_DEADZONE
-                ? Math.pow(limitedMagnitude, 3) / magnitude : 0;
-        forward *= scale;
-        strafe *= scale;
-        rotate = Math.abs(rotate) > DRIVE_DEADZONE
-                ? Math.pow(Math.max(-1.0, Math.min(1.0, rotate)), 3) : 0;
-
-        // Pinpoint heading is CCW-positive; strafe input is right-positive.
-        double robotForward = forward * Math.cos(heading) - strafe * Math.sin(heading);
-        double robotStrafe = forward * Math.sin(heading) + strafe * Math.cos(heading);
-        applyMotorPowers(robotForward, robotStrafe, rotate);
+    public Pose pose() {
+        return follower.pose();
     }
 
-    private void applyMotorPowers(double forward, double strafe, double rotate) {
-        double frontLeftPower = forward + strafe + rotate;
-        double backLeftPower = forward - strafe + rotate;
-        double frontRightPower = forward - strafe - rotate;
-        double backRightPower = forward + strafe - rotate;
-
-        double maxPower = Math.max(1.0, Math.max(
-                Math.max(Math.abs(frontLeftPower), Math.abs(backLeftPower)),
-                Math.max(Math.abs(frontRightPower), Math.abs(backRightPower))));
-
-        frontLeftMotor.setPower(frontLeftPower / maxPower);
-        backLeftMotor.setPower(backLeftPower / maxPower);
-        frontRightMotor.setPower(frontRightPower / maxPower);
-        backRightMotor.setPower(backRightPower / maxPower);
+    public Follower follower() {
+        return follower;
     }
 
-    public void driveFieldRelative(double forward, double strafe, double rotate) {
-        updateHeading();
-        if (!headingReady) {
-            stop();
-            return;
-        }
-        driveCubic(forward, strafe, rotate,
-                AngleUnit.normalizeRadians(headingRadians - headingOffsetRadians));
-    }
-
-    public void updateHeading() {
-        // Heading-only reads do not refresh calibration/fault status.
-        pinpoint.update();
-        headingRadians = pinpoint.getHeading(AngleUnit.RADIANS);
-        headingReady = pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY
-                && Double.isFinite(headingRadians);
-    }
-
-    public void resetFieldHeading() {
-        updateHeading();
-        if (headingReady) {
-            // Software zero only: do not recalibrate the IMU while driving.
-            headingOffsetRadians = headingRadians;
-        }
-    }
-
-    public boolean isHeadingReady() {
-        return headingReady;
-    }
-
-    public GoBildaPinpointDriver.DeviceStatus getHeadingStatus() {
-        return pinpoint.getDeviceStatus();
-    }
-
-    public double getFieldHeadingDegrees() {
-        return headingReady ? Math.toDegrees(AngleUnit.normalizeRadians(
-                headingRadians - headingOffsetRadians)) : Double.NaN;
-    }
-
+    /** Lets go of the wheels and removes any speed limit a path set. Safe to call any time. */
     public void stop() {
-        frontLeftMotor.setPower(0);
-        backLeftMotor.setPower(0);
-        frontRightMotor.setPower(0);
-        backRightMotor.setPower(0);
+        if (follower != null) follower.stop();
+    }
+
+    // ------------------------------------------------------------------ commands for a routine
+
+    /** Drives the path. Moves on when the robot reaches the end, is blocked, or after timeoutMs. */
+    public Command follow(Path path, double timeoutMs) {
+        return PedroCommands.follow(follower, path).raceWith(waitMs(timeoutMs), waitUntilStalled());
+    }
+
+    /** Finishes once the robot has not moved for STALLED_MS, counted from when the drive starts. */
+    private Command waitUntilStalled() {
+        long[] lastMovedNanos = new long[1];
+        return new CommandBuilder()
+                .setStart(() -> lastMovedNanos[0] = System.nanoTime())
+                .setDone(() -> {
+                    long now = System.nanoTime();
+                    if (isMoving()) lastMovedNanos[0] = now;
+                    return now - lastMovedNanos[0] >= STALLED_MS * 1e6;
+                });
+    }
+
+    /**
+     * Same as follow(), but never faster than inchesPerSecond.
+     * The limit belongs to this path only; Pedro removes it when the path ends.
+     */
+    public Command followSlowly(Path path, double inchesPerSecond, double timeoutMs) {
+        return follow(path.with(Constants.foresightConfig.maxVelocityConstraint.at(inchesPerSecond)), timeoutMs);
+    }
+
+    /** follow() ends just before the robot stops. Use this before shooting so the robot is steady. */
+    public Command waitUntilSettled(Pose target, double timeoutMs) {
+        return waitUntil(() -> isSettledAt(target)).raceWith(waitMs(timeoutMs));
+    }
+
+    public Command stopCommand() {
+        return instant(this::stop);
+    }
+
+    public boolean isMoving() {
+        Velocity velocity = follower.velocity();
+        return Math.hypot(velocity.vx, velocity.vy) > STALLED_SPEED_INCHES_PER_SECOND
+                || Math.abs(velocity.omega) > Math.toRadians(STALLED_TURN_DEGREES_PER_SECOND);
+    }
+
+    /** True when the robot's center is within this many inches of the spot. */
+    public boolean isNear(Pose target, double inches) {
+        return follower.pose().distance(target) <= inches;
+    }
+
+    public boolean isSettledAt(Pose target) {
+        Pose pose = follower.pose();
+        Velocity velocity = follower.velocity();
+        return pose.distance(target) <= SETTLED_DISTANCE_INCHES
+                && Math.abs(Angle.normalizeSigned(target.heading() - pose.heading())) <= Math.toRadians(SETTLED_HEADING_DEGREES)
+                && Math.hypot(velocity.vx, velocity.vy) <= SETTLED_SPEED_INCHES_PER_SECOND
+                && Math.abs(velocity.omega) <= Math.toRadians(SETTLED_TURN_DEGREES_PER_SECOND);
+    }
+
+    public void addTelemetry(Telemetry telemetry) {
+        Pose pose = follower.pose();
+        telemetry.addData("x / y (in)", "%.1f / %.1f", pose.x(), pose.y());
+        telemetry.addData("heading (deg)", "%.1f", Math.toDegrees(pose.heading()));
+        if (follower.currentPath() != null) {
+            telemetry.addData("Distance left on path (in)", "%.1f", follower.distanceToEndpoint());
+        }
     }
 }
