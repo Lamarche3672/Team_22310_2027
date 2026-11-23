@@ -66,7 +66,7 @@ public class FlywheelAuto {
      * F = 32767 / (fastest the motor can spin, in ticks per second), P = F / 10, I = P / 10.
      * P = 0 and F = 0 would leave the wheels with no power at all, so that is never used.
      */
-    static PIDFCoefficients startingCoefficients(double maxTicksPerSecond) {
+    public static PIDFCoefficients startingCoefficients(double maxTicksPerSecond) {
         // 28 ticks per turn x 6000 rpm x 85 % is what almost every FTC motor reports.
         if (!(maxTicksPerSecond > 0) || Double.isInfinite(maxTicksPerSecond)) maxTicksPerSecond = 2380;
         double f = 32767.0 / maxTicksPerSecond;

@@ -14,6 +14,8 @@ Red hive FRONT : 34, 35, 36, 37
 Red hive BACK : 30, 31, 32, 33
 Blue hive FRONT : 38, 39, 40, 41
 Blue hive BACK : 42, 43, 44, 45
+(FRONT = audience side, BACK = side opposite the audience. Competition manual 9.9:
+each group of four is on the BOTTOM of a cell, facing the floor, so the camera has to look up.)
  */
 
 
