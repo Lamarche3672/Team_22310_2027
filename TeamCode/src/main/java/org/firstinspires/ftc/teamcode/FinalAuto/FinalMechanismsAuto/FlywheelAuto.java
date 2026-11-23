@@ -38,6 +38,8 @@ public class FlywheelAuto {
     private double leftVelocity;
     private boolean atSpeed;
     private long atSpeedSinceNanos;
+    /** Fastest speed the configured motor type says it can hold, in ticks per second. */
+    private double reachableVelocity = Double.POSITIVE_INFINITY;
 
     public void init(HardwareMap hardwareMap) {
         rightFlywheel = hardwareMap.get(DcMotorEx.class, "right_flywheel");
@@ -48,6 +50,8 @@ public class FlywheelAuto {
             // Let the wheels spin down by themselves instead of slamming to a stop.
             motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
             motor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, coefficientsFor(motor));
+            double max = motor.getMotorType().getAchieveableMaxTicksPerSecond();
+            if (max > 0) reachableVelocity = Math.min(reachableVelocity, max);
         }
         stop();
     }
@@ -84,8 +88,14 @@ public class FlywheelAuto {
         targetVelocity = 0;
         atSpeed = false;
         // Safe to call before init() or after a failed init(): there is just nothing to stop.
-        if (rightFlywheel != null) rightFlywheel.setPower(0);
-        if (leftFlywheel != null) leftFlywheel.setPower(0);
+        for (DcMotorEx motor : new DcMotorEx[] {rightFlywheel, leftFlywheel}) {
+            if (motor == null) continue;
+            // setPower(0) can be skipped by the SDK when it was the last power it remembers, which
+            // would leave the wheels spinning. These two are always sent: target 0, then motor off
+            // (coasting). setVelocity() in spinUp() switches the motor back on by itself.
+            motor.setVelocity(0);
+            motor.setMotorDisable();
+        }
     }
 
     /** Call once per loop: reads both wheel speeds and works out whether they are at speed. */
@@ -127,6 +137,10 @@ public class FlywheelAuto {
 
     public void addTelemetry(Telemetry telemetry) {
         telemetry.addData("Flywheel target", "%.0f", targetVelocity);
+        if (targetVelocity > reachableVelocity) {
+            telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what this motor type can hold (%.0f)."
+                    + " The wheels run at full power and never become READY.", targetVelocity, reachableVelocity));
+        }
         telemetry.addData("Flywheel right / left", "%.0f / %.0f", rightVelocity, leftVelocity);
         telemetry.addData("Flywheel", isReady() ? "READY" : atSpeed ? "at speed" : targetVelocity > 0 ? "spinning up" : "off");
     }

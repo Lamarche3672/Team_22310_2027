@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.FinalAuto;
 
 import static com.pedropathing.ivy.Scheduler.schedule;
 import static com.pedropathing.ivy.groups.Groups.sequential;
-import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 
 import com.pedropathing.api.Paths;
 import com.pedropathing.api.PoseFactory;
@@ -14,11 +13,16 @@ import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
-import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
 
 @Autonomous(name = "Angled Line Test", group = "Autonomous")
 public class AngledLineTest extends LinearOpMode {
         private Follower follower;
+        private final MecanumDriveAuto drive = new MecanumDriveAuto();
+
+        /** Longest one drive may take. A blocked robot is given up after 0.6 s (see MecanumDriveAuto). */
+        private static final double PATH_TIMEOUT_MS = 6000;
+        private static final double SETTLE_TIMEOUT_MS = 1500;
 
         private final PoseFactory poseFactory = PoseFactory.degrees();
 
@@ -38,39 +42,48 @@ public class AngledLineTest extends LinearOpMode {
         // Autonomous routine
         public Command autoRoutine() {
             return sequential(
-                    follow(follower, path1()),
-                    follow(follower, path2()),
-                    follow(follower, path3()),
-                    follow(follower, path4()),
-                    follow(follower, path5()),
-                    follow(follower, path6())
+                    drive.follow(path1(), PATH_TIMEOUT_MS),
+                    drive.follow(path2(), PATH_TIMEOUT_MS),
+                    drive.follow(path3(), PATH_TIMEOUT_MS),
+                    drive.follow(path4(), PATH_TIMEOUT_MS),
+                    drive.follow(path5(), PATH_TIMEOUT_MS),
+                    drive.follow(path6(), PATH_TIMEOUT_MS),
+                    // Let go of the wheels at the end, so the motors are not left pushing (for example against a wall).
+                    drive.waitUntilSettled(point6, SETTLE_TIMEOUT_MS),
+                    drive.stopCommand()
             );
         }
 
         @Override
         public void runOpMode() {
             Scheduler.reset();
-            follower = Constants.create(hardwareMap);
-            follower.setPose(start);
-            follower.update();
+            try {
+                drive.init(hardwareMap, start);
+                follower = drive.follower();
 
-            waitForStart();
-            schedule(autoRoutine());
+                waitForStart();
+                if (!opModeIsActive()) return;
+                schedule(autoRoutine());
 
-            while (opModeIsActive()) {
-                follower.update();
-                Scheduler.execute();
+                while (opModeIsActive()) {
+                    follower.update();
+                    Scheduler.execute();
 
-                telemetry.addData("x", follower.pose().x());
-                telemetry.addData("y", follower.pose().y());
-                telemetry.addData("heading", follower.pose().heading());
+                    telemetry.addData("x", follower.pose().x());
+                    telemetry.addData("y", follower.pose().y());
+                    telemetry.addData("heading", follower.pose().heading());
 
-                if (follower.currentPath() != null) {
-                    telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
-                    telemetry.addData("Path number", follower.pathIndex());
+                    if (follower.currentPath() != null) {
+                        telemetry.addData("Current path distance remaining", follower.distanceToEndpoint());
+                        telemetry.addData("Path number", follower.pathIndex());
+                    }
+
+                    telemetry.update();
                 }
-
-                telemetry.update();
+            } finally {
+                // Runs on a normal finish, on Stop, and on an error: the wheels are always released.
+                Scheduler.reset();
+                drive.stop();
             }
         }
 

@@ -2,7 +2,8 @@
 LEFT BUMPER: Index inwards
 LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
 RIGHT TRIGGER: Intake
-RIGHT BUMPER: Flywheels/shooter
+RIGHT BUMPER: Flywheels/shooter (hold to spin, release to switch off)
+Y: Flywheel speed high / low
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
@@ -88,6 +89,7 @@ public class MainTeleOp extends OpMode {
         //----------PLAYER ONE-------------
 
         intakeIndex.stop();
+        FlywheelTunerPIDF.stop();
         //flywheelTesting.stop();
 
         //----------PLAYER TWO-------------

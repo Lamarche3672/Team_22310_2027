@@ -27,6 +27,12 @@ public class FlywheelTunerPIDF {
 
     int stepIndex = 1;
 
+    // What was last sent to the hub, so each loop only sends what changed.
+    private boolean spinning;
+    private double sentVelocity = Double.NaN;
+    private double sentP = Double.NaN;
+    private double sentF = Double.NaN;
+
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -39,8 +45,24 @@ public class FlywheelTunerPIDF {
         PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
         flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
         flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        sentP = P;
+        sentF = F;
+
+        // Start with the wheels off. They only run while RIGHT BUMPER is held.
+        stop();
 
         telemetry.addLine("Init Complete");
+    }
+
+    /** Wheels off and coasting: no power is used until RIGHT BUMPER is held again. */
+    public void stop() {
+        for (DcMotorEx motor : new DcMotorEx[] {flywheelMotor, flywheelMotor2}) {
+            if (motor == null) continue;
+            motor.setVelocity(0);
+            motor.setMotorDisable(); // setVelocity() switches the motor back on by itself
+        }
+        spinning = false;
+        sentVelocity = Double.NaN;
     }
 
 
@@ -48,7 +70,11 @@ public class FlywheelTunerPIDF {
         //get all our gampad commands
         //get target velocity
         //update telemetery
-        if (gamepad1.right_bumper) {
+        // RIGHT BUMPER held = wheels spin. Released = wheels off, so they stop using the battery.
+        boolean wantSpin = gamepad1.right_bumper;
+
+        // Y switches between the high and the low speed, once per press.
+        if (gamepad1.yWasPressed()) {
             if (curTargetVelocity == highVelocity) {
                 curTargetVelocity = lowVelocity;
             } else {
@@ -76,25 +102,36 @@ public class FlywheelTunerPIDF {
             P -= stepSizes[stepIndex];
         }
 
-        //set new PIDF coefficients
-        PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
-        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+        //set new PIDF coefficients, only when the d-pad changed them
+        if (P != sentP || F != sentF) {
+            PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
+            flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+            flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+            sentP = P;
+            sentF = F;
+        }
 
-        flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
-
-        //set target velocity
-        flywheelMotor.setVelocity(curTargetVelocity);
-
-        flywheelMotor2.setVelocity(curTargetVelocity);
+        //set target velocity while the bumper is held; switch the wheels off when it is released
+        if (wantSpin) {
+            if (!spinning || curTargetVelocity != sentVelocity) {
+                flywheelMotor.setVelocity(curTargetVelocity);
+                flywheelMotor2.setVelocity(curTargetVelocity);
+                sentVelocity = curTargetVelocity;
+                spinning = true;
+            }
+        } else if (spinning) {
+            stop();
+        }
 
         double currentVelocity = flywheelMotor.getVelocity();
         double currentVelocity2 = flywheelMotor2.getVelocity();
 
         double error = curTargetVelocity - currentVelocity;
-        double error2 = curTargetVelocity - currentVelocity;
+        double error2 = curTargetVelocity - currentVelocity2;
 
 
-        telemetry.addData("Target Velocity", curTargetVelocity);
+        telemetry.addData("Flywheels", spinning ? "ON (right bumper)" : "off - hold RIGHT BUMPER to spin");
+        telemetry.addData("Target Velocity", "%.0f (Y switches high / low)", curTargetVelocity);
         telemetry.addData("Current Velocity", "%.2f", currentVelocity);
         telemetry.addData("Current Velocity", "%.2f", currentVelocity2);
 
