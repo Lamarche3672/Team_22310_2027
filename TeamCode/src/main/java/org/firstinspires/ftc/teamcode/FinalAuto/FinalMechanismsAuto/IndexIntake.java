@@ -15,6 +15,7 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
  * Each gamepad button became a method:
  *
  *   RIGHT TRIGGER  (intake)              ->  intake(power)
+ *   (auto only)                          ->  intake(power, indexSpeed)   index belt creeps inwards too
  *   LEFT BUMPER    (index inwards)       ->  feedShooter()
  *   LEFT TRIGGER   (outtake everything)  ->  outtake()
  *   nothing held                         ->  stop()
@@ -60,6 +61,17 @@ public class IndexIntake {
         setPowers(power, 0.0);
     }
 
+    /**
+     * Pull pollen in while the index belt creeps inwards, carrying each pollen further into
+     * the robot so the next one has room behind it.
+     *
+     * @param indexSpeed 0 to 1: how fast the index belt turns compared with feeding the shooter.
+     *                   Keep it low: the flywheels are off, so pollen must not be pushed into them.
+     */
+    public void intake(double power, double indexSpeed) {
+        setPowers(power, INDEX_FEED_POWER * Math.max(0.0, Math.min(1.0, indexSpeed)));
+    }
+
     /** Push the stored pollen up into the flywheels. Spin the flywheels up first. */
     public void feedShooter() {
         setPowers(INTAKE_POWER_WHILE_FEEDING, INDEX_FEED_POWER);
@@ -87,6 +99,11 @@ public class IndexIntake {
     /** Turns the intake on and moves straight to the next step. It keeps running until stopped. */
     public Command intakeCommand(double power) {
         return instant(() -> intake(power));
+    }
+
+    /** Same, with the index belt creeping inwards to make room (see intake(power, indexSpeed)). */
+    public Command intakeCommand(double power, double indexSpeed) {
+        return instant(() -> intake(power, indexSpeed));
     }
 
     public Command outtakeCommand() {
