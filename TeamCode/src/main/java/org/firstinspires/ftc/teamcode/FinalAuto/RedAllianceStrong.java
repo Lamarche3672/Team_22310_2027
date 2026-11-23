@@ -27,8 +27,8 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDrive
  * RED ALLIANCE STRONG
  *
  *   1. START            shoot the 4 preloaded pollen                 (flywheel + index)
- *   2. START -> GARDEN  drive slowly along the wall, intake running  (intake)
- *   3. TURNING POINT    swing out of the corner, intake still on     (intake)
+ *   2. START -> GARDEN  drive slowly along the wall, intake running  (intake + slow index)
+ *   3. TURNING POINT    swing out of the corner, intake still on     (intake + slow index)
  *   4. -> OTHER SIDE    intake off, flywheel spins up on the way     (flywheel)
  *   5. OTHER SIDE       stop, then shoot the garden pollen           (flywheel + index)
  *   6. PARK
@@ -55,6 +55,12 @@ public class RedAllianceStrong extends LinearOpMode {
     private static final double GARDEN_SPEED_INCHES_PER_SECOND = 20;
     /** Start -> garden: intake motor power (1.0 = same as holding the right trigger). */
     private static final double GARDEN_INTAKE_POWER = IndexIntake.INTAKE_POWER;
+    /**
+     * Start -> garden: the index belt creeps inwards at this fraction of its shooting speed,
+     * moving each pollen further in so there is room for the next. 0 = belt off while intaking.
+     * Too high and the first pollen gets pushed into the flywheels, which are not spinning.
+     */
+    private static final double GARDEN_INDEX_SPEED = 0.3;
     /** Keep intaking this long after the turning point so the last pollen is fully inside. */
     private static final double INTAKE_FINISH_MS = 250;
 
@@ -102,12 +108,13 @@ public class RedAllianceStrong extends LinearOpMode {
                 // 1. BEGINNING: shoot the 4 preloads from the start position.
                 step("1/6  Shoot preloads", shoot()),
 
-                // 2. START -> GARDEN: intake on, drive slowly so the pollen is not knocked away.
+                // 2. START -> GARDEN: intake on, index belt creeping inwards to make room,
+                //    driving slowly so the pollen is not knocked away.
                 step("2/6  Start -> garden, intaking slowly", sequential(
-                        intake.intakeCommand(GARDEN_INTAKE_POWER),
+                        intake.intakeCommand(GARDEN_INTAKE_POWER, GARDEN_INDEX_SPEED),
                         drive.followSlowly(path12CollectLeftGarden(), GARDEN_SPEED_INCHES_PER_SECOND, GARDEN_TIMEOUT_MS))),
 
-                // 3. TURNING POINT: swing out of the corner; the intake finishes pulling the last pollen in.
+                // 3. TURNING POINT: swing out of the corner; intake and index finish pulling the last pollen in.
                 step("3/6  Turning point", sequential(
                         drive.follow(turningPoint(), TURNING_TIMEOUT_MS),
                         waitMs(INTAKE_FINISH_MS),
