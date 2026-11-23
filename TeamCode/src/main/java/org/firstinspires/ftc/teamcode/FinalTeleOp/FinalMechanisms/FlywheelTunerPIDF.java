@@ -102,6 +102,10 @@ public class FlywheelTunerPIDF {
             P -= stepSizes[stepIndex];
         }
 
+        // P and F below zero make the wheels push against themselves.
+        P = Math.max(0, P);
+        F = Math.max(0, F);
+
         //set new PIDF coefficients, only when the d-pad changed them
         if (P != sentP || F != sentF) {
             PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, 0, 0, F);
@@ -132,15 +136,15 @@ public class FlywheelTunerPIDF {
 
         telemetry.addData("Flywheels", spinning ? "ON (right bumper)" : "off - hold RIGHT BUMPER to spin");
         telemetry.addData("Target Velocity", "%.0f (Y switches high / low)", curTargetVelocity);
-        telemetry.addData("Current Velocity", "%.2f", currentVelocity);
-        telemetry.addData("Current Velocity", "%.2f", currentVelocity2);
+        telemetry.addData("Current Velocity (right)", "%.2f", currentVelocity);
+        telemetry.addData("Current Velocity (left)", "%.2f", currentVelocity2);
 
-        telemetry.addData("Error", "%.2f", error);
-        telemetry.addData("Error", "%.2f", error2);
+        telemetry.addData("Error (right)", "%.2f", error);
+        telemetry.addData("Error (left)", "%.2f", error2);
 
         telemetry.addLine("--------------------");
         telemetry.addData("Tuning P", "%.4f (D-Pad U/D)", P);
         telemetry.addData("Tuning F", "%.4f (D-Pad L/R)", F);
-        telemetry.addData("Step Size", "%.4f (B Button)", stepSizes[stepIndex]);
+        telemetry.addData("Step Size", "%.4f (X Button)", stepSizes[stepIndex]);
     }
 }

@@ -42,6 +42,12 @@ public class TurretTracking {
         timer.reset();
     }
 
+    /** Turret off. Safe to call even if init() failed and there is no turret motor. */
+    public void stop() {
+        if (turret != null) turret.setPower(0);
+        lastError = 0;
+    }
+
     public void update(double targetBearing) {
         double deltaTime = timer.seconds();
         timer.reset();
