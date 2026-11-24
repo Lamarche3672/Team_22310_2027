@@ -9,24 +9,9 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver.DeviceStatus;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
-/**
- * Pedro's PinpointLocalizer, plus patience.
- *
- * <p>The Control Hub reads the Pinpoint hundreds of times per second. Now and then one
- * read comes back empty or scrambled, and the SDK driver reports that single read as
- * NOT_READY or FAULT_BAD_READ (and, on newer Pinpoint firmware, as position 0, 0, 0).
- * That is normal and lasts one loop. This class skips those reads and keeps the last
- * good position, so one hiccup cannot fail a tuner step or yank the robot's pose to zero.
- *
- * <p>It only gives up when the Pinpoint has really stopped working: reads keep failing
- * for {@link #MAX_BAD_STREAK_SECONDS}, or it never becomes READY after power-up.
- */
 public final class PinpointGuard implements Localizer {
-    /** Longest wait for the Pinpoint to finish starting and calibrating its gyro. */
     public static final double READY_TIMEOUT_SECONDS = 5.0;
-    /** A pod / IMU fault must last this long before we believe it. */
     public static final double FAULT_CONFIRM_SECONDS = 1.5;
-    /** Reads must fail for this long, back to back, before we stop trusting the Pinpoint. */
     public static final double MAX_BAD_STREAK_SECONDS = 1.0;
     private static final int MIN_BAD_STREAK_READS = 10;
 
@@ -46,14 +31,6 @@ public final class PinpointGuard implements Localizer {
     private long badStreakStart;
     private String warning;
 
-    /**
-     * Configures the Pinpoint, zeroes it, and waits until it is READY.
-     * Keep the robot still while this runs (about one second).
-     *
-     * @param allowPodFaults false for anything that drives the robot by itself: a pod the
-     *                       Pinpoint cannot detect is then an error. true for hand-pushed
-     *                       tuning: carry on with a warning so the raw ticks can be seen.
-     */
     public static PinpointGuard open(HardwareMap map, PinpointConfig config, boolean allowPodFaults) {
         String name = config.name.get();
         GoBildaPinpointDriver pinpoint;
@@ -68,7 +45,6 @@ public final class PinpointGuard implements Localizer {
 
         PinpointLocalizer localizer;
         try {
-            // Sends the settings, zeroes position + recalibrates the gyro, waits 0.5 s.
             localizer = new PinpointLocalizer(map, config);
         } catch (RuntimeException error) {
             if (error.getCause() instanceof InterruptedException) {
@@ -92,20 +68,15 @@ public final class PinpointGuard implements Localizer {
         this.goodState = localizer.state();
     }
 
-    // ---------------------------------------------------------------- Pedro's Localizer
-
-    /** Call once per loop. Throws only after reads have failed for a full second. */
     @Override
     public void update() {
         read();
-        // After Stop the SDK answers every read with zeros; that is not a fault.
         if (Thread.currentThread().isInterrupted()) return;
         if (badStreak >= MIN_BAD_STREAK_READS
                 && secondsSince(badStreakStart) >= MAX_BAD_STREAK_SECONDS)
             throw new IllegalStateException(explain());
     }
 
-    /** Position and velocity from the last good read. */
     @Override
     public MotionState state() {
         return goodState;
@@ -123,39 +94,29 @@ public final class PinpointGuard implements Localizer {
         awaitReady();
     }
 
-    // ---------------------------------------------------------------- Extra info for tuners
-
-    /** Status of the most recent read (may be a one-loop glitch). */
     public DeviceStatus status() {
         return status;
     }
 
-    /** True when the most recent read was usable. Only sample measurements when this is true. */
     public boolean lastReadGood() {
         return lastReadGood;
     }
 
-    /** Raw forward-pod (X port) count from the last good read. */
     public int ticksX() {
         return goodTicksX;
     }
 
-    /** Raw sideways-pod (Y port) count from the last good read. */
     public int ticksY() {
         return goodTicksY;
     }
 
-    /** How many reads were skipped because they came back empty or scrambled. */
     public long skippedReads() {
         return reads - goodReads;
     }
 
-    /** A pod warning we are continuing past (hand-pushed tuning only), or null. */
     public String warning() {
         return warning;
     }
-
-    // ---------------------------------------------------------------- Internals
 
     private void read() {
         localizer.update();
@@ -208,7 +169,6 @@ public final class PinpointGuard implements Localizer {
             try {
                 Thread.sleep(20);
             } catch (InterruptedException stopPressed) {
-                // Stop was pressed. Hand back control; the OpMode will see isStopRequested().
                 Thread.currentThread().interrupt();
             }
         }
@@ -224,7 +184,6 @@ public final class PinpointGuard implements Localizer {
         return (System.nanoTime() - nanos) / 1e9;
     }
 
-    /** A message that says what is actually wrong, not just "not ready". */
     private String explain() {
         DeviceStatus seen = status;
         int id = 0;
@@ -233,7 +192,6 @@ public final class PinpointGuard implements Localizer {
             id = pinpoint.getDeviceID();
             firmware = pinpoint.getDeviceVersion();
         } catch (RuntimeException ignored) {
-            // Leave both at 0: the device did not answer.
         }
         String facts = " [status " + seen + ", good reads " + goodReads + " of " + reads
                 + ", device id " + id + ", firmware " + firmware + "]";

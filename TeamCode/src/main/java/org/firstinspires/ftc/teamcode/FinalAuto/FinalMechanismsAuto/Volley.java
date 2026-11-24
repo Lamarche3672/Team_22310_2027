@@ -5,21 +5,11 @@ import static com.pedropathing.ivy.groups.Groups.sequential;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.CommandBuilder;
 
-/**
- * One volley: flywheels up to speed, the pollen fed through, everything off again.
- * Every autonomous shoots through this, so they all shoot the same way and a fix here fixes them all.
- *
- *   Volley.shoot(flywheel, intake, velocity)
- */
 public final class Volley {
 
-    /** Longest wait for the flywheels to be ready before shooting anyway. */
     public static final double SPIN_UP_TIMEOUT_MS = 2500;
-    /** How long the index pushes pollen into the flywheels for one volley of 4 (pauses come on top). */
     public static final double FEED_MS = 2500;
-    /** After a pollen slows the wheels, feeding pauses this long at most before carrying on. */
     public static final double FLYWHEEL_RECOVERY_MS = 600;
-    /** All the pauses of one volley together may take this long; after that it feeds straight through. */
     public static final double MAX_PAUSED_MS = 1500;
 
     private Volley() { }
@@ -32,19 +22,6 @@ public final class Volley {
                 flywheel.stopCommand());
     }
 
-    /**
-     * Pushes the pollen through for FEED_MS of feeding.
-     *
-     * When the volley starts with the wheels properly at their target speed, the index only runs
-     * while they are at speed: each pollen slows the wheels, the index pauses until they are back,
-     * and every shot gets the same strength. Paused time does not count against FEED_MS.
-     *
-     * When the wheels are NOT at their target (they levelled off below it, or the wait timed out)
-     * there is nothing to wait for: pausing would only make the index stutter, because switching
-     * the intake and index on is itself enough to slow wheels that are already flat out. Then it
-     * feeds straight through. It also stops pausing once the pauses add up to MAX_PAUSED_MS, so
-     * pollen is never left in the robot because of a flywheel problem.
-     */
     public static Command feed(FlywheelAuto flywheel, IndexIntakeAuto intake) {
         long[] lastNanos = new long[1];
         double[] fedMs = new double[1];
@@ -73,11 +50,10 @@ public final class Volley {
                     } else {
                         intake.feedShooter();
                         fedMs[0] += elapsedMs;
-                        if (flywheel.isAtSpeed()) pauseMs[0] = 0;   // recovered: the next pause starts fresh
+                        if (flywheel.isAtSpeed()) pauseMs[0] = 0;
                     }
                 })
                 .setDone(() -> fedMs[0] >= FEED_MS)
-                // Also runs when the park deadline cuts a volley short: the feed never stays on.
                 .setEnd(reason -> intake.stop());
     }
 }

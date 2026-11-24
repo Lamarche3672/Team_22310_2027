@@ -6,23 +6,12 @@ import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 import java.io.File;
 import java.util.Locale;
 
-/**
- * Remembers the flywheel P and F found with the teleop tuner.
- *
- * In MAIN TELEOP, press BACK to unlock tuning, tune with the d-pad and press A: the numbers are written to a small
- * file on the Control Hub (FIRST/settings/flywheel_tuning.txt). From then on teleop and
- * autonomous both start with them, also after the robot is switched off.
- *
- * Numbers typed into FlywheelAuto.P and FlywheelAuto.F always win over the saved file.
- */
 public final class FlywheelTuning {
     private static final String FILE_NAME = "flywheel_tuning.txt";
-    /** Anything above this is not a real tuning value; the file is ignored. */
     private static final double LARGEST_SENSIBLE_VALUE = 1000;
 
     private FlywheelTuning() { }
 
-    /** The saved {P, F, I}, or null when nothing usable is saved. Never throws. */
     public static double[] load() {
         try {
             File file = AppUtil.getInstance().getSettingsFile(FILE_NAME);
@@ -34,12 +23,10 @@ public final class FlywheelTuning {
             double i = parts.length >= 3 ? Double.parseDouble(parts[2]) : 0;
             return isUsable(p, f, i) ? new double[] {p, f, i} : null;
         } catch (Throwable problem) {
-            // A missing, damaged or unreadable file must never stop an OpMode.
             return null;
         }
     }
 
-    /** Saves P, F and I. Returns true when they were written and read back correctly. */
     public static boolean save(double p, double f, double i) {
         if (!isUsable(p, f, i)) return false;
         try {

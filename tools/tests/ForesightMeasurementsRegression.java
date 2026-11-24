@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 import java.util.Arrays;
 import java.util.List;
 
-/** Standalone tests for rejecting bad tuning results before later stages. */
 public final class ForesightMeasurementsRegression {
     private static int checks;
     private static void rejects(Runnable action) {

@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 import java.util.List;
 
-/** Reject incomplete or non-finite tuning results before they are used or saved. */
 final class ForesightMeasurements {
     private ForesightMeasurements() { }
 

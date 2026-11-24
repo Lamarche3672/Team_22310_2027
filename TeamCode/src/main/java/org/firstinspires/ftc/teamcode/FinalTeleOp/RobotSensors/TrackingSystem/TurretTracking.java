@@ -43,12 +43,10 @@ public class TurretTracking {
         timer.reset();
     }
 
-    /** The power last sent to the turret motor, for telemetry. */
     public double getPower() {
         return power;
     }
 
-    /** Turret off. Safe to call even if init() failed and there is no turret motor. */
     public void stop() {
         if (turret != null) turret.setPower(0);
         lastError = 0;
@@ -72,8 +70,6 @@ public class TurretTracking {
         double error = goalX - targetBearing;
         double pTerm = error * kP;
 
-        // No D on the first reading after the target (re)appears: there is nothing to compare it
-        // with, and comparing with 0 would give the turret a kick.
         double dTerm = 0;
         if (hasLastError && deltaTime > 0) {
             dTerm = ((error - lastError) / deltaTime) * kD;

@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
-/** Standalone regression tests; no FTC hardware or test-library dependency needed. */
 public final class PinpointOffsetMeasurementRegression {
     private static int checks;
 
@@ -13,12 +12,6 @@ public final class PinpointOffsetMeasurementRegression {
         return Math.abs(actual - expected) < 1e-3;
     }
 
-    /**
-     * What a Pinpoint with zero offsets reports after the robot spins about its center.
-     * Stepped in tiny slices, the way the real device adds up pod movement:
-     * the forward pod (a inches left of center) rolls backward, the sideways pod
-     * (b inches ahead of center) rolls left.
-     */
     private static double[] spin(double a, double b, double turn) {
         int steps = 200_000;
         double dTheta = turn / steps;
@@ -48,7 +41,6 @@ public final class PinpointOffsetMeasurementRegression {
             }
         }
 
-        // At exactly half a turn this must equal Pedro's own formula: -y / 2 and -x / 2.
         PinpointOffsetMeasurement half = PinpointOffsetMeasurement.solve(7.0, -4.0, Math.PI);
         check(near(half.xPodOffset(), 2.0) && near(half.yPodOffset(), -3.5), "matches Pedro at 180 degrees");
 

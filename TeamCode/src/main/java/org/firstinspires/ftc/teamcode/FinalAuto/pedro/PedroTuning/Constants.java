@@ -18,11 +18,9 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
-/** Pedro 3 configuration: four drive motors and two pods connected to a goBILDA Pinpoint. */
 public final class Constants {
     private Constants() { }
 
-    // Drive motor names and directions. Check them with Mecanum Tuner.
     public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
         c.frontLeftName.set("fl_motor");
         c.frontRightName.set("fr_motor");
@@ -35,9 +33,6 @@ public final class Constants {
     });
 
     // ======================= PINPOINT TUNER RESULT: START =======================
-    // The Pinpoint Tuner gives you a block of Java. Select from the START line to
-    // the END line, and paste the tuner's block over it. Nothing else to edit.
-    // Until then the offsets are "not measured yet" and autonomous refuses to run.
     public static final boolean LOCALIZER_TUNED = true;
     public static final PinpointConfig localizerConfig = new PinpointConfig(c -> {
         c.name.set("pinpoint");
@@ -54,8 +49,6 @@ public final class Constants {
     // ======================= PINPOINT TUNER RESULT: END =========================
 
     // ======================= FORESIGHT TUNER RESULT: START ======================
-    // Same idea: paste the Foresight Tuner's block over START..END.
-    // No other robot's numbers are valid for this robot.
     public static final boolean FORESIGHT_TUNED = true;
     public static final ForesightConfig foresightConfig = new ForesightConfig(
             c -> {
@@ -86,7 +79,6 @@ public final class Constants {
 
     public static Mecanum createDrivetrain(HardwareMap map) {
         for (LynxModule hub : map.getAll(LynxModule.class)) {
-            // A previous OpMode may have left MANUAL caching enabled.
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
         String[] names = {drivetrainConfig.frontLeftName.get(), drivetrainConfig.frontRightName.get(),
@@ -99,16 +91,11 @@ public final class Constants {
         return new Mecanum(map, drivetrainConfig);
     }
 
-    /**
-     * The tuned Pinpoint, ready to use. Keep the robot still while this runs (about 1 s).
-     * A single bad read is skipped, not fatal; see PinpointGuard.
-     */
     public static PinpointGuard createLocalizer(HardwareMap map) {
         if (!LOCALIZER_TUNED || !Double.isFinite(localizerConfig.xPodOffset.get())
                 || !Double.isFinite(localizerConfig.yPodOffset.get()))
             throw new IllegalStateException("Pinpoint is not tuned yet. Run Pinpoint Tuner, paste its"
                     + " result over the PINPOINT TUNER RESULT block in Constants.java, then install the app again.");
-        // false = this localizer is used to drive the robot, so a missing pod is an error.
         return PinpointGuard.open(map, localizerConfig, false);
     }
 
@@ -121,7 +108,6 @@ public final class Constants {
 
     public static Follower create(HardwareMap map) {
         Foresight algorithm = createAlgorithm();
-        // Create the drivetrain first so the motors are stopped while the Pinpoint calibrates.
         Mecanum drivetrain = createDrivetrain(map);
         try {
             return new Follower(createLocalizer(map), drivetrain, algorithm);
