@@ -4,6 +4,9 @@ LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shoot
 RIGHT TRIGGER: Intake
 RIGHT BUMPER: Flywheels/shooter (hold to spin, release to switch off)
 Y: Flywheel speed high / low
+BACK: Unlock / lock flywheel tuning. Only while unlocked:
+    D-PAD: P up-down, F left-right    X: step size
+    A: Save the P and F on screen (teleop and auto both use them from then on)
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
@@ -30,6 +33,8 @@ public class MainTeleOp extends OpMode {
     private final FlywheelTunerPIDF FlywheelTunerPIDF = new FlywheelTunerPIDF();
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
     private boolean headingResetPressed;
+    private boolean wasFieldRelative;
+    private boolean lostFieldRelative;
     private final ElapsedTime loopTimer = new ElapsedTime();
 
 
@@ -76,13 +81,28 @@ public class MainTeleOp extends OpMode {
         double forward = -gamepad2.left_stick_y;
         double strafe = gamepad2.left_stick_x;
         double rotate = gamepad2.right_stick_x;
-        if (gamepad2.options && !headingResetPressed) {
+        // OPTIONS is the same button as START, and START + A / START + B is how a gamepad is paired.
+        // Re-pairing in the middle of a match must not re-zero the field heading.
+        boolean headingReset = gamepad2.options && !gamepad2.a && !gamepad2.b;
+        if (headingReset && !headingResetPressed) {
             drive.resetFieldHeading();
         }
-        headingResetPressed = gamepad2.options;
+        headingResetPressed = headingReset;
 
         drive.driveFieldRelative(forward, strafe, rotate);
         addDriveTelemetry();
+
+        // The driver feels it when the drive changes between field-centric and robot-centric:
+        // one long buzz when the Pinpoint heading is lost, two short ones when it is back.
+        boolean fieldRelative = drive.isFieldRelative();
+        if (wasFieldRelative && !fieldRelative) {
+            gamepad2.rumble(800);
+            lostFieldRelative = true;
+        } else if (!wasFieldRelative && fieldRelative && lostFieldRelative) {
+            gamepad2.rumbleBlips(2);
+            lostFieldRelative = false;
+        }
+        wasFieldRelative = fieldRelative;
 
         telemetry.addData("Loop time (ms)", "%.0f", loopTimer.milliseconds());
         loopTimer.reset();
