@@ -9,8 +9,8 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class IndexIntake {
 
-    private static final double INTAKE_POWER = 1.0;
-    private static final double INDEX_POWER = 1.0;
+    private static final double INTAKE_POWER = 0.95;
+    private static final double INDEX_POWER = 0.95;
 
     private DcMotor intakeMotor;
     private DcMotor indexMotor;
