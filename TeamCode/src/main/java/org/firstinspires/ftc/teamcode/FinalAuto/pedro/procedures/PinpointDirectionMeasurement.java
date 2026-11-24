@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
-/** Raw-tick direction evidence, independent of the Pinpoint's fused field pose. */
 final class PinpointDirectionMeasurement {
     private final boolean forward;
     private final double ticksPerInch;

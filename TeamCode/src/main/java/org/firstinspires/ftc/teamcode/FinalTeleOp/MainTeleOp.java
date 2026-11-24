@@ -2,11 +2,11 @@
 LEFT BUMPER: Index inwards
 LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
 RIGHT TRIGGER: Intake
-RIGHT BUMPER: Flywheels/shooter (hold to spin, release to switch off)
-Y: Flywheel speed high / low
-BACK: Unlock / lock flywheel tuning. Only while unlocked:
-    D-PAD: P up-down, F left-right    X: step size
-    A: Save the P and F on screen (teleop and auto both use them from then on)
+RIGHT BUMPER: Flywheels (hold)
+Y: Flywheel speed high/low
+BACK: Unlock flywheel tuning
+D-PAD: Tune P and F, X changes step size
+A: Save P and F
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
@@ -41,8 +41,6 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void init() {
-        // Each hub answers all of its sensor reads for one loop with a single request,
-        // instead of one request per value. Fewer requests = a faster loop.
         for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
@@ -81,8 +79,6 @@ public class MainTeleOp extends OpMode {
         double forward = -gamepad2.left_stick_y;
         double strafe = gamepad2.left_stick_x;
         double rotate = gamepad2.right_stick_x;
-        // OPTIONS is the same button as START, and START + A / START + B is how a gamepad is paired.
-        // Re-pairing in the middle of a match must not re-zero the field heading.
         boolean headingReset = gamepad2.options && !gamepad2.a && !gamepad2.b;
         if (headingReset && !headingResetPressed) {
             drive.resetFieldHeading();
@@ -92,8 +88,6 @@ public class MainTeleOp extends OpMode {
         drive.driveFieldRelative(forward, strafe, rotate);
         addDriveTelemetry();
 
-        // The driver feels it when the drive changes between field-centric and robot-centric:
-        // one long buzz when the Pinpoint heading is lost, two short ones when it is back.
         boolean fieldRelative = drive.isFieldRelative();
         if (wasFieldRelative && !fieldRelative) {
             gamepad2.rumble(800);

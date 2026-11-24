@@ -14,17 +14,6 @@ import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.PinpointGuard;
 
 import java.util.OptionalDouble;
 
-/**
- * Measures the Pinpoint settings by hand. No motor ever gets power here.
- *
- * <p>Three steps, each one starts by itself: keep still for a second, do the move, press Stop.
- * <ol>
- *   <li>Push FORWARD  - is the forward pod counting the right way?</li>
- *   <li>Push LEFT     - is the sideways pod counting the right way?</li>
- *   <li>Turn HALF a turn on the spot - where do the pods sit on the robot?</li>
- * </ol>
- * A single bad Pinpoint read is skipped (see {@link PinpointGuard}); it no longer fails the step.
- */
 public class PinpointTuner extends Procedure {
     enum PodType {
         SWING_ARM,
@@ -32,7 +21,6 @@ public class PinpointTuner extends Procedure {
         CUSTOM
     }
 
-    /** Largest believable pod distance from the robot's center, inches. */
     private static final double MAX_OFFSET_INCHES = 18.0;
 
     public PinpointTuner() {
@@ -131,7 +119,6 @@ public class PinpointTuner extends Procedure {
                 + "PINPOINT TUNER RESULT: START and END. Install the app again, then run Tests > Pose Test.");
     }
 
-    /** Unwraps a step's answer; aborts the procedure with a clear reason when there is none. */
     private <T> T finish(PinpointStageResult<T> result) throws InterruptedException {
         if (result == null) {
             abort("That step was stopped before the Pinpoint finished starting. Run the tuner again and "
@@ -145,7 +132,6 @@ public class PinpointTuner extends Procedure {
         return result.value;
     }
 
-    /** The settings every step shares. Pod offsets stay at zero until the last step measures them. */
     static PinpointConfig config(String name, PodType podType, OptionalDouble customTicksPerInch,
                                  boolean xReversed, boolean yReversed) {
         return new PinpointConfig(c -> {
@@ -169,7 +155,6 @@ public class PinpointTuner extends Procedure {
     }
 }
 
-/** What a step hands back: a value, or the reason there is none. */
 final class PinpointStageResult<T> {
     final T value;
     final String failure;
@@ -188,7 +173,6 @@ final class PinpointStageResult<T> {
     }
 }
 
-/** Shared start-up for every step: start the Pinpoint, wait until it is ready, then measure. */
 abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
     PinpointStage(String title, String description) {
         super(title, description, true);
@@ -203,7 +187,6 @@ abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
         telemetry.addLine("KEEP THE ROBOT STILL - the Pinpoint is starting (about 1 second)");
         telemetry.update();
         try {
-            // true = hand-pushed tuning: a pod warning is shown, not fatal.
             PinpointGuard pinpoint = PinpointGuard.open(hardwareMap, config(), true);
             waitForStart();
             if (isStopRequested()) return null;
@@ -214,11 +197,9 @@ abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
         }
     }
 
-    /** One loop: read the Pinpoint. False means Stop was pressed and the step is over. */
     boolean read(PinpointGuard pinpoint) {
         if (isStopRequested()) return false;
         pinpoint.update();
-        // Stop can land in the middle of a read; that read is thrown away.
         return !isStopRequested();
     }
 
@@ -229,7 +210,6 @@ abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
     }
 }
 
-/** Custom pods only: how many encoder ticks is one inch? */
 class PinpointCustomScale extends PinpointStage<Double> {
     private final String name;
     private final double distance;
@@ -252,7 +232,6 @@ class PinpointCustomScale extends PinpointStage<Double> {
         int start = pinpoint.ticksX();
         int travel = 0;
         while (read(pinpoint)) {
-            // Int subtraction on purpose: it stays correct if the 32-bit counter wraps.
             if (pinpoint.lastReadGood()) travel = pinpoint.ticksX() - start;
             show(pinpoint, "Push FORWARD exactly " + distance + " inches, then press Stop");
             telemetry.addData("Forward pod (ticks)", travel);
@@ -266,7 +245,6 @@ class PinpointCustomScale extends PinpointStage<Double> {
     }
 }
 
-/** Push forward (or left): which way does that pod count? */
 class PinpointDirection extends PinpointStage<PinpointDirectionMeasurement> {
     private final String name;
     private final PinpointTuner.PodType podType;
@@ -291,7 +269,6 @@ class PinpointDirection extends PinpointStage<PinpointDirectionMeasurement> {
 
     @Override
     PinpointDirectionMeasurement measure(PinpointGuard pinpoint) {
-        // goBILDA's published ticks per millimetre. Only used to show inches on screen.
         double ticksPerInch = customTicksPerInch.isPresent() ? customTicksPerInch.getAsDouble()
                 : (podType == PinpointTuner.PodType.SWING_ARM ? 13.26291192 : 19.89436789) * 25.4;
         PinpointDirectionMeasurement measurement = new PinpointDirectionMeasurement(forward, ticksPerInch);
@@ -302,7 +279,6 @@ class PinpointDirection extends PinpointStage<PinpointDirectionMeasurement> {
         int yTicks = 0;
         while (read(pinpoint)) {
             if (pinpoint.lastReadGood()) {
-                // Int subtraction on purpose: it stays correct if the 32-bit counter wraps.
                 xTicks = pinpoint.ticksX() - startX;
                 yTicks = pinpoint.ticksY() - startY;
                 measurement.sample(xTicks, yTicks);
@@ -319,7 +295,6 @@ class PinpointDirection extends PinpointStage<PinpointDirectionMeasurement> {
     }
 }
 
-/** Spin on the spot: where do the pods sit on the robot? */
 class PinpointOffsets extends PinpointStage<PinpointOffsetMeasurement> {
     private final String name;
     private final PinpointTuner.PodType podType;
@@ -354,7 +329,6 @@ class PinpointOffsets extends PinpointStage<PinpointOffsetMeasurement> {
         while (read(pinpoint)) {
             if (pinpoint.lastReadGood()) {
                 last = pinpoint.pose();
-                // Add up small changes so the total keeps counting past 180 degrees.
                 turned += Angle.normalizeSigned(last.heading() - previousHeading);
                 previousHeading = last.heading();
             }
@@ -366,7 +340,6 @@ class PinpointOffsets extends PinpointStage<PinpointOffsetMeasurement> {
             telemetry.update();
             idle();
         }
-        // Express the final position in the frame the robot started in.
         double dx = last.x() - start.x();
         double dy = last.y() - start.y();
         double cos = Math.cos(-start.heading());

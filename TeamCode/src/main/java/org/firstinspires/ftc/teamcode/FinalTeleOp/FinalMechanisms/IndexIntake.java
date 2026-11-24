@@ -46,12 +46,9 @@ public class IndexIntake {
 
         telemetry.addData("Intake power", intakePower);
         telemetry.addData("Index power", indexPower);
-        // No telemetry.update() here: the OpMode sends everything once, after loop() ends.
-        // Updating in the middle made the Driver Station flip between two half-filled screens.
     }
 
     public void stop() {
-        // The motors are null if init() failed (for example a wrong name in the configuration).
         if (intakeMotor != null) intakeMotor.setPower(0.0);
         if (indexMotor != null) indexMotor.setPower(0.0);
     }

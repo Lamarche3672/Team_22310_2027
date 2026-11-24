@@ -14,25 +14,18 @@ Red hive FRONT : 34, 35, 36, 37
 Red hive BACK : 30, 31, 32, 33
 Blue hive FRONT : 38, 39, 40, 41
 Blue hive BACK : 42, 43, 44, 45
-(FRONT = audience side, BACK = side opposite the audience. Competition manual 9.9:
-each group of four is on the BOTTOM of a cell, facing the floor, so the camera has to look up.)
  */
 
 
 public class AprilTagLimelightTest extends OpMode {
     
     
-    /** The Limelight keeps handing back its last result forever, so anything older than this is ignored. */
     private static final long MAX_RESULT_AGE_MS = 250;
 
     public LLResult callId = null;
     
     private Limelight3A limelight;
 
-    /**
-     * Use this one when another OpMode owns this class as a helper: only the running OpMode
-     * has a hardwareMap, so it has to be passed in.
-     */
     public void init(HardwareMap hardwareMap) {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.pipelineSwitch(0); // AprilTag pipeline
@@ -48,7 +41,6 @@ public class AprilTagLimelightTest extends OpMode {
         limelight.start();
     }
 
-    /** Fetches the newest result into callId (null when there is no fresh, valid one). Call once per loop. */
     public void update() {
         LLResult llResult = limelight.getLatestResult();
         boolean fresh = llResult != null && llResult.isValid() && llResult.getStaleness() <= MAX_RESULT_AGE_MS;

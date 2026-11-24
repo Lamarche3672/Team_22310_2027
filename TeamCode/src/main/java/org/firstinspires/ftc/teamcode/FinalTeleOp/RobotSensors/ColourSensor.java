@@ -35,7 +35,6 @@ public class ColourSensor {
     public DetectedColor getDetectedColor(Telemetry telemetry) {
         NormalizedRGBA colors = colorSensor.getNormalizedColors();//return four values
 
-        // No light at all gives alpha 0, and dividing by it gives values that match nothing useful.
         if (colors.alpha <= 0) {
             return DetectedColor.UNKNOWN;
         }
@@ -59,8 +58,6 @@ public class ColourSensor {
         BLUE = <.2, <.5, >.5
          */
 
-        // Each colour follows the table above: RED is high red with low green and blue,
-        // YELLOW is high red and green with low blue, BLUE is low red and green with high blue.
         if (normRed > rr && normGreen < rg && normBlue < rb) {
             return DetectedColor.RED;
         }

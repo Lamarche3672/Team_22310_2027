@@ -8,14 +8,11 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 @TeleOp(name = "Turret April Tag Align", group = "TeamCode")
 public class TurretAutoAlignOpMode extends OpMode {
     private static final int LIMELIGHT_PIPELINE = 8;
-    /** The Limelight keeps handing back its last result forever, so anything older than this is ignored. */
     private static final long MAX_RESULT_AGE_MS = 250;
 
     private Limelight3A limelight;
     private final TurretTracking turret = new TurretTracking();
 
-    // kP starts at 0.0001, far too small to move the turret. Tune it here, on gamepad 1:
-    // d-pad left / right = kP, d-pad up / down = kD, B = step size.
     private final double[] stepSizes = {0.01, 0.001, 0.0001};
     private int stepIndex = 1;
 

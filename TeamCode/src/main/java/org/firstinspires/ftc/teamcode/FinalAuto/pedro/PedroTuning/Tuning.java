@@ -8,7 +8,6 @@ import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.MecanumTuner;
 import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.Tests;
 import org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures.PinpointTuner;
 
-/** Only register the procedures needed by this two-pod + Pinpoint robot. */
 public final class Tuning {
     private Tuning() { }
 
@@ -29,8 +28,6 @@ public final class Tuning {
 
     @Tuner
     public static Procedure tests() {
-        // Pose/driving/localization tests work before Foresight tuning.
-        // Follower tests remain unavailable until the algorithm has been tuned.
         return new Tests(Constants::createDrivetrain, Constants::createLocalizer,
                 Constants.FORESIGHT_TUNED ? Constants::createAlgorithm : null);
     }
