@@ -72,6 +72,19 @@ The controller buzzes when the flywheels are at speed.
 - Turret align ignores results from the wrong Limelight pipeline.
 - Backup opmodes: "Mecanum Field Oriented" used the run mode that caused the brownouts, and "Index" / "Omnidirectional Intake" could never move their motor. Fixed.
 
+### More Nov 24 fixes (things that could go wrong at a comp)
+
+- MAIN TELEOP still drives if the intake, flywheel or Pinpoint is missing from the config. It says what is off on the Driver Station.
+- If the Pinpoint cable blips and the Pinpoint restarts, auto stops instead of driving from a wrong position. In teleop it goes robot-centric until you press OPTIONS.
+- If the Pinpoint glitches while the robot sits in INIT before auto, it sets itself up again instead of crashing.
+- Pressing STOP right after INIT on an auto no longer shows a fake error.
+- Flywheels coast down before reversing (LEFT TRIGGER while still spinning used to slam them backwards). Same for the auto spin-up after a stop.
+- Auto shooting waits for the wheels to recover between pollen even when they can't reach the target speed.
+- Driver Station says so if a flywheel reads 0 (encoder cable or jam).
+- LEFT TRIGGER (outtake) now always wins over RIGHT TRIGGER and LEFT BUMPER.
+- Gamepad 2 buzzes at START if field-centric is not available.
+- "Straight Line Test" and "Angled Line Test" moved to the "Test" group so nobody picks them in a match.
+
 ## Check before a match
 
 1. Flywheel direction. Teleop is `REVERSE`, auto is `FORWARD`. One is wrong. Run an auto with the wheels off the ground and look.

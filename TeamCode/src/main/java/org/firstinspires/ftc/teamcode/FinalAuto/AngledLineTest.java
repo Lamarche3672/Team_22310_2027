@@ -15,7 +15,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
 
-@Autonomous(name = "Angled Line Test", group = "Autonomous")
+@Autonomous(name = "Angled Line Test", group = "Test")
 public class AngledLineTest extends LinearOpMode {
         private Follower follower;
         private final MecanumDriveAuto drive = new MecanumDriveAuto();

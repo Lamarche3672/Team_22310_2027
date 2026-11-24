@@ -116,6 +116,8 @@ public class AprilTagAutoAlignMecanum extends OpMode {
             lastError = 0;
             hasLastError = false;
             lastTime = getRuntime();
+            lastFrameStamp = -1;
+            lastRotate = 0;
         }
 
         //drive our motors!

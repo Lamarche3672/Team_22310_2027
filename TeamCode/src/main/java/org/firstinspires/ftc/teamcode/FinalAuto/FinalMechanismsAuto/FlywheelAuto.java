@@ -79,6 +79,9 @@ public class FlywheelAuto {
 
     public void spinUp(double velocity) {
         if (velocity != targetVelocity) atSpeed = false;
+        if (targetVelocity <= 0 && velocity > 0) {
+            commandedVelocity = Math.max(0, Math.min(velocity, Math.min(rightVelocity, leftVelocity)));
+        }
         targetVelocity = velocity;
     }
 

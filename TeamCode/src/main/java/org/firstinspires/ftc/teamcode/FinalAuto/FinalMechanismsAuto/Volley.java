@@ -27,21 +27,23 @@ public final class Volley {
         double[] fedMs = new double[1];
         double[] pausedMs = new double[1];
         double[] pauseMs = new double[1];
-        boolean[] waitForSpeed = new boolean[1];
+        double[] startSpeed = new double[1];
         return new CommandBuilder()
                 .setStart(() -> {
                     lastNanos[0] = System.nanoTime();
                     fedMs[0] = 0;
                     pausedMs[0] = 0;
                     pauseMs[0] = 0;
-                    waitForSpeed[0] = flywheel.isAtSpeed();
+                    startSpeed[0] = flywheel.slowerWheelSpeed();
                 })
                 .setExecute(() -> {
                     long now = System.nanoTime();
                     double elapsedMs = (now - lastNanos[0]) / 1e6;
                     lastNanos[0] = now;
 
-                    boolean pause = waitForSpeed[0] && !flywheel.isAtSpeed()
+                    boolean recovered = flywheel.slowerWheelSpeed()
+                            >= startSpeed[0] - FlywheelAuto.READY_TOLERANCE;
+                    boolean pause = !recovered
                             && pauseMs[0] < FLYWHEEL_RECOVERY_MS && pausedMs[0] < MAX_PAUSED_MS;
                     if (pause) {
                         intake.stop();
@@ -50,7 +52,7 @@ public final class Volley {
                     } else {
                         intake.feedShooter();
                         fedMs[0] += elapsedMs;
-                        if (flywheel.isAtSpeed()) pauseMs[0] = 0;
+                        if (recovered) pauseMs[0] = 0;
                     }
                 })
                 .setDone(() -> fedMs[0] >= FEED_MS)

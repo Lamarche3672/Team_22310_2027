@@ -8,12 +8,13 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver.DeviceStatus;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public final class PinpointGuard implements Localizer {
     public static final double READY_TIMEOUT_SECONDS = 5.0;
     public static final double FAULT_CONFIRM_SECONDS = 1.5;
     public static final double MAX_BAD_STREAK_SECONDS = 1.0;
-    private static final int MIN_BAD_STREAK_READS = 10;
+    private static final int MIN_BAD_STREAK_READS = 3;
 
     private final String name;
     private final GoBildaPinpointDriver pinpoint;
@@ -30,6 +31,9 @@ public final class PinpointGuard implements Localizer {
     private int badStreak;
     private long badStreakStart;
     private String warning;
+    private double baseXmm;
+    private double baseYmm;
+    private boolean restarted;
 
     public static PinpointGuard open(HardwareMap map, PinpointConfig config, boolean allowPodFaults) {
         String name = config.name.get();
@@ -56,6 +60,11 @@ public final class PinpointGuard implements Localizer {
 
         PinpointGuard guard = new PinpointGuard(name, pinpoint, localizer, allowPodFaults);
         guard.awaitReady();
+        try {
+            guard.baseXmm = pinpoint.getXOffset(DistanceUnit.MM);
+            guard.baseYmm = pinpoint.getYOffset(DistanceUnit.MM);
+        } catch (RuntimeException ignored) {
+        }
         return guard;
     }
 
@@ -126,7 +135,9 @@ public final class PinpointGuard implements Localizer {
         localizer.update();
         status = pinpoint.getDeviceStatus();
         reads++;
-        lastReadGood = status == DeviceStatus.READY || (allowPodFaults && isPodFault(status));
+        boolean good = status == DeviceStatus.READY || (allowPodFaults && isPodFault(status));
+        if (good && badStreak > 0 && lostConfig()) good = false;
+        lastReadGood = good;
         if (lastReadGood) {
             goodReads++;
             badStreak = 0;
@@ -136,6 +147,17 @@ public final class PinpointGuard implements Localizer {
         } else if (badStreak++ == 0) {
             badStreakStart = System.nanoTime();
         }
+    }
+
+    private boolean lostConfig() {
+        if (Math.abs(baseXmm) < 1 && Math.abs(baseYmm) < 1) return false;
+        try {
+            restarted = Math.abs(pinpoint.getXOffset(DistanceUnit.MM) - baseXmm) > 1
+                    || Math.abs(pinpoint.getYOffset(DistanceUnit.MM) - baseYmm) > 1;
+        } catch (RuntimeException error) {
+            restarted = true;
+        }
+        return restarted;
     }
 
     private void awaitReady() {
@@ -197,12 +219,16 @@ public final class PinpointGuard implements Localizer {
             firmware = pinpoint.getDeviceVersion();
         } catch (RuntimeException ignored) {
         }
+        if (restarted)
+            return "The Pinpoint restarted (its cable lost power for a moment) and forgot where the"
+                    + " robot is. Check the Pinpoint cable at both ends.";
         String facts = " [status " + seen + ", good reads " + goodReads + " of " + reads
                 + ", device id " + id + ", firmware " + firmware + "]";
         if (id == 0 && firmware == 0)
             return "The Control Hub gets no answer from the Pinpoint \"" + name + "\". In Configure"
                     + " Robot, check it is a \"goBILDA Pinpoint Odometry Computer\" on the SAME I2C"
-                    + " port number its cable is plugged into, and that the Pinpoint light is on." + facts;
+                    + " port number its cable is plugged into, and that the Pinpoint light is on. If it worked"
+                    + " a moment ago, the cable or the hub dropped out." + facts;
         return faultHelp(seen) + facts;
     }
 

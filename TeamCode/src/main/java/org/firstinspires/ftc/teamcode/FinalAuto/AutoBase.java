@@ -93,9 +93,19 @@ public abstract class AutoBase extends LinearOpMode {
             drive.init(hardwareMap, startPose());
 
             Pose start = startPose();
+            String problem = null;
             while (opModeInInit()) {
-                drive.update();
-                telemetry.addLine("READY - " + autoName());
+                try {
+                    drive.update();
+                } catch (IllegalStateException fault) {
+                    try {
+                        drive.init(hardwareMap, start);
+                        problem = null;
+                    } catch (RuntimeException stillBad) {
+                        problem = stillBad.getMessage();
+                    }
+                }
+                telemetry.addLine(problem == null ? "READY - " + autoName() : "NOT READY: " + problem);
                 telemetry.addLine("Load 4 pollen. Robot on the start position.");
                 telemetry.addData("Should read about", "x %.0f, y %.0f, heading %.0f",
                         start.x(), start.y(), Math.toDegrees(start.heading()));
@@ -120,6 +130,8 @@ public abstract class AutoBase extends LinearOpMode {
                 intake.addTelemetry(telemetry);
                 telemetry.update();
             }
+        } catch (RuntimeException error) {
+            if (!isStopRequested()) throw error;
         } finally {
             try {
                 Scheduler.reset();
