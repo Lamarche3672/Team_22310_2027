@@ -110,6 +110,10 @@ public final class PinpointGuard implements Localizer {
         return goodTicksY;
     }
 
+    public int badStreak() {
+        return badStreak;
+    }
+
     public long skippedReads() {
         return reads - goodReads;
     }

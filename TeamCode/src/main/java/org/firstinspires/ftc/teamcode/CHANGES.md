@@ -13,7 +13,7 @@ Quick notes on what changed in the robot code and what to check before we trust 
 | RedAllianceWeak | Drives to the shooting spot, shoots 4 preloads, parks |
 | BlueAllianceWeak | Same thing, mirrored for blue |
 
-- Every auto gives up and parks at 25 s if something goes wrong.
+- Every auto gives up and parks at 24 s if something goes wrong.
 - Every auto selects MAIN TELEOP afterwards.
 - The indexer runs slowly while intaking to make room for more pollen.
 - Flower pickup is in the code but turned off (`FLOWER_CYCLE` / `FLOWER_PICKUP`).
@@ -57,6 +57,20 @@ The controller buzzes when the flywheels are at speed.
 - Auto align aimed at the wrong tags and had forward backwards
 - Driver Station telemetry flickering
 - Pedro "Pinpoint not ready" in the tuners
+
+## Nov 24 fixes
+
+- FTCLib removed from `TeamCode/build.gradle`. Nothing used it and it was the same library as SolversLib twice. SolversLib is still there. Do a Gradle sync after pulling.
+- Auto: if the Pinpoint stops answering, the robot stops instead of driving blind for a second.
+- Auto: only shoots if it is actually facing the target (within 10 degrees).
+- Auto: park deadline moved to 24 s so the worst case still ends before 30 s.
+- "22310 Pedro Auto Test" never got past the first leg. Fixed.
+- Flywheels: pressing the bumper again while the wheels are still spinning no longer brakes them first.
+- Heading reset now happens when you let go of OPTIONS, so pairing with START + A/B can't trigger it.
+- Drive still ramps up when loops are slow.
+- Auto align opmode renamed to "April Tag Auto Align" (it drives the robot, it is not just a camera test). Its tuning can't go negative anymore.
+- Turret align ignores results from the wrong Limelight pipeline.
+- Backup opmodes: "Mecanum Field Oriented" used the run mode that caused the brownouts, and "Index" / "Omnidirectional Intake" could never move their motor. Fixed.
 
 ## Check before a match
 

@@ -40,7 +40,8 @@ public class TurretAutoAlignOpMode extends OpMode {
         if (gamepad1.dpadDownWasPressed()) turret.setkD(Math.max(0, turret.getkD() - stepSizes[stepIndex]));
 
         LLResult result = limelight.getLatestResult();
-        if (result != null && result.isValid() && result.getStaleness() <= MAX_RESULT_AGE_MS) {
+        if (result != null && result.isValid() && result.getStaleness() <= MAX_RESULT_AGE_MS
+                && result.getPipelineIndex() == LIMELIGHT_PIPELINE) {
             double bearing = result.getTx();
             telemetry.addData("Limelight tx (deg)", bearing);
             turret.update(bearing);

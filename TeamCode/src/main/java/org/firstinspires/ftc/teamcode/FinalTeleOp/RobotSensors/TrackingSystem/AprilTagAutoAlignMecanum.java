@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors.AprilTagLimelightTest;
 
-@TeleOp(name = "April Tag Limelight Test", group = "TeamCode")
+@TeleOp(name = "April Tag Auto Align", group = "TeamCode")
 
 public class AprilTagAutoAlignMecanum extends OpMode {
     private final AprilTagLimelightTest aprilTagLimelightTest = new AprilTagLimelightTest();
@@ -27,7 +27,7 @@ public class AprilTagAutoAlignMecanum extends OpMode {
     double curTime = 0;
     double lastTime = 0;
     double minTurnPower = 0.08;
-    private long lastFrameStamp = -1;
+    private double lastFrameStamp = -1;
     private double lastRotate = 0;
     private boolean hasLastError = false;
 
@@ -36,7 +36,7 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
     // ----------controller based PD tuning ------------------
 
-    double[] stepSizes = {0.1, 0.001, 0.0001};
+    double[] stepSizes = {0.01, 0.001, 0.0001};
     int stepIndex = 1;
 
 
@@ -79,11 +79,12 @@ public class AprilTagAutoAlignMecanum extends OpMode {
         //--------------------auto align rotation logic -----------
 
         boolean autoAligning = gamepad2.y && id35 != null;
+        if (id35 != null) {
+            error = id35.getTargetXDegrees() - goalX;
+        }
         if(gamepad2.y) {
             if (id35 != null) {
-                error = id35.getTargetXDegrees() - goalX;
-
-                long frameStamp = aprilTagLimelightTest.callId.getControlHubTimeStamp();
+                double frameStamp = aprilTagLimelightTest.callId.getTimestamp();
                 if (frameStamp == lastFrameStamp) {
                     rotate = lastRotate;
                 } else if (Math.abs(error) < angleTolerance) {
@@ -126,12 +127,12 @@ public class AprilTagAutoAlignMecanum extends OpMode {
 
         //update P and D on the fly
         //'B' button cycles through the different step sizes for tuning precision.
-        if(gamepad2.bWasPressed()) {
+        if(gamepad2.bWasPressed() && !gamepad2.start) {
             stepIndex = (stepIndex + 1) % stepSizes.length; // Modulo wraps the index back to 0.
         }
 
         if (gamepad2.dpadLeftWasPressed()) {
-            kP -= stepSizes[stepIndex];
+            kP = Math.max(0, kP - stepSizes[stepIndex]);
         }
         if (gamepad2.dpadRightWasPressed()) {
             kP += stepSizes[stepIndex];
@@ -140,7 +141,7 @@ public class AprilTagAutoAlignMecanum extends OpMode {
             kD += stepSizes[stepIndex];
         }
         if (gamepad2.dpadDownWasPressed()) {
-            kD -= stepSizes[stepIndex];
+            kD = Math.max(0, kD - stepSizes[stepIndex]);
         }
 
         //-----------telemetry----------

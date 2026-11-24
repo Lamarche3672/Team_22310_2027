@@ -126,7 +126,7 @@ public final class PedroAuto extends LinearOpMode {
                 showStatus("Stopped: timeout on " + name);
                 return false;
             }
-            if (!follower.isBusy()) {
+            if (!follower.following()) {
                 follower.stop();
                 Pose actual = follower.pose();
                 double headingDifference = actual.heading() - target.heading();

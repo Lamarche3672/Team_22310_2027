@@ -110,7 +110,8 @@ public class RedAllianceStrong extends AutoBase {
 
     private Command shootIfAtSecondShotSpot(double velocity) {
         return conditional(
-                () -> drive.isNear(point33GoforSecondshot, SHOOT_SPOT_REACH_INCHES),
+                () -> drive.isNear(point33GoforSecondshot, SHOOT_SPOT_REACH_INCHES)
+                        && drive.isFacing(point33GoforSecondshot, SHOOT_AIM_DEGREES),
                 Volley.shoot(flywheel, intake, velocity),
                 flywheel.stopCommand());
     }

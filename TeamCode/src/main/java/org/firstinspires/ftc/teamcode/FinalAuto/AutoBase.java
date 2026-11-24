@@ -22,7 +22,8 @@ public abstract class AutoBase extends LinearOpMode {
 
     protected static final double SETTLE_TIMEOUT_MS = 1500;
     protected static final double PARK_TIMEOUT_MS = 4000;
-    protected static final double PARK_DEADLINE_MS = 25000;
+    protected static final double SHOOT_AIM_DEGREES = 10;
+    protected static final double PARK_DEADLINE_MS = 24000;
     private static final double PARK_ALREADY_THERE_INCHES = 1;
     private static final double FIELD_MIDDLE_INCHES = 72;
 
