@@ -55,11 +55,11 @@ public class FlywheelTunerPIDF {
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
         flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+        flywheelMotor.setDirection(DcMotorSimple.Direction.FORWARD);
 
         flywheelMotor2 = hardwareMap.get(DcMotorEx.class, "left_flywheel");
         flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
+        flywheelMotor2.setDirection(DcMotorSimple.Direction.FORWARD);
 
         if (P == 0 && F == 0) {
             PIDFCoefficients start = FlywheelAuto.chooseCoefficients(flywheelMotor);
