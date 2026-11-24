@@ -13,6 +13,7 @@ public class TurretTracking {
     private double kD = 0.0000;
     private double goalX = 0;
     private double lastError = 0;
+    private boolean hasLastError = false;
     private double angleTolerance = 0.2;
     private final double MAX_POWER = 0.6;
     private double power = 0;
@@ -42,10 +43,16 @@ public class TurretTracking {
         timer.reset();
     }
 
+    /** The power last sent to the turret motor, for telemetry. */
+    public double getPower() {
+        return power;
+    }
+
     /** Turret off. Safe to call even if init() failed and there is no turret motor. */
     public void stop() {
         if (turret != null) turret.setPower(0);
         lastError = 0;
+        hasLastError = false;
     }
 
     public void update(double targetBearing) {
@@ -54,7 +61,9 @@ public class TurretTracking {
 
         if (Double.isNaN(targetBearing)) {
             turret.setPower(0);
+            power = 0;
             lastError = 0;
+            hasLastError = false;
             return;
         }
 
@@ -63,8 +72,10 @@ public class TurretTracking {
         double error = goalX - targetBearing;
         double pTerm = error * kP;
 
+        // No D on the first reading after the target (re)appears: there is nothing to compare it
+        // with, and comparing with 0 would give the turret a kick.
         double dTerm = 0;
-        if (deltaTime > 0) {
+        if (hasLastError && deltaTime > 0) {
             dTerm = ((error - lastError) / deltaTime) * kD;
         }
 
@@ -78,6 +89,7 @@ public class TurretTracking {
 
         turret.setPower(power);
         lastError = error;
+        hasLastError = true;
 
     }
 

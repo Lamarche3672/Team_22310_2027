@@ -28,6 +28,16 @@ public class AprilTagAutoAlignMecanum extends OpMode {
     double kD = 0.0001;
     double curTime = 0;
     double lastTime = 0;
+    /**
+     * The smallest turning power the correction ever asks for. kP x a few degrees is only a few
+     * percent of power, which cannot start the robot turning; this gets it over the friction.
+     */
+    double minTurnPower = 0.08;
+    // The camera gives a new picture far less often than this loop runs. The correction is worked
+    // out once per picture and kept until the next one, so the "D" part compares two real pictures.
+    private long lastFrameStamp = -1;
+    private double lastRotate = 0;
+    private boolean hasLastError = false;
 
     // -------------- driving setup -------------------
     double forward, strafe, rotate;
@@ -85,27 +95,40 @@ public class AprilTagAutoAlignMecanum extends OpMode {
                 // upside down the angle flips sign: make kP negative with the d-pad.)
                 error = id35.getTargetXDegrees() - goalX;
 
-                if (Math.abs(error) < angleTolerance) {
+                long frameStamp = aprilTagLimelightTest.callId.getControlHubTimeStamp();
+                if (frameStamp == lastFrameStamp) {
+                    // Same picture as last loop: keep the correction worked out for it.
+                    rotate = lastRotate;
+                } else if (Math.abs(error) < angleTolerance) {
                     rotate = 0;
+                    lastError = error;
+                    hasLastError = true;
+                    lastTime = getRuntime();
                 } else {
                     double pTerm = error * kP;
 
                     curTime = getRuntime();
                     double dT = curTime - lastTime;
-                    // Two loops can land on the same timestamp; dividing by 0 would stop the drive.
-                    double dTerm = dT > 0 ? ((error - lastError) / dT) * kD : 0;
+                    // No D on the first picture (there is nothing to compare it with yet), and
+                    // never divide by a zero time step.
+                    double dTerm = hasLastError && dT > 0 ? ((error - lastError) / dT) * kD : 0;
 
-                    rotate = Range.clip(pTerm + dTerm, -0.4, 0.4);
+                    rotate = Range.clip(Math.signum(error) * minTurnPower + pTerm + dTerm, -0.4, 0.4);
 
                     lastError = error;
+                    hasLastError = true;
                     lastTime = curTime;
                 }
+                lastFrameStamp = frameStamp;
+                lastRotate = rotate;
             } else {
                 lastTime = getRuntime();
                 lastError = 0;
+                hasLastError = false;
             }
         } else {
             lastError = 0;
+            hasLastError = false;
             lastTime = getRuntime();
         }
 

@@ -7,7 +7,6 @@ import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.CommandBuilder;
-import com.pedropathing.ivy.pedro.PedroCommands;
 import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.paths.Path;
@@ -42,6 +41,8 @@ public class MecanumDriveAuto {
     public static final double STALLED_SPEED_INCHES_PER_SECOND = 1.0;
     public static final double STALLED_TURN_DEGREES_PER_SECOND = 5.0;
     public static final double STALLED_MS = 600;
+    /** The lowest speed limit followSlowly() accepts; see the note there. */
+    public static final double SLOWEST_RELIABLE_INCHES_PER_SECOND = 24;
 
     private Follower follower;
 
@@ -72,29 +73,48 @@ public class MecanumDriveAuto {
 
     // ------------------------------------------------------------------ commands for a routine
 
-    /** Drives the path. Moves on when the robot reaches the end, is blocked, or after timeoutMs. */
+    /**
+     * Drives the path. Moves on when the robot reaches the end, is blocked (has not moved for
+     * STALLED_MS), or after timeoutMs.
+     */
     public Command follow(Path path, double timeoutMs) {
-        return PedroCommands.follow(follower, path).raceWith(waitMs(timeoutMs), waitUntilStalled());
-    }
-
-    /** Finishes once the robot has not moved for STALLED_MS, counted from when the drive starts. */
-    private Command waitUntilStalled() {
+        long[] startedNanos = new long[1];
         long[] lastMovedNanos = new long[1];
         return new CommandBuilder()
-                .setStart(() -> lastMovedNanos[0] = System.nanoTime())
+                .setStart(() -> {
+                    follower.follow(path);
+                    startedNanos[0] = System.nanoTime();
+                    lastMovedNanos[0] = startedNanos[0];
+                })
                 .setDone(() -> {
                     long now = System.nanoTime();
                     if (isMoving()) lastMovedNanos[0] = now;
-                    return now - lastMovedNanos[0] >= STALLED_MS * 1e6;
+                    return follower.atParametricEnd()
+                            || now - startedNanos[0] >= timeoutMs * 1e6
+                            || now - lastMovedNanos[0] >= STALLED_MS * 1e6;
+                })
+                .setEnd(reason -> {
+                    // Gave up before the end (blocked, out of time, or cut off by the park deadline):
+                    // stop pushing along the path and hold this spot. Pedro itself would keep
+                    // driving into whatever is in the way until the next path starts.
+                    if (follower.following() && !follower.atParametricEnd()) {
+                        follower.hold(follower.pose());
+                    }
                 });
     }
 
     /**
-     * Same as follow(), but never faster than inchesPerSecond.
-     * The limit belongs to this path only; Pedro removes it when the path ends.
+     * Same as follow(), with a speed limit that belongs to this path only (Pedro removes it when
+     * the path ends).
+     *
+     * Careful: Pedro does not measure the speed. It turns the limit into a fixed motor power of
+     * about 0.009 x inchesPerSecond, so 20 is only 18 % power, too little to move a mecanum robot
+     * cleanly (it creeps and stutters). Limits under SLOWEST_RELIABLE_INCHES_PER_SECOND are
+     * raised to it.
      */
     public Command followSlowly(Path path, double inchesPerSecond, double timeoutMs) {
-        return follow(path.with(Constants.foresightConfig.maxVelocityConstraint.at(inchesPerSecond)), timeoutMs);
+        double limit = Math.max(inchesPerSecond, SLOWEST_RELIABLE_INCHES_PER_SECOND);
+        return follow(path.with(Constants.foresightConfig.maxVelocityConstraint.at(limit)), timeoutMs);
     }
 
     /** follow() ends just before the robot stops. Use this before shooting so the robot is steady. */
@@ -104,6 +124,11 @@ public class MecanumDriveAuto {
 
     public Command stopCommand() {
         return instant(this::stop);
+    }
+
+    /** Holds the robot exactly where it is now, so shooting cannot nudge it off its aim. */
+    public Command holdCommand() {
+        return instant(() -> follower.hold(follower.pose()));
     }
 
     public boolean isMoving() {

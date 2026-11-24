@@ -11,23 +11,29 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 public class MecanumDriveFinal {
     private static final double DRIVE_DEADZONE = 0.05;
+    /** How much of the stick curve is a straight line (the rest is cubic). See stickCurve(). */
+    private static final double STICK_LINEAR_PART = 0.4;
+    private static final double POWER_WRITE_THRESHOLD = 0.01;
+    private static final long POWER_RESEND_NANOS = 250_000_000L;
 
     // ------------------------------------------------------------------ battery protection
     // Added because driving pulled the battery from 11 V to 4 V. If the drive feels wrong, tune
     // these instead of removing them: MAX_POWER_RISE_PER_SECOND = 1000 switches the ramp off,
     // MIN_POWER_LIMIT = 1.0 switches the low-battery limiter off.
-    /** Wheel power may rise this much per second (4 = zero to full in a quarter second). Slowing down is instant. */
+    /** Drive power may rise this much per second (4 = zero to full in a quarter second). Slowing down is instant. */
     private static final double MAX_POWER_RISE_PER_SECOND = 4.0;
-    /** When the battery drops below this while driving, the drive power is cut back... */
-    private static final double LOW_VOLTAGE = 9.0;
-    /** ...and given back once the battery is above this again. */
-    private static final double RECOVERED_VOLTAGE = 10.0;
+    /** At this battery voltage and above the drive gets full power. */
+    private static final double FULL_POWER_VOLTAGE = 10.5;
+    /** Between the two voltages the power slides down smoothly; at this one it is at its lowest. */
+    private static final double LOW_VOLTAGE = 7.5;
     /** The drive is never cut below this fraction of the stick, so the robot can always move. */
     private static final double MIN_POWER_LIMIT = 0.35;
-    private static final double LIMIT_DROP_PER_SECOND = 3.0;
-    private static final double LIMIT_RISE_PER_SECOND = 0.5;
-    private static final long VOLTAGE_READ_NANOS = 50_000_000L;   // 20 times a second
-    private static final long CURRENT_READ_NANOS = 250_000_000L;  // 4 times a second
+    /** The voltage is averaged over about this long, so the limit glides instead of jumping. */
+    private static final double VOLTAGE_SMOOTHING_SECONDS = 0.35;
+    private static final double LIMIT_DROP_PER_SECOND = 2.0;
+    private static final double LIMIT_RISE_PER_SECOND = 1.0;
+    private static final long VOLTAGE_READ_NANOS = 100_000_000L;  // 10 times a second
+    private static final long CURRENT_READ_NANOS = 100_000_000L;  // one motor each time, so 4 motors in 0.4 s
 
     private DcMotorEx frontLeftMotor;
     private DcMotorEx backLeftMotor;
@@ -36,10 +42,16 @@ public class MecanumDriveFinal {
     private VoltageSensor battery;
 
     private final double[] wheelPowers = new double[4];   // FL, BL, FR, BR as last sent
+    private final long[] lastWriteNanos = new long[4];
+    private double rampedForward;
+    private double rampedStrafe;
+    private double rampedRotate;
     private final double[] wheelAmps = new double[4];
     private double powerLimit = 1.0;
     private double batteryVolts = Double.NaN;
+    private double smoothedVolts = Double.NaN;
     private double lowestVolts = Double.NaN;
+    private int nextCurrentMotor;
     private long lastDriveNanos;
     private long lastVoltageNanos;
     private long lastCurrentNanos;
@@ -83,6 +95,7 @@ public class MecanumDriveFinal {
         stop();
         powerLimit = 1.0;
         lowestVolts = Double.NaN;
+        smoothedVolts = Double.NaN;
 
         pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         headingOffsetRadians = 0;
@@ -100,10 +113,21 @@ public class MecanumDriveFinal {
 
     /**
      * Like drive(), but rotatePower is already a motor power worked out by a controller (auto-align),
-     * not a stick. It skips the stick curve and deadzone, which would shrink a small correction to nothing.
+     * not a stick. It skips the stick curve, the deadzone and the ramp, which would shrink or delay
+     * a small correction.
      */
     public void driveWithRotatePower(double forward, double strafe, double rotatePower) {
         driveCubic(forward, strafe, rotatePower, 0, false);
+    }
+
+    /**
+     * The stick curve: part straight line, part cubic. A pure cubic gives 0.125 power at half stick,
+     * and with the motors on direct power that is not enough to start a mecanum robot moving, so the
+     * first half of the stick did nothing and then the robot lurched. This starts moving early and
+     * still gives fine control near the middle. STICK_LINEAR_PART = 0 is the old pure cubic.
+     */
+    private static double stickCurve(double amount) {
+        return STICK_LINEAR_PART * amount + (1.0 - STICK_LINEAR_PART) * amount * amount * amount;
     }
 
     private void driveCubic(double forward, double strafe, double rotate, double heading, boolean rotateIsStick) {
@@ -112,25 +136,47 @@ public class MecanumDriveFinal {
             return;
         }
 
-        // Cube the stick magnitude, not each axis: preserve the requested direction.
+        // Curve the stick magnitude, not each axis: preserve the requested direction.
         double magnitude = Math.hypot(forward, strafe);
         double limitedMagnitude = Math.min(1.0, magnitude);
         double scale = magnitude > DRIVE_DEADZONE
-                ? Math.pow(limitedMagnitude, 3) / magnitude : 0;
+                ? stickCurve(limitedMagnitude) / magnitude : 0;
         forward *= scale;
         strafe *= scale;
         rotate = Math.max(-1.0, Math.min(1.0, rotate));
         if (rotateIsStick) {
-            rotate = Math.abs(rotate) > DRIVE_DEADZONE ? Math.pow(rotate, 3) : 0;
+            rotate = Math.abs(rotate) > DRIVE_DEADZONE ? Math.signum(rotate) * stickCurve(Math.abs(rotate)) : 0;
         }
 
+        long now = System.nanoTime();
+        double gap = (now - lastDriveNanos) / 1e9;
+        // After a pause (first loop, or the drive was stopped for a while) the ramp starts from now.
+        double dt = lastDriveNanos == 0 || gap > 0.2 ? 0.0 : gap;
+        lastDriveNanos = now;
+        updateBatteryProtection(now, dt);
+
+        // The ramp is on forward / strafe / rotate, before they are mixed into wheel powers, so the
+        // wheels always keep the right balance. (Ramping each wheel on its own left the robot still
+        // turning for a moment after the turn stick was let go.) Speeding up is ramped so four motors
+        // never jump to full power at once; slowing down and changing direction are immediate.
+        double maxRise = MAX_POWER_RISE_PER_SECOND * dt;
+        rampedForward = ramp(rampedForward, forward, maxRise);
+        rampedStrafe = ramp(rampedStrafe, strafe, maxRise);
+        rampedRotate = rotateIsStick ? ramp(rampedRotate, rotate, maxRise) : rotate;
+
         // Pinpoint heading is CCW-positive; strafe input is right-positive.
-        double robotForward = forward * Math.cos(heading) - strafe * Math.sin(heading);
-        double robotStrafe = forward * Math.sin(heading) + strafe * Math.cos(heading);
-        applyMotorPowers(robotForward, robotStrafe, rotate);
+        double robotForward = rampedForward * Math.cos(heading) - rampedStrafe * Math.sin(heading);
+        double robotStrafe = rampedForward * Math.sin(heading) + rampedStrafe * Math.cos(heading);
+        applyMotorPowers(robotForward, robotStrafe, rampedRotate, now);
     }
 
-    private void applyMotorPowers(double forward, double strafe, double rotate) {
+    private static double ramp(double current, double target, double maxRise) {
+        if (target * current < 0) current = 0.0;                  // changing direction: let go at once
+        if (Math.abs(target) <= Math.abs(current)) return target;  // slowing down: at once
+        return current + Math.max(-maxRise, Math.min(maxRise, target - current));
+    }
+
+    private void applyMotorPowers(double forward, double strafe, double rotate, long now) {
         double frontLeftPower = forward + strafe + rotate;
         double backLeftPower = forward - strafe + rotate;
         double frontRightPower = forward - strafe - rotate;
@@ -140,40 +186,45 @@ public class MecanumDriveFinal {
                 Math.max(Math.abs(frontLeftPower), Math.abs(backLeftPower)),
                 Math.max(Math.abs(frontRightPower), Math.abs(backRightPower))));
 
-        long now = System.nanoTime();
-        double dt = lastDriveNanos == 0 ? 0.0 : Math.min(0.1, (now - lastDriveNanos) / 1e9);
-        lastDriveNanos = now;
-        updateBatteryProtection(now, dt);
-
         double[] targets = {frontLeftPower / maxPower, backLeftPower / maxPower,
                 frontRightPower / maxPower, backRightPower / maxPower};
-        double maxRise = MAX_POWER_RISE_PER_SECOND * dt;
+
+        // Low battery: the strongest wheel is capped at the limit and the others shrink with it,
+        // so the robot keeps its direction. Commands already under the limit are not touched.
+        double strongest = 0.0;
+        for (double target : targets) strongest = Math.max(strongest, Math.abs(target));
+        double cap = strongest > powerLimit ? powerLimit / strongest : 1.0;
+
+        DcMotorEx[] motors = {frontLeftMotor, backLeftMotor, frontRightMotor, backRightMotor};
         for (int i = 0; i < 4; i++) {
-            double target = targets[i] * powerLimit;
-            // Changing direction: let go of the old direction at once, then ramp up the new one.
-            double current = target * wheelPowers[i] < 0 ? 0.0 : wheelPowers[i];
-            boolean slowingDown = Math.abs(target) <= Math.abs(current);
-            // Speeding up is ramped so four motors never jump to full power at once, which is the
-            // biggest current spike a drivetrain makes. Slowing down is immediate.
-            wheelPowers[i] = slowingDown ? target : current + Math.max(-maxRise, Math.min(maxRise, target - current));
+            double power = targets[i] * cap;
+            // A change smaller than 1 % is not worth a command to the hub (each one takes a few
+            // milliseconds), but the power is sent again every quarter second regardless, so the
+            // motors recover by themselves if the hub dropped a command or restarted.
+            boolean changed = power != wheelPowers[i]
+                    && (power == 0.0 || Math.abs(power - wheelPowers[i]) >= POWER_WRITE_THRESHOLD);
+            if (changed || now - lastWriteNanos[i] >= POWER_RESEND_NANOS) {
+                motors[i].setPower(power);
+                wheelPowers[i] = power;
+                lastWriteNanos[i] = now;
+            }
         }
-        frontLeftMotor.setPower(wheelPowers[0]);
-        backLeftMotor.setPower(wheelPowers[1]);
-        frontRightMotor.setPower(wheelPowers[2]);
-        backRightMotor.setPower(wheelPowers[3]);
     }
 
     /**
-     * Watches the battery. If driving pulls it under LOW_VOLTAGE the drive power is turned down
-     * until it holds, so the Control Hub does not brown out; it comes back as the battery recovers.
+     * Watches the battery so the Control Hub does not brown out. The drive power follows the
+     * (averaged) battery voltage on a slope: full power at FULL_POWER_VOLTAGE and above, sliding
+     * down to MIN_POWER_LIMIT at LOW_VOLTAGE. A slope settles at a steady power; switching the
+     * power down and back up at two fixed voltages made the drive surge.
      */
     private void updateBatteryProtection(long now, double dt) {
         readBattery(now);
-        if (batteryVolts < LOW_VOLTAGE) {
-            powerLimit = Math.max(MIN_POWER_LIMIT, powerLimit - LIMIT_DROP_PER_SECOND * dt);
-        } else if (batteryVolts > RECOVERED_VOLTAGE) {
-            powerLimit = Math.min(1.0, powerLimit + LIMIT_RISE_PER_SECOND * dt);
-        }
+        if (Double.isNaN(batteryVolts)) return;
+        smoothedVolts = Double.isNaN(smoothedVolts) ? batteryVolts
+                : smoothedVolts + (batteryVolts - smoothedVolts) * Math.min(1.0, dt / VOLTAGE_SMOOTHING_SECONDS);
+        double fraction = (smoothedVolts - LOW_VOLTAGE) / (FULL_POWER_VOLTAGE - LOW_VOLTAGE);
+        double wanted = MIN_POWER_LIMIT + (1.0 - MIN_POWER_LIMIT) * Math.max(0.0, Math.min(1.0, fraction));
+        powerLimit += Math.max(-LIMIT_DROP_PER_SECOND * dt, Math.min(LIMIT_RISE_PER_SECOND * dt, wanted - powerLimit));
     }
 
     private void readBattery(long now) {
@@ -192,15 +243,16 @@ public class MecanumDriveFinal {
         long now = System.nanoTime();
         readBattery(now);
         if (now - lastCurrentNanos >= CURRENT_READ_NANOS) {
+            // Each current read is a separate request to the hub. Reading one motor per turn
+            // instead of all four at once keeps the drive loop from hiccuping.
             lastCurrentNanos = now;
-            wheelAmps[0] = frontLeftMotor.getCurrent(CurrentUnit.AMPS);
-            wheelAmps[1] = backLeftMotor.getCurrent(CurrentUnit.AMPS);
-            wheelAmps[2] = frontRightMotor.getCurrent(CurrentUnit.AMPS);
-            wheelAmps[3] = backRightMotor.getCurrent(CurrentUnit.AMPS);
+            DcMotorEx[] motors = {frontLeftMotor, backLeftMotor, frontRightMotor, backRightMotor};
+            wheelAmps[nextCurrentMotor] = motors[nextCurrentMotor].getCurrent(CurrentUnit.AMPS);
+            nextCurrentMotor = (nextCurrentMotor + 1) % motors.length;
         }
         telemetry.addData("Battery (V)", "%.1f now, %.1f lowest", batteryVolts, lowestVolts);
         telemetry.addData("Drive power limit", powerLimit < 0.999
-                ? String.format("%.0f%% - BATTERY SAGGING, power cut back", powerLimit * 100) : "100%");
+                ? String.format("%.0f%% - battery low, power eased off", powerLimit * 100) : "100%");
         telemetry.addData("Drive amps FL / BL / FR / BR", "%.1f / %.1f / %.1f / %.1f",
                 wheelAmps[0], wheelAmps[1], wheelAmps[2], wheelAmps[3]);
     }
@@ -222,8 +274,14 @@ public class MecanumDriveFinal {
         // Heading-only reads do not refresh calibration/fault status.
         pinpoint.update();
         double heading = pinpoint.getHeading(AngleUnit.RADIANS);
-        headingReady = pinpoint.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY
-                && Double.isFinite(heading);
+        // The heading comes from the Pinpoint's gyro, so it is still good when a pod cable is loose
+        // (the pod-not-detected faults). Only a failed read, calibration or a gyro fault makes it unusable.
+        GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
+        boolean gyroUsable = status != GoBildaPinpointDriver.DeviceStatus.NOT_READY
+                && status != GoBildaPinpointDriver.DeviceStatus.CALIBRATING
+                && status != GoBildaPinpointDriver.DeviceStatus.FAULT_BAD_READ
+                && status != GoBildaPinpointDriver.DeviceStatus.FAULT_IMU_RUNAWAY;
+        headingReady = gyroUsable && Double.isFinite(heading);
         if (headingReady) {
             // Only a good read replaces the heading: a failed read reports 0, which is not a real heading.
             headingRadians = heading;
@@ -272,6 +330,9 @@ public class MecanumDriveFinal {
 
     public void stop() {
         java.util.Arrays.fill(wheelPowers, 0.0);
+        rampedForward = 0.0;
+        rampedStrafe = 0.0;
+        rampedRotate = 0.0;
         // The motors are null if init() failed (for example a wrong name in the configuration).
         if (frontLeftMotor != null) frontLeftMotor.setPower(0);
         if (backLeftMotor != null) backLeftMotor.setPower(0);
