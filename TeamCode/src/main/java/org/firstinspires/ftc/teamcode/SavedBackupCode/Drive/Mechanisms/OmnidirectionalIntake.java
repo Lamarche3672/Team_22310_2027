@@ -29,8 +29,6 @@ public class OmnidirectionalIntake extends OpMode {
             power = -INTAKE_POWER;//goes backwards
         }
 
-        power = 0.0;
-
         intakeMotor.setPower(power);
         telemetry.addData("Intake power", power);
         telemetry.update();

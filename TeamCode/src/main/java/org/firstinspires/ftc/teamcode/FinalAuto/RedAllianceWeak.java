@@ -66,7 +66,8 @@ public class RedAllianceWeak extends AutoBase {
                         drive.waitUntilSettled(shoot, SETTLE_TIMEOUT_MS))),
 
                 step("2  Shoot preloads", conditional(
-                        () -> drive.isNear(shoot, SHOOT_SPOT_REACH_INCHES),
+                        () -> drive.isNear(shoot, SHOOT_SPOT_REACH_INCHES)
+                                && drive.isFacing(shoot, SHOOT_AIM_DEGREES),
                         Volley.shoot(flywheel, intake, SHOT_VELOCITY),
                         flywheel.stopCommand())),
 
@@ -89,7 +90,8 @@ public class RedAllianceWeak extends AutoBase {
                         drive.follow(getFrontZoneForShooting(), FLOWER_TIMEOUT_MS),
                         drive.waitUntilSettled(getFrontZoneForShooting, SETTLE_TIMEOUT_MS))),
                 step("Flower: shoot", conditional(
-                        () -> drive.isNear(getFrontZoneForShooting, SHOOT_SPOT_REACH_INCHES),
+                        () -> drive.isNear(getFrontZoneForShooting, SHOOT_SPOT_REACH_INCHES)
+                                && drive.isFacing(getFrontZoneForShooting, SHOOT_AIM_DEGREES),
                         Volley.shoot(flywheel, intake, SHOT_VELOCITY),
                         flywheel.stopCommand())));
     }

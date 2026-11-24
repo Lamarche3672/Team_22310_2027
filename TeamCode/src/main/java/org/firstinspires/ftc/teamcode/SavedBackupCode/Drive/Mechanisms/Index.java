@@ -29,7 +29,6 @@ public class Index extends OpMode {
         } else if (gamepad1.b) {
             power = -INDEX_POWER; //goes backwards
         }
-        power = 0.0;
 
         indexMotor.setPower(power);
         telemetry.addData("Index power", power);

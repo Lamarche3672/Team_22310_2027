@@ -127,9 +127,12 @@ public class FlywheelTunerPIDF {
 
             P = Math.max(0, P);
             F = Math.max(0, F);
+            if (P != sentP || F != sentF) tuningSource = "the gamepad (not saved yet)";
 
             if (savePressed) {
-                saveMessage = FlywheelTuning.save(P, F, I) ? "SAVED for teleop and auto" : "could not save";
+                boolean saved = FlywheelTuning.save(P, F, I);
+                saveMessage = saved ? "SAVED for teleop and auto" : "could not save";
+                if (saved) tuningSource = "the gamepad (saved)";
                 saveMessageNanos = now;
             }
         }
@@ -143,6 +146,12 @@ public class FlywheelTunerPIDF {
         double wantedVelocity = wantSpin ? curTargetVelocity : wantReverse ? -lowVelocity : 0;
 
         if (wantedVelocity != 0) {
+            if (!spinning) {
+                double measured = 0.5 * (flywheelMotor.getVelocity() + flywheelMotor2.getVelocity());
+                commandedVelocity = wantedVelocity > 0
+                        ? Math.max(0, Math.min(wantedVelocity, measured))
+                        : Math.min(0, Math.max(wantedVelocity, measured));
+            }
             double maxStep = dt * highVelocity / SPIN_UP_SECONDS;
             double nextVelocity = commandedVelocity
                     + Math.max(-maxStep, Math.min(maxStep, wantedVelocity - commandedVelocity));

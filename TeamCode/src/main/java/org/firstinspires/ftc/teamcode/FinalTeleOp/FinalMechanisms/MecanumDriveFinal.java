@@ -121,7 +121,7 @@ public class MecanumDriveFinal {
 
         long now = System.nanoTime();
         double gap = (now - lastDriveNanos) / 1e9;
-        double dt = lastDriveNanos == 0 || gap > 0.2 ? 0.0 : gap;
+        double dt = lastDriveNanos == 0 ? 0.0 : Math.min(gap, 0.05);
         lastDriveNanos = now;
         updateBatteryProtection(now, dt);
 

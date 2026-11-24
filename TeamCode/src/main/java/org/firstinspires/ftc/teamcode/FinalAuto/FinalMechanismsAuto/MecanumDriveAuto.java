@@ -7,6 +7,7 @@ import static com.pedropathing.ivy.commands.Commands.waitUntil;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.CommandBuilder;
+import com.pedropathing.localization.Localizer;
 import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.paths.Path;
@@ -14,6 +15,7 @@ import com.pedropathing.utils.Angle;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
+import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.PinpointGuard;
 
 public class MecanumDriveAuto {
 
@@ -26,6 +28,7 @@ public class MecanumDriveAuto {
     public static final double STALLED_TURN_DEGREES_PER_SECOND = 5.0;
     public static final double STALLED_MS = 600;
     public static final double SLOWEST_RELIABLE_INCHES_PER_SECOND = 24;
+    public static final int BLIND_READS = 3;
 
     private Follower follower;
 
@@ -36,6 +39,12 @@ public class MecanumDriveAuto {
     }
 
     public void update() {
+        Localizer localizer = follower.localizer;
+        if (localizer instanceof PinpointGuard && ((PinpointGuard) localizer).badStreak() >= BLIND_READS) {
+            localizer.update();
+            follower.drivetrain.stop(true);
+            return;
+        }
         follower.update();
     }
 
@@ -48,7 +57,9 @@ public class MecanumDriveAuto {
     }
 
     public void stop() {
-        if (follower != null) follower.stop();
+        if (follower == null) return;
+        follower.stop();
+        follower.drivetrain.stop();
     }
 
     public Command follow(Path path, double timeoutMs) {
@@ -99,6 +110,11 @@ public class MecanumDriveAuto {
 
     public boolean isNear(Pose target, double inches) {
         return follower.pose().distance(target) <= inches;
+    }
+
+    public boolean isFacing(Pose target, double degrees) {
+        return Math.abs(Angle.normalizeSigned(target.heading() - follower.pose().heading()))
+                <= Math.toRadians(degrees);
     }
 
     public boolean isSettledAt(Pose target) {

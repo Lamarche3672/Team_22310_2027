@@ -32,7 +32,8 @@ public class MainTeleOp extends OpMode {
     private final FlywheelTesting flywheelTesting = new FlywheelTesting();
     private final FlywheelTunerPIDF FlywheelTunerPIDF = new FlywheelTunerPIDF();
     private final AprilTagAutoAlignMecanum aprilTag = new AprilTagAutoAlignMecanum();
-    private boolean headingResetPressed;
+    private boolean optionsHeld;
+    private boolean optionsAlone;
     private boolean wasFieldRelative;
     private boolean lostFieldRelative;
     private final ElapsedTime loopTimer = new ElapsedTime();
@@ -79,11 +80,13 @@ public class MainTeleOp extends OpMode {
         double forward = -gamepad2.left_stick_y;
         double strafe = gamepad2.left_stick_x;
         double rotate = gamepad2.right_stick_x;
-        boolean headingReset = gamepad2.options && !gamepad2.a && !gamepad2.b;
-        if (headingReset && !headingResetPressed) {
+        boolean options = gamepad2.options;
+        if (options && !optionsHeld) optionsAlone = true;
+        if (options && (gamepad2.a || gamepad2.b)) optionsAlone = false;
+        if (!options && optionsHeld && optionsAlone) {
             drive.resetFieldHeading();
         }
-        headingResetPressed = headingReset;
+        optionsHeld = options;
 
         drive.driveFieldRelative(forward, strafe, rotate);
         addDriveTelemetry();
