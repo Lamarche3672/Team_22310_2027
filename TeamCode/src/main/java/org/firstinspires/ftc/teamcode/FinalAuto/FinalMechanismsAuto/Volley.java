@@ -9,8 +9,6 @@ public final class Volley {
 
     public static final double SPIN_UP_TIMEOUT_MS = 2500;
     public static final double FEED_MS = 2500;
-    public static final double FLYWHEEL_RECOVERY_MS = 600;
-    public static final double MAX_PAUSED_MS = 1500;
 
     private Volley() { }
 
@@ -23,39 +21,14 @@ public final class Volley {
     }
 
     public static Command feed(FlywheelAuto flywheel, IndexIntakeAuto intake) {
-        long[] lastNanos = new long[1];
-        double[] fedMs = new double[1];
-        double[] pausedMs = new double[1];
-        double[] pauseMs = new double[1];
-        double[] startSpeed = new double[1];
+        long[] startNanos = new long[1];
         return new CommandBuilder()
                 .setStart(() -> {
-                    lastNanos[0] = System.nanoTime();
-                    fedMs[0] = 0;
-                    pausedMs[0] = 0;
-                    pauseMs[0] = 0;
-                    startSpeed[0] = flywheel.slowerWheelSpeed();
+                    startNanos[0] = System.nanoTime();
+                    intake.feedShooter();
                 })
-                .setExecute(() -> {
-                    long now = System.nanoTime();
-                    double elapsedMs = (now - lastNanos[0]) / 1e6;
-                    lastNanos[0] = now;
-
-                    boolean recovered = flywheel.slowerWheelSpeed()
-                            >= startSpeed[0] - FlywheelAuto.READY_TOLERANCE;
-                    boolean pause = !recovered
-                            && pauseMs[0] < FLYWHEEL_RECOVERY_MS && pausedMs[0] < MAX_PAUSED_MS;
-                    if (pause) {
-                        intake.stop();
-                        pauseMs[0] += elapsedMs;
-                        pausedMs[0] += elapsedMs;
-                    } else {
-                        intake.feedShooter();
-                        fedMs[0] += elapsedMs;
-                        if (recovered) pauseMs[0] = 0;
-                    }
-                })
-                .setDone(() -> fedMs[0] >= FEED_MS)
+                .setExecute(intake::feedShooter)
+                .setDone(() -> System.nanoTime() - startNanos[0] >= FEED_MS * 1e6)
                 .setEnd(reason -> intake.stop());
     }
 }

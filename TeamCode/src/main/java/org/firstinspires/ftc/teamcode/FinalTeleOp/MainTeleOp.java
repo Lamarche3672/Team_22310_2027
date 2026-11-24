@@ -3,10 +3,16 @@ LEFT BUMPER: Index inwards
 LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
 RIGHT TRIGGER: Intake
 RIGHT BUMPER: Flywheels (hold)
+LEFT BUMPER + RIGHT BUMPER: Shoot
 Y: Flywheel speed high/low
 BACK: Unlock flywheel tuning
 D-PAD: Tune P and F, X changes step size
 A: Save P and F
+
+GAMEPAD 2
+LEFT STICK: Drive
+RIGHT STICK: Turn
+OPTIONS (let go): Make current direction forward
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
@@ -17,6 +23,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.SavedBackupCode.Drive.Mechanisms.FlywheelTesting;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTunerPIDF;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.IndexIntake;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors.TrackingSystem.AprilTagAutoAlignMecanum;
@@ -45,6 +52,7 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void init() {
+        HubReset.clear();
         for (LynxModule hub : hardwareMap.getAll(LynxModule.class)) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
@@ -128,6 +136,8 @@ public class MainTeleOp extends OpMode {
 
     private void addDriveTelemetry() {
         if (!problems.isEmpty()) telemetry.addLine(problems);
+        String hubWarning = HubReset.warning();
+        if (hubWarning != null) telemetry.addLine(hubWarning);
         telemetry.addData("Pinpoint", drive.getHeadingStatus());
         telemetry.addData("Field heading (deg)", drive.getFieldHeadingDegrees());
         telemetry.addData("Drive", drive.getDriveStatus());

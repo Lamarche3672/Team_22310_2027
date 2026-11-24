@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
 
+import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
@@ -41,15 +42,30 @@ public class IndexIntake {
             indexPower = -INDEX_POWER;
         }
 
-        intakeMotor.setPower(intakePower);
-        indexMotor.setPower(indexPower);
+        write(intakePower, indexPower);
 
         telemetry.addData("Intake power", intakePower);
         telemetry.addData("Index power", indexPower);
     }
 
     public void stop() {
-        if (intakeMotor != null) intakeMotor.setPower(0.0);
-        if (indexMotor != null) indexMotor.setPower(0.0);
+        if (intakeMotor == null || indexMotor == null) return;
+        write(0.0, 0.0);
+    }
+
+    private void write(double intakePower, double indexPower) {
+        try {
+            intakeMotor.setPower(intakePower);
+            indexMotor.setPower(indexPower);
+        } catch (TargetPositionNotSetException hubReset) {
+            HubReset.forget(intakeMotor, indexMotor);
+            try {
+                intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                intakeMotor.setPower(intakePower);
+                indexMotor.setPower(indexPower);
+            } catch (TargetPositionNotSetException stillDown) {
+            }
+        }
     }
 }

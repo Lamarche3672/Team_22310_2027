@@ -1,21 +1,17 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
 
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelControl;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelTuning;
 
 public class FlywheelTunerPIDF {
 
-    public DcMotorEx flywheelMotor;
-
-    public DcMotorEx flywheelMotor2;
+    public FlywheelControl flywheels;
 
     public double highVelocity = 1500;
     public double lowVelocity = 900;
@@ -26,22 +22,12 @@ public class FlywheelTunerPIDF {
     double P = 0;
     double I = 0;
 
-    double[] stepSizes = {10.0, 1.0, 0.1, 0.01, 0.001, 0.0001};
+    double[] stepSizes = {1.0, 0.1, 0.01};
 
     int stepIndex = 1;
 
-    private static final double SPIN_UP_SECONDS = 0.4;
-    private static final long RESEND_NANOS = 250_000_000L;
-    private static final long IDLE_READ_NANOS = 250_000_000L;
     private static final double COAST_BELOW = 200;
 
-    private boolean spinning;
-    private double commandedVelocity;
-    private long lastSendNanos;
-    private long lastLoopNanos;
-    private long lastReadNanos;
-    private double currentVelocity;
-    private double currentVelocity2;
     private double sentP = Double.NaN;
     private double sentF = Double.NaN;
     private boolean tuningUnlocked;
@@ -53,51 +39,34 @@ public class FlywheelTunerPIDF {
     private long fullSpeedSinceNanos;
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
-        flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
-        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheelMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-
-        flywheelMotor2 = hardwareMap.get(DcMotorEx.class, "left_flywheel");
-        flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheelMotor2.setDirection(DcMotorSimple.Direction.FORWARD);
+        flywheels = new FlywheelControl(hardwareMap, DcMotorSimple.Direction.FORWARD);
 
         if (P == 0 && F == 0) {
-            PIDFCoefficients start = FlywheelAuto.chooseCoefficients(flywheelMotor);
-            P = start.p;
-            I = start.i;
-            F = start.f;
-            tuningSource = FlywheelAuto.describeCoefficientSource();
+            double[] start = FlywheelAuto.chooseGains();
+            P = start[0];
+            F = start[1];
+            I = start[2];
+            tuningSource = FlywheelAuto.describeGainSource();
         }
-        sendCoefficients();
+        sendGains();
 
         stop();
 
         telemetry.addLine("Init Complete");
     }
 
-    private void sendCoefficients() {
-        PIDFCoefficients pidfCoefficients = new PIDFCoefficients(P, I, 0, F);
-        flywheelMotor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
-        flywheelMotor2.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, pidfCoefficients);
+    private void sendGains() {
+        flywheels.setGains(P, F, I);
         sentP = P;
         sentF = F;
     }
 
     public void stop() {
-        for (DcMotorEx motor : new DcMotorEx[] {flywheelMotor, flywheelMotor2}) {
-            if (motor == null) continue;
-            motor.setVelocity(0);
-            motor.setMotorDisable();
-        }
-        spinning = false;
-        commandedVelocity = 0;
+        if (flywheels != null) flywheels.stop();
     }
-
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
         long now = System.nanoTime();
-        double dt = lastLoopNanos == 0 ? 0.0 : Math.min(0.1, (now - lastLoopNanos) / 1e9);
-        lastLoopNanos = now;
 
         if (gamepad1.yWasPressed()) {
             if (curTargetVelocity == highVelocity) {
@@ -140,48 +109,30 @@ public class FlywheelTunerPIDF {
         }
 
         if (P != sentP || F != sentF) {
-            sendCoefficients();
+            sendGains();
         }
 
         boolean wantSpin = gamepad1.right_bumper;
         boolean wantReverse = !wantSpin && gamepad1.left_trigger > 0.1;
         double wantedVelocity = wantSpin ? curTargetVelocity : wantReverse ? -lowVelocity : 0;
 
-        if (spinning || wantedVelocity != 0 || now - lastReadNanos >= IDLE_READ_NANOS) {
-            currentVelocity = flywheelMotor.getVelocity();
-            currentVelocity2 = flywheelMotor2.getVelocity();
-            lastReadNanos = now;
-        }
-        double measured = 0.5 * (currentVelocity + currentVelocity2);
+        double measured = flywheels.speed();
         boolean coasting = (wantedVelocity < 0 && measured > COAST_BELOW)
                 || (wantedVelocity > 0 && measured < -COAST_BELOW);
         if (coasting) wantedVelocity = 0;
 
-        if (wantedVelocity != 0) {
-            if (!spinning) {
-                commandedVelocity = wantedVelocity > 0
-                        ? Math.max(0, Math.min(wantedVelocity, measured))
-                        : Math.min(0, Math.max(wantedVelocity, measured));
-            }
-            double maxStep = dt * highVelocity / SPIN_UP_SECONDS;
-            double nextVelocity = commandedVelocity
-                    + Math.max(-maxStep, Math.min(maxStep, wantedVelocity - commandedVelocity));
-            if (!spinning || nextVelocity != commandedVelocity || now - lastSendNanos >= RESEND_NANOS) {
-                flywheelMotor.setVelocity(nextVelocity);
-                flywheelMotor2.setVelocity(nextVelocity);
-                lastSendNanos = now;
-            }
-            commandedVelocity = nextVelocity;
-            spinning = true;
-        } else if (spinning) {
-            stop();
+        if (wantedVelocity != flywheels.target()) {
+            if (wantedVelocity == 0) flywheels.stop();
+            else flywheels.setTarget(wantedVelocity);
         }
+        flywheels.update();
 
+        double currentVelocity = flywheels.rightVelocity();
+        double currentVelocity2 = flywheels.leftVelocity();
         double error = curTargetVelocity - currentVelocity;
         double error2 = curTargetVelocity - currentVelocity2;
 
-
-        boolean atSpeed = wantSpin && commandedVelocity == curTargetVelocity
+        boolean atSpeed = wantSpin && !coasting
                 && Math.abs(error) <= FlywheelAuto.READY_TOLERANCE
                 && Math.abs(error2) <= FlywheelAuto.READY_TOLERANCE;
         if (atSpeed && !wasAtSpeed && now - lastRumbleNanos > 500_000_000L) {
@@ -190,7 +141,7 @@ public class FlywheelTunerPIDF {
         }
         wasAtSpeed = atSpeed;
 
-        if (wantSpin && !coasting && commandedVelocity == curTargetVelocity) {
+        if (wantSpin && !coasting && flywheels.power() > 0.2) {
             if (fullSpeedSinceNanos == 0) fullSpeedSinceNanos = now;
         } else {
             fullSpeedSinceNanos = 0;
@@ -208,17 +159,18 @@ public class FlywheelTunerPIDF {
 
         telemetry.addData("Error (right)", "%.2f", error);
         telemetry.addData("Error (left)", "%.2f", error2);
+        telemetry.addData("Flywheel power", "%.2f", flywheels.power());
 
         telemetry.addLine("--------------------");
         if (tuningUnlocked) {
             telemetry.addLine("TUNING UNLOCKED (BACK locks it again)");
-            telemetry.addData("Tuning P", "%.4f (D-Pad U/D)", P);
-            telemetry.addData("Tuning F", "%.4f (D-Pad L/R)", F);
-            telemetry.addData("Step Size", "%.4f (X Button)", stepSizes[stepIndex]);
+            telemetry.addData("Tuning P", "%.3f (D-Pad U/D)", P);
+            telemetry.addData("Tuning F", "%.3f (D-Pad L/R)", F);
+            telemetry.addData("Step Size", "%.3f (X Button)", stepSizes[stepIndex]);
             telemetry.addData("A Button", now - saveMessageNanos < 3_000_000_000L && !saveMessage.isEmpty()
                     ? saveMessage : "save this P and F for teleop and auto");
         } else {
-            telemetry.addData("Tuning", "locked: P %.4f, F %.4f (press BACK to tune)", P, F);
+            telemetry.addData("Tuning", "locked: P %.3f, F %.3f (press BACK to tune)", P, F);
         }
         telemetry.addData("P and F came from", tuningSource);
     }

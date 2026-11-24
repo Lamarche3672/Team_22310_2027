@@ -7,7 +7,7 @@ import java.io.File;
 import java.util.Locale;
 
 public final class FlywheelTuning {
-    private static final String FILE_NAME = "flywheel_tuning.txt";
+    private static final String FILE_NAME = "flywheel_gains.txt";
     private static final double LARGEST_SENSIBLE_VALUE = 1000;
 
     private FlywheelTuning() { }

@@ -5,31 +5,24 @@ import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 
 import com.pedropathing.ivy.Command;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 public class FlywheelAuto {
-    public static final double HIGH_VELOCITY = 3000;
+    public static final double HIGH_VELOCITY = 2300; // was 3000, the 40:1 HD Hex tops out at 2800
     public static final double LOW_VELOCITY = 1800;
 
     public static final double P = 0;
     public static final double F = 0;
+    public static final double I = 0;
     public static final double READY_TOLERANCE = 75;
     public static final double READY_HOLD_MS = 100;
     public static final double LEVEL_BAND = 120;
     public static final double LEVEL_MS = 300;
-    public static final double SPIN_UP_SECONDS = 0.4;
-    private static final long RESEND_NANOS = 250_000_000L;
-    private static final long IDLE_READ_NANOS = 200_000_000L;
 
-    private DcMotorEx rightFlywheel;
-    private DcMotorEx leftFlywheel;
+    private FlywheelControl control;
 
-    private double targetVelocity;
     private double rightVelocity;
     private double leftVelocity;
     private boolean atSpeed;
@@ -37,98 +30,61 @@ public class FlywheelAuto {
     private double levelLowest;
     private double levelHighest;
     private long levelSinceNanos;
-    private double commandedVelocity;
-    private long lastSendNanos;
-    private long lastUpdateNanos;
-    private long lastReadNanos;
-    private String coefficientSource = "";
-    private double reachableVelocity = Double.POSITIVE_INFINITY;
+    private String gainSource = "";
 
     public void init(HardwareMap hardwareMap) {
-        rightFlywheel = hardwareMap.get(DcMotorEx.class, "right_flywheel");
-        leftFlywheel = hardwareMap.get(DcMotorEx.class, "left_flywheel");
-        for (DcMotorEx motor : new DcMotorEx[] {rightFlywheel, leftFlywheel}) {
-            motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-            motor.setDirection(DcMotorSimple.Direction.FORWARD);
-            motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-            motor.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, chooseCoefficients(motor));
-            double max = motor.getMotorType().getAchieveableMaxTicksPerSecond();
-            if (max > 0) reachableVelocity = Math.min(reachableVelocity, max);
-        }
-        coefficientSource = describeCoefficientSource();
+        control = new FlywheelControl(hardwareMap, DcMotorSimple.Direction.FORWARD);
+        double[] gains = chooseGains();
+        control.setGains(gains[0], gains[1], gains[2]);
+        gainSource = describeGainSource();
         stop();
     }
 
-    public static PIDFCoefficients chooseCoefficients(DcMotorEx motor) {
-        if (P != 0 || F != 0) return new PIDFCoefficients(P, 0, 0, F);
+    public static double[] chooseGains() {
+        if (P != 0 || F != 0) return new double[] {P, F, I};
         double[] saved = FlywheelTuning.load();
-        if (saved != null) return new PIDFCoefficients(saved[0], saved[2], 0, saved[1]);
-        return startingCoefficients(motor.getMotorType().getAchieveableMaxTicksPerSecond());
+        if (saved != null) return saved;
+        return new double[] {FlywheelControl.DEFAULT_P, FlywheelControl.DEFAULT_F, FlywheelControl.DEFAULT_I};
     }
 
-    public static String describeCoefficientSource() {
+    public static String describeGainSource() {
         if (P != 0 || F != 0) return "typed into FlywheelAuto";
         return FlywheelTuning.load() != null ? "saved from the teleop tuner" : "starting values (not tuned yet)";
     }
 
-    public static PIDFCoefficients startingCoefficients(double maxTicksPerSecond) {
-        if (!(maxTicksPerSecond > 0) || Double.isInfinite(maxTicksPerSecond)) maxTicksPerSecond = 2380;
-        double f = 32767.0 / maxTicksPerSecond;
-        return new PIDFCoefficients(0.5 * f, 0.01 * f, 0, f);
-    }
-
     public void spinUp(double velocity) {
-        if (velocity != targetVelocity) atSpeed = false;
-        if (targetVelocity <= 0 && velocity > 0) {
-            commandedVelocity = Math.max(0, Math.min(velocity, Math.min(rightVelocity, leftVelocity)));
-        }
-        targetVelocity = velocity;
+        if (control == null) return;
+        if (velocity != control.target()) atSpeed = false;
+        control.setTarget(velocity);
     }
 
     public void stop() {
-        targetVelocity = 0;
-        commandedVelocity = 0;
         atSpeed = false;
-        for (DcMotorEx motor : new DcMotorEx[] {rightFlywheel, leftFlywheel}) {
-            if (motor == null) continue;
-            motor.setVelocity(0);
-            motor.setMotorDisable();
-        }
+        if (control != null) control.stop();
+    }
+
+    private double target() {
+        return control == null ? 0 : control.target();
     }
 
     public void update() {
+        if (control == null) return;
         long now = System.nanoTime();
-        double dt = lastUpdateNanos == 0 ? 0.0 : Math.min(0.1, (now - lastUpdateNanos) / 1e9);
-        lastUpdateNanos = now;
+        control.update();
+        rightVelocity = control.rightVelocity();
+        leftVelocity = control.leftVelocity();
+        double target = target();
 
-        if (targetVelocity > 0) {
-            double maxStep = dt * targetVelocity / SPIN_UP_SECONDS;
-            double next = commandedVelocity
-                    + Math.max(-maxStep, Math.min(maxStep, targetVelocity - commandedVelocity));
-            if (next != commandedVelocity || now - lastSendNanos >= RESEND_NANOS) {
-                rightFlywheel.setVelocity(next);
-                leftFlywheel.setVelocity(next);
-                lastSendNanos = now;
-            }
-            commandedVelocity = next;
-        }
-
-        if (targetVelocity > 0 || now - lastReadNanos >= IDLE_READ_NANOS) {
-            rightVelocity = rightFlywheel.getVelocity();
-            leftVelocity = leftFlywheel.getVelocity();
-            lastReadNanos = now;
-        }
-
-        boolean inBand = targetVelocity > 0
-                && Math.abs(targetVelocity - rightVelocity) <= READY_TOLERANCE
-                && Math.abs(targetVelocity - leftVelocity) <= READY_TOLERANCE;
+        boolean inBand = target > 0
+                && Math.abs(target - rightVelocity) <= READY_TOLERANCE
+                && Math.abs(target - leftVelocity) <= READY_TOLERANCE;
         if (inBand && !atSpeed) atSpeedSinceNanos = now;
         atSpeed = inBand;
 
         double slower = Math.min(rightVelocity, leftVelocity);
         levelLowest = Math.min(levelLowest, slower);
         levelHighest = Math.max(levelHighest, slower);
-        if (targetVelocity <= 0 || levelHighest - levelLowest > LEVEL_BAND) {
+        if (target <= 0 || levelHighest - levelLowest > LEVEL_BAND) {
             levelLowest = slower;
             levelHighest = slower;
             levelSinceNanos = now;
@@ -149,8 +105,8 @@ public class FlywheelAuto {
     }
 
     private boolean hasLevelledOff(long now) {
-        return targetVelocity > 0
-                && Math.min(rightVelocity, leftVelocity) >= 0.5 * targetVelocity
+        return target() > 0
+                && Math.min(rightVelocity, leftVelocity) >= 0.5 * target()
                 && now - levelSinceNanos >= LEVEL_MS * 1e6;
     }
 
@@ -167,13 +123,15 @@ public class FlywheelAuto {
     }
 
     public void addTelemetry(Telemetry telemetry) {
-        telemetry.addData("Flywheel target", "%.0f", targetVelocity);
-        if (targetVelocity > reachableVelocity) {
-            telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what this motor type can hold (%.0f)."
-                    + " The wheels run at full power and never become READY.", targetVelocity, reachableVelocity));
+        double target = target();
+        telemetry.addData("Flywheel target", "%.0f", target);
+        if (target > FlywheelControl.HOLDABLE_TICKS_PER_SECOND) {
+            telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what the motors can hold (%.0f).",
+                    target, FlywheelControl.HOLDABLE_TICKS_PER_SECOND));
         }
         telemetry.addData("Flywheel right / left", "%.0f / %.0f", rightVelocity, leftVelocity);
-        telemetry.addData("Flywheel", isReady() ? "READY" : atSpeed ? "at speed" : targetVelocity > 0 ? "spinning up" : "off");
-        telemetry.addData("Flywheel P and F", coefficientSource);
+        telemetry.addData("Flywheel power", "%.2f", control == null ? 0 : control.power());
+        telemetry.addData("Flywheel", isReady() ? "READY" : atSpeed ? "at speed" : target > 0 ? "spinning up" : "off");
+        telemetry.addData("Flywheel P, F, I", gainSource);
     }
 }
