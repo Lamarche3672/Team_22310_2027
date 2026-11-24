@@ -36,6 +36,9 @@ public class MainTeleOp extends OpMode {
     private boolean optionsAlone;
     private boolean wasFieldRelative;
     private boolean lostFieldRelative;
+    private boolean intakeOk;
+    private boolean flywheelOk;
+    private String problems = "";
     private final ElapsedTime loopTimer = new ElapsedTime();
 
 
@@ -48,9 +51,19 @@ public class MainTeleOp extends OpMode {
 
         //----------PLAYER ONE-------------
 
-        intakeIndex.init(hardwareMap);
+        try {
+            intakeIndex.init(hardwareMap);
+            intakeOk = true;
+        } catch (RuntimeException e) {
+            problems += "INTAKE OFF: " + e.getMessage() + "\n";
+        }
         //flywheelTesting.init(hardwareMap);
-        FlywheelTunerPIDF.init(hardwareMap, telemetry);
+        try {
+            FlywheelTunerPIDF.init(hardwareMap, telemetry);
+            flywheelOk = true;
+        } catch (RuntimeException e) {
+            problems += "FLYWHEEL OFF: " + e.getMessage() + "\n";
+        }
 
         //----------PLAYER TWO-------------
 
@@ -67,12 +80,20 @@ public class MainTeleOp extends OpMode {
     }
 
     @Override
+    public void start() {
+        if (!drive.isFieldRelative()) {
+            gamepad2.rumble(800);
+            lostFieldRelative = true;
+        }
+    }
+
+    @Override
     public void loop() {
         //----------PLAYER ONE-------------
 
-        intakeIndex.loop(gamepad1, telemetry);
+        if (intakeOk) intakeIndex.loop(gamepad1, telemetry);
         //flywheelTesting.loop(gamepad1, telemetry);
-        FlywheelTunerPIDF.loop(telemetry, gamepad1);
+        if (flywheelOk) FlywheelTunerPIDF.loop(telemetry, gamepad1);
 
         //----------PLAYER TWO-------------
 
@@ -106,6 +127,7 @@ public class MainTeleOp extends OpMode {
     }
 
     private void addDriveTelemetry() {
+        if (!problems.isEmpty()) telemetry.addLine(problems);
         telemetry.addData("Pinpoint", drive.getHeadingStatus());
         telemetry.addData("Field heading (deg)", drive.getFieldHeadingDegrees());
         telemetry.addData("Drive", drive.getDriveStatus());

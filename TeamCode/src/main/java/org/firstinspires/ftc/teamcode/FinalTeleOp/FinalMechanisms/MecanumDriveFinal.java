@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
 public class MecanumDriveFinal {
     private static final double DRIVE_DEADZONE = 0.05;
@@ -55,6 +56,8 @@ public class MecanumDriveFinal {
     private boolean hadHeading;
     private long lastGoodHeadingNanos;
     private long initNanos;
+    private boolean needsRezero;
+    private boolean wasNearStart = true;
 
     public void init(HardwareMap hardwareMap) {
         frontLeftMotor = hardwareMap.get(DcMotorEx.class, "fl_motor");
@@ -81,13 +84,19 @@ public class MecanumDriveFinal {
         lowestVolts = Double.NaN;
         smoothedVolts = Double.NaN;
 
-        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
         headingOffsetRadians = 0;
         headingRadians = Double.NaN;
         headingReady = false;
         hadHeading = false;
+        needsRezero = false;
+        wasNearStart = true;
         initNanos = System.nanoTime();
-        pinpoint.resetPosAndIMU();
+        try {
+            pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+            pinpoint.resetPosAndIMU();
+        } catch (RuntimeException noPinpoint) {
+            pinpoint = null;
+        }
     }
 
     public void drive(double forward, double strafe, double rotate) {
@@ -185,7 +194,7 @@ public class MecanumDriveFinal {
         if (battery == null || now - lastVoltageNanos < VOLTAGE_READ_NANOS) return;
         lastVoltageNanos = now;
         double volts = battery.getVoltage();
-        if (volts > 1.0) {
+        if (Double.isFinite(volts) && volts > 1.0) {
             batteryVolts = volts;
             if (!(lowestVolts <= volts)) lowestVolts = volts;
         }
@@ -219,6 +228,10 @@ public class MecanumDriveFinal {
     }
 
     public void updateHeading() {
+        if (pinpoint == null) {
+            headingReady = false;
+            return;
+        }
         pinpoint.update();
         double heading = pinpoint.getHeading(AngleUnit.RADIANS);
         GoBildaPinpointDriver.DeviceStatus status = pinpoint.getDeviceStatus();
@@ -228,24 +241,34 @@ public class MecanumDriveFinal {
                 && status != GoBildaPinpointDriver.DeviceStatus.FAULT_IMU_RUNAWAY;
         headingReady = gyroUsable && Double.isFinite(heading);
         if (headingReady) {
+            long now = System.nanoTime();
+            boolean nearStart = Math.abs(heading) < Math.toRadians(3)
+                    && Math.hypot(pinpoint.getPosX(DistanceUnit.INCH), pinpoint.getPosY(DistanceUnit.INCH)) < 1.0;
+            if (hadHeading && nearStart && !wasNearStart
+                    && now - lastGoodHeadingNanos > HEADING_HOLD_SECONDS * 1e9) {
+                needsRezero = true;
+            }
+            wasNearStart = nearStart;
             headingRadians = heading;
-            lastGoodHeadingNanos = System.nanoTime();
+            lastGoodHeadingNanos = now;
             hadHeading = true;
         }
     }
 
     public boolean isFieldRelative() {
-        return hadHeading && (headingReady
+        return hadHeading && !needsRezero && (headingReady
                 || System.nanoTime() - lastGoodHeadingNanos <= HEADING_HOLD_SECONDS * 1e9);
     }
 
     public boolean isWaitingForHeading() {
-        return !hadHeading && System.nanoTime() - initNanos <= HEADING_WAIT_SECONDS * 1e9;
+        return pinpoint != null && !hadHeading && System.nanoTime() - initNanos <= HEADING_WAIT_SECONDS * 1e9;
     }
 
     public String getDriveStatus() {
         if (isFieldRelative()) return "Ready (field-centric)";
         if (isWaitingForHeading()) return "STOPPED: waiting for Pinpoint";
+        if (pinpoint == null) return "ROBOT-CENTRIC: no Pinpoint in the robot config";
+        if (needsRezero) return "ROBOT-CENTRIC: Pinpoint restarted - face forward, press OPTIONS";
         return "ROBOT-CENTRIC: Pinpoint heading unavailable";
     }
 
@@ -253,6 +276,7 @@ public class MecanumDriveFinal {
         updateHeading();
         if (headingReady) {
             headingOffsetRadians = headingRadians;
+            needsRezero = false;
         }
     }
 
@@ -261,7 +285,7 @@ public class MecanumDriveFinal {
     }
 
     public GoBildaPinpointDriver.DeviceStatus getHeadingStatus() {
-        return pinpoint.getDeviceStatus();
+        return pinpoint == null ? GoBildaPinpointDriver.DeviceStatus.NOT_READY : pinpoint.getDeviceStatus();
     }
 
     public double getFieldHeadingDegrees() {

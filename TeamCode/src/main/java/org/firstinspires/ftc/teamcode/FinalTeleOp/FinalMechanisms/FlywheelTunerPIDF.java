@@ -33,6 +33,7 @@ public class FlywheelTunerPIDF {
     private static final double SPIN_UP_SECONDS = 0.4;
     private static final long RESEND_NANOS = 250_000_000L;
     private static final long IDLE_READ_NANOS = 250_000_000L;
+    private static final double COAST_BELOW = 200;
 
     private boolean spinning;
     private double commandedVelocity;
@@ -49,6 +50,7 @@ public class FlywheelTunerPIDF {
     private String tuningSource = "typed into this file";
     private String saveMessage = "";
     private long saveMessageNanos;
+    private long fullSpeedSinceNanos;
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
@@ -145,9 +147,18 @@ public class FlywheelTunerPIDF {
         boolean wantReverse = !wantSpin && gamepad1.left_trigger > 0.1;
         double wantedVelocity = wantSpin ? curTargetVelocity : wantReverse ? -lowVelocity : 0;
 
+        if (spinning || wantedVelocity != 0 || now - lastReadNanos >= IDLE_READ_NANOS) {
+            currentVelocity = flywheelMotor.getVelocity();
+            currentVelocity2 = flywheelMotor2.getVelocity();
+            lastReadNanos = now;
+        }
+        double measured = 0.5 * (currentVelocity + currentVelocity2);
+        boolean coasting = (wantedVelocity < 0 && measured > COAST_BELOW)
+                || (wantedVelocity > 0 && measured < -COAST_BELOW);
+        if (coasting) wantedVelocity = 0;
+
         if (wantedVelocity != 0) {
             if (!spinning) {
-                double measured = 0.5 * (flywheelMotor.getVelocity() + flywheelMotor2.getVelocity());
                 commandedVelocity = wantedVelocity > 0
                         ? Math.max(0, Math.min(wantedVelocity, measured))
                         : Math.min(0, Math.max(wantedVelocity, measured));
@@ -166,12 +177,6 @@ public class FlywheelTunerPIDF {
             stop();
         }
 
-        if (spinning || now - lastReadNanos >= IDLE_READ_NANOS) {
-            currentVelocity = flywheelMotor.getVelocity();
-            currentVelocity2 = flywheelMotor2.getVelocity();
-            lastReadNanos = now;
-        }
-
         double error = curTargetVelocity - currentVelocity;
         double error2 = curTargetVelocity - currentVelocity2;
 
@@ -185,8 +190,18 @@ public class FlywheelTunerPIDF {
         }
         wasAtSpeed = atSpeed;
 
-        telemetry.addData("Flywheels", atSpeed ? "AT SPEED - feed now" : wantSpin ? "spinning up..."
+        if (wantSpin && !coasting && commandedVelocity == curTargetVelocity) {
+            if (fullSpeedSinceNanos == 0) fullSpeedSinceNanos = now;
+        } else {
+            fullSpeedSinceNanos = 0;
+        }
+        boolean noReading = fullSpeedSinceNanos != 0 && now - fullSpeedSinceNanos > 1_000_000_000L
+                && (Math.abs(currentVelocity) < 50 || Math.abs(currentVelocity2) < 50);
+
+        telemetry.addData("Flywheels", atSpeed ? "AT SPEED - feed now" : coasting ? "slowing down first..."
+                : wantSpin ? "spinning up..."
                 : wantReverse ? "reversing (left trigger)" : "off - hold RIGHT BUMPER to spin");
+        if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
         telemetry.addData("Target Velocity", "%.0f (Y switches high / low)", curTargetVelocity);
         telemetry.addData("Current Velocity (right)", "%.2f", currentVelocity);
         telemetry.addData("Current Velocity (left)", "%.2f", currentVelocity2);
