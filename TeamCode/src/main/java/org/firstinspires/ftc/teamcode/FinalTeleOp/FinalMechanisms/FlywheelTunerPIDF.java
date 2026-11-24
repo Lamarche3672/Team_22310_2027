@@ -1,11 +1,13 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
 
+import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
@@ -30,7 +32,8 @@ public class FlywheelTunerPIDF {
 
     int stepIndex = 1;
 
-    private static final double SPIN_UP_SECONDS = 0.4;
+    private static final double SPIN_UP_SECONDS = 0.3;
+    private static final long VOLTAGE_READ_NANOS = 100_000_000L;
     private static final long RESEND_NANOS = 250_000_000L;
     private static final long IDLE_READ_NANOS = 250_000_000L;
     private static final double COAST_BELOW = 200;
@@ -51,15 +54,20 @@ public class FlywheelTunerPIDF {
     private String saveMessage = "";
     private long saveMessageNanos;
     private long fullSpeedSinceNanos;
+    private VoltageSensor battery;
+    private double batteryVolts = Double.NaN;
+    private long lastVoltageNanos;
 
     public void init(HardwareMap hardwareMap, Telemetry telemetry) {
         flywheelMotor = hardwareMap.get(DcMotorEx.class, "right_flywheel");
-        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
         flywheelMotor2 = hardwareMap.get(DcMotorEx.class, "left_flywheel");
-        flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         flywheelMotor2.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        battery = hardwareMap.voltageSensor.iterator().hasNext() ? hardwareMap.voltageSensor.iterator().next() : null;
+        flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         if (P == 0 && F == 0) {
             PIDFCoefficients start = FlywheelAuto.chooseCoefficients(flywheelMotor);
@@ -84,17 +92,56 @@ public class FlywheelTunerPIDF {
     }
 
     public void stop() {
+        spinning = false;
+        commandedVelocity = 0;
+        try {
+            release();
+        } catch (TargetPositionNotSetException hubReset) {
+            recoverFromHubReset();
+            try {
+                release();
+            } catch (TargetPositionNotSetException stillDown) {
+            }
+        }
+    }
+
+    private void release() {
         for (DcMotorEx motor : new DcMotorEx[] {flywheelMotor, flywheelMotor2}) {
             if (motor == null) continue;
             motor.setVelocity(0);
             motor.setMotorDisable();
         }
-        spinning = false;
-        commandedVelocity = 0;
     }
 
+    private void recoverFromHubReset() {
+        HubReset.forget(flywheelMotor, flywheelMotor2);
+        try {
+            flywheelMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            flywheelMotor2.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+            sendCoefficients();
+        } catch (TargetPositionNotSetException stillDown) {
+            sentP = Double.NaN;
+        }
+        spinning = false;
+        lastSendNanos = 0;
+    }
+
+    private void readBattery(long now) {
+        if (battery == null || now - lastVoltageNanos < VOLTAGE_READ_NANOS) return;
+        lastVoltageNanos = now;
+        double volts = battery.getVoltage();
+        if (Double.isFinite(volts) && volts > 1.0) batteryVolts = volts;
+    }
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
+        try {
+            step(telemetry, gamepad1);
+        } catch (TargetPositionNotSetException hubReset) {
+            recoverFromHubReset();
+        }
+    }
+
+    private void step(Telemetry telemetry, Gamepad gamepad1) {
         long now = System.nanoTime();
         double dt = lastLoopNanos == 0 ? 0.0 : Math.min(0.1, (now - lastLoopNanos) / 1e9);
         lastLoopNanos = now;
@@ -163,7 +210,8 @@ public class FlywheelTunerPIDF {
                         ? Math.max(0, Math.min(wantedVelocity, measured))
                         : Math.min(0, Math.max(wantedVelocity, measured));
             }
-            double maxStep = dt * highVelocity / SPIN_UP_SECONDS;
+            readBattery(now);
+            double maxStep = dt * highVelocity / SPIN_UP_SECONDS * FlywheelAuto.rampScale(batteryVolts);
             double nextVelocity = commandedVelocity
                     + Math.max(-maxStep, Math.min(maxStep, wantedVelocity - commandedVelocity));
             if (!spinning || nextVelocity != commandedVelocity || now - lastSendNanos >= RESEND_NANOS) {

@@ -17,6 +17,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 
 public abstract class AutoBase extends LinearOpMode {
 
@@ -84,6 +85,7 @@ public abstract class AutoBase extends LinearOpMode {
     @Override
     public void runOpMode() {
         Scheduler.reset();
+        HubReset.clear();
         try {
             telemetry.addLine("Starting... keep the robot STILL");
             telemetry.update();
@@ -123,6 +125,8 @@ public abstract class AutoBase extends LinearOpMode {
                 flywheel.update();
                 Scheduler.execute();
 
+                String hubWarning = HubReset.warning();
+                if (hubWarning != null) telemetry.addLine(hubWarning);
                 telemetry.addData("Step", currentStep);
                 telemetry.addData("Time (s)", "%.1f", autoTimer.seconds());
                 drive.addTelemetry(telemetry);

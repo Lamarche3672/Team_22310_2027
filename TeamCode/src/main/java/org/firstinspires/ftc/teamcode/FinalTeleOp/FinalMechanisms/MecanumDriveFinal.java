@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -20,8 +21,8 @@ public class MecanumDriveFinal {
     private static final double FULL_POWER_VOLTAGE = 10.5;
     private static final double LOW_VOLTAGE = 7.5;
     private static final double MIN_POWER_LIMIT = 0.35;
-    private static final double VOLTAGE_SMOOTHING_SECONDS = 0.35;
-    private static final double LIMIT_DROP_PER_SECOND = 2.0;
+    private static final double VOLTAGE_SMOOTHING_SECONDS = 0.2;
+    private static final double LIMIT_DROP_PER_SECOND = 5.0;
     private static final double LIMIT_RISE_PER_SECOND = 1.0;
     private static final long VOLTAGE_READ_NANOS = 100_000_000L;
     private static final long CURRENT_READ_NANOS = 100_000_000L;
@@ -69,15 +70,7 @@ public class MecanumDriveFinal {
         frontLeftMotor.setDirection(DcMotor.Direction.REVERSE);
         backLeftMotor.setDirection(DcMotor.Direction.REVERSE);
 
-        frontLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backLeftMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        frontRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        backRightMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-
-        frontLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backLeftMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        frontRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        backRightMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        configureMotors();
 
         stop();
         powerLimit = 1.0;
@@ -96,6 +89,34 @@ public class MecanumDriveFinal {
             pinpoint.resetPosAndIMU();
         } catch (RuntimeException noPinpoint) {
             pinpoint = null;
+        }
+    }
+
+    private void configureMotors() {
+        for (DcMotorEx motor : new DcMotorEx[] {frontLeftMotor, backLeftMotor, frontRightMotor, backRightMotor}) {
+            motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+    }
+
+    private void recoverFromHubReset() {
+        HubReset.forget(frontLeftMotor, backLeftMotor, frontRightMotor, backRightMotor);
+        try {
+            configureMotors();
+        } catch (TargetPositionNotSetException stillDown) {
+        }
+        java.util.Arrays.fill(lastWriteNanos, 0L);
+    }
+
+    private void writePower(DcMotorEx motor, double power) {
+        try {
+            motor.setPower(power);
+        } catch (TargetPositionNotSetException hubReset) {
+            recoverFromHubReset();
+            try {
+                motor.setPower(power);
+            } catch (TargetPositionNotSetException stillDown) {
+            }
         }
     }
 
@@ -173,7 +194,7 @@ public class MecanumDriveFinal {
             boolean changed = power != wheelPowers[i]
                     && (power == 0.0 || Math.abs(power - wheelPowers[i]) >= POWER_WRITE_THRESHOLD);
             if (changed || now - lastWriteNanos[i] >= POWER_RESEND_NANOS) {
-                motors[i].setPower(power);
+                writePower(motors[i], power);
                 wheelPowers[i] = power;
                 lastWriteNanos[i] = now;
             }
@@ -298,9 +319,9 @@ public class MecanumDriveFinal {
         rampedForward = 0.0;
         rampedStrafe = 0.0;
         rampedRotate = 0.0;
-        if (frontLeftMotor != null) frontLeftMotor.setPower(0);
-        if (backLeftMotor != null) backLeftMotor.setPower(0);
-        if (frontRightMotor != null) frontRightMotor.setPower(0);
-        if (backRightMotor != null) backRightMotor.setPower(0);
+        if (frontLeftMotor != null) writePower(frontLeftMotor, 0);
+        if (backLeftMotor != null) writePower(backLeftMotor, 0);
+        if (frontRightMotor != null) writePower(frontRightMotor, 0);
+        if (backRightMotor != null) writePower(backRightMotor, 0);
     }
 }

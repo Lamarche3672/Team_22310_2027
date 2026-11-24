@@ -31,19 +31,28 @@ Files:
 - Low battery: power gets limited smoothly instead of the robot browning out.
 - Gamepad 2 buzzes when field-centric turns off (long) or back on (2 short).
 
-### Flywheel controls (gamepad 1)
+### All controls
 
-| Button | Does |
+| Gamepad 1 | Does |
 |---|---|
+| RIGHT TRIGGER | Intake |
+| LEFT TRIGGER | Outtake everything (wins over everything else) |
+| LEFT BUMPER | Index inwards (feeds the shooter) |
 | RIGHT BUMPER (hold) | Spin flywheels |
-| Y | High / low speed |
-| LEFT TRIGGER | Reverse (for jams) |
-| BACK | Unlock tuning |
+| RIGHT + LEFT BUMPER | Shoot |
+| Y | Flywheel high / low speed |
+| BACK | Unlock flywheel tuning |
 | D-PAD | Change P and F (only when unlocked) |
 | X | Change step size |
 | A | Save P and F (auto uses them too) |
 
-The controller buzzes when the flywheels are at speed.
+| Gamepad 2 | Does |
+|---|---|
+| LEFT STICK | Drive (field-centric) |
+| RIGHT STICK | Turn |
+| OPTIONS (let go) | Make the way the robot faces "forward" |
+
+Gamepad 1 buzzes when the flywheels are at speed.
 
 ## Bugs fixed
 
@@ -85,10 +94,24 @@ The controller buzzes when the flywheels are at speed.
 - Gamepad 2 buzzes at START if field-centric is not available.
 - "Straight Line Test" and "Angled Line Test" moved to the "Test" group so nobody picks them in a match.
 
+## Nov 24: "TargetPositionNotSetException" crash
+
+**What it was:** our code never uses RUN_TO_POSITION. The SDK shows that message whenever a hub refuses to switch a motor on, and a hub does that right after it loses power for a moment. Driving and shooting at the same time pulls a lot of current, the battery voltage dips, a hub resets, and the next motor command crashed the whole OpMode.
+
+**What changed:**
+- Every motor (drive, flywheels, intake, index, in teleop and auto) now catches that refusal, sets the motor up again (mode, brake, flywheel PIDF) and keeps going. No more crash.
+- The Driver Station shows "A HUB LOST POWER" when it happens. If you see it, the robot has a power problem: check the battery (charge, age), the power switch, the XT30 cable between the hubs, and that the battery connector is tight.
+- The drive's low-battery limiter now reacts about twice as fast, so the voltage dips less.
+
+**Flywheels (REV HD Hex 40:1, top speed 2800 ticks/s):**
+- Starting PIDF is now based on the real motor: F = 32767 / 2800 = 11.7, P = 5.85, I = 0.59. Before, F was about 18% too high, so the wheels overshot and "at speed" never showed. If you saved your own P and F with A, those still win.
+- Spin-up is faster (0.3 s instead of 0.4 s) on a good battery. Below 11 V it ramps up more slowly so it doesn't pull the battery down; it never stops spinning up.
+- Auto `HIGH_VELOCITY` is now 2300 (was 3000, which the motor can't reach, so the wheels just ran flat out).
+
 ## Check before a match
 
 1. Flywheel direction. Teleop is `REVERSE`, auto is `FORWARD`. One is wrong. Run an auto with the wheels off the ground and look.
-2. Flywheel speed in auto. `HIGH_VELOCITY = 3000` is probably more than the motors can do. The Driver Station warns if it is. Lower it to what they actually reach.
+2. Flywheel speed in auto. `HIGH_VELOCITY` is now 2300. If shots land short or long from the auto spots, change it in `FlywheelAuto.java` (2380 is about the most the motors can hold).
 3. Start pose. After INIT the Driver Station shows where the robot should be. It has to match where the robot really is.
    - Red Strong: x 56, y 8, heading 270
    - Blue Strong: x 88, y 136, heading 90

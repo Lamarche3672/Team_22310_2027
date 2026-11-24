@@ -3,10 +3,12 @@ package org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto;
 import static com.pedropathing.ivy.commands.Commands.instant;
 
 import com.pedropathing.ivy.Command;
+import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 
 public class IndexIntakeAuto {
 
@@ -24,13 +26,17 @@ public class IndexIntakeAuto {
     public void init(HardwareMap hardwareMap) {
         intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
         intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         indexMotor = hardwareMap.get(DcMotor.class, "index_motor");
         indexMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-        indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
+        configure();
         stop();
+    }
+
+    private void configure() {
+        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
     public void intake(double power) {
@@ -56,8 +62,19 @@ public class IndexIntakeAuto {
     private void setPowers(double intake, double index) {
         intakePower = intake;
         indexPower = index;
-        if (intakeMotor != null) intakeMotor.setPower(intake);
-        if (indexMotor != null) indexMotor.setPower(index);
+        if (intakeMotor == null || indexMotor == null) return;
+        try {
+            intakeMotor.setPower(intake);
+            indexMotor.setPower(index);
+        } catch (TargetPositionNotSetException hubReset) {
+            HubReset.forget(intakeMotor, indexMotor);
+            try {
+                configure();
+                intakeMotor.setPower(intake);
+                indexMotor.setPower(index);
+            } catch (TargetPositionNotSetException stillDown) {
+            }
+        }
     }
 
     public Command intakeCommand(double power) {

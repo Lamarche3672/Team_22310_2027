@@ -12,10 +12,14 @@ import com.pedropathing.math.Pose;
 import com.pedropathing.math.Velocity;
 import com.pedropathing.paths.Path;
 import com.pedropathing.utils.Angle;
+import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.Constants;
 import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.PinpointGuard;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 
 public class MecanumDriveAuto {
 
@@ -31,14 +35,39 @@ public class MecanumDriveAuto {
     public static final int BLIND_READS = 3;
 
     private Follower follower;
+    private DcMotorEx[] driveMotors = new DcMotorEx[0];
 
     public void init(HardwareMap hardwareMap, Pose startPose) {
         follower = Constants.create(hardwareMap);
+        driveMotors = new DcMotorEx[] {
+                hardwareMap.get(DcMotorEx.class, Constants.drivetrainConfig.frontLeftName.get()),
+                hardwareMap.get(DcMotorEx.class, Constants.drivetrainConfig.frontRightName.get()),
+                hardwareMap.get(DcMotorEx.class, Constants.drivetrainConfig.backLeftName.get()),
+                hardwareMap.get(DcMotorEx.class, Constants.drivetrainConfig.backRightName.get())};
         follower.setPose(startPose);
         follower.update();
     }
 
     public void update() {
+        try {
+            step();
+        } catch (TargetPositionNotSetException hubReset) {
+            recoverFromHubReset();
+        }
+    }
+
+    private void recoverFromHubReset() {
+        HubReset.forget(driveMotors);
+        try {
+            for (DcMotorEx motor : driveMotors) {
+                motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+                motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+            }
+        } catch (TargetPositionNotSetException stillDown) {
+        }
+    }
+
+    private void step() {
         Localizer localizer = follower.localizer;
         if (localizer instanceof PinpointGuard && ((PinpointGuard) localizer).badStreak() >= BLIND_READS) {
             localizer.update();
@@ -58,8 +87,18 @@ public class MecanumDriveAuto {
 
     public void stop() {
         if (follower == null) return;
-        follower.stop();
-        follower.drivetrain.stop();
+        try {
+            follower.stop();
+            follower.drivetrain.stop();
+        } catch (TargetPositionNotSetException hubReset) {
+            recoverFromHubReset();
+            for (DcMotorEx motor : driveMotors) {
+                try {
+                    motor.setPower(0);
+                } catch (TargetPositionNotSetException stillDown) {
+                }
+            }
+        }
     }
 
     public Command follow(Path path, double timeoutMs) {
