@@ -50,6 +50,8 @@ public class Shooter {
     private long lastDistanceSpeedNanos;
 
     private boolean setupOpen;
+    private boolean feeding;
+    private boolean coasting;
     private boolean wasReady;
     private long lastRumbleNanos;
     private String saveMessage = "";
@@ -77,7 +79,16 @@ public class Shooter {
 
     /** 0 to 1: how hard the index may feed right now. See FlywheelControl.feedScale(). */
     public double feedScale() {
-        return flywheels == null ? 1.0 : flywheels.feedScale();
+        if (flywheels == null) return 1.0;
+        // Wheels still spinning the wrong way (just after an outtake): never feed into that.
+        if (coasting) return 0.0;
+        // Nobody is feeding: do not let the "waited long enough" timer run in the background,
+        // or the next press could feed straight away.
+        if (!feeding) {
+            flywheels.cancelFeedWait();
+            return 1.0;
+        }
+        return flywheels.feedScale();
     }
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
@@ -98,7 +109,7 @@ public class Shooter {
         // START + A is how gamepad 1 is paired. That must not count as "save".
         boolean savePressed = gamepad1.aWasPressed() && !gamepad1.start;
         boolean deletePressed = gamepad1.xWasPressed();
-        boolean feeding = gamepad1.left_bumper;
+        feeding = gamepad1.left_bumper;
 
         if (setupOpen) {
             runShotSetup(upPressed, downPressed, savePressed, deletePressed, now);
@@ -106,14 +117,16 @@ public class Shooter {
             chooseSpeed(feeding, now);
         }
 
-        boolean wantSpin = gamepad1.right_bumper;
-        boolean wantReverse = !wantSpin && gamepad1.left_trigger > TRIGGER_PRESSED;
+        // LEFT TRIGGER (spit everything out) beats RIGHT BUMPER, the same as it does for the
+        // intake and the index.
+        boolean wantReverse = gamepad1.left_trigger > TRIGGER_PRESSED;
+        boolean wantSpin = gamepad1.right_bumper && !wantReverse;
         double wantedVelocity = wantSpin ? shotSpeed : wantReverse ? -lowVelocity : 0;
 
         // Going straight from forwards to backwards (or back) would make the motors fight the
         // spinning wheels: a big current spike for nothing. Let them coast down first.
         double measured = flywheels.speed();
-        boolean coasting = (wantedVelocity < 0 && measured > COAST_BELOW)
+        coasting = (wantedVelocity < 0 && measured > COAST_BELOW)
                 || (wantedVelocity > 0 && measured < -COAST_BELOW);
         if (coasting) wantedVelocity = 0;
 

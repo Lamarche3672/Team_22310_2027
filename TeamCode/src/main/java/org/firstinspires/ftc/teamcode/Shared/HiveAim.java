@@ -60,7 +60,9 @@ public class HiveAim {
     /** In the camera image y grows downward, so the higher cell has the SMALLER y. */
     private static final boolean IMAGE_Y_GROWS_DOWN = true;
     /** How long a camera sighting of "this cell is up" is trusted before a lone sticker is taken at face value. */
-    private static final double UP_CELL_MEMORY_SECONDS = 10.0;
+    private static final double UP_CELL_MEMORY_SECONDS = 30.0;
+    /** A one-tag picture is stepped to the sticker's middle using a scale no older than this. */
+    private static final double SCALE_MEMORY_SECONDS = 2.0;
 
     // ---- things to flip if the real robot disagrees
     /** Make this -1 if the robot turns AWAY from the hive (camera mounted upside down). */
@@ -140,8 +142,11 @@ public class HiveAim {
     private static long upCellSeenNanos;
     private boolean aimingAtDownCell;
     private int lastTarget = -1;
-    /** How many degrees one inch of sticker covers, with its sign (which way round the sticker looks). */
-    private double degreesPerInch = Double.NaN;
+    // How many degrees one inch of sticker covers, with its sign (which way round the sticker
+    // looks), kept per cell: the two stickers are at different distances and can be seen from
+    // opposite sides.
+    private final double[] degreesPerInch = {Double.NaN, Double.NaN};
+    private final long[] degreesPerInchNanos = new long[2];
 
     private boolean aimed;
     private boolean wasAimed;
@@ -151,7 +156,8 @@ public class HiveAim {
     /** Call at the start of a match (autonomous does): the hive is back in its starting position. */
     public static void matchStart() {
         upCell = START_UP_CELL;
-        upCellSeenNanos = 0;
+        // Counts as a sighting: at the start of a match we KNOW which cell is up.
+        upCellSeenNanos = System.nanoTime();
     }
 
     public void init(HardwareMap hardwareMap) {
@@ -200,7 +206,14 @@ public class HiveAim {
         } catch (RuntimeException noResult) {
             return;
         }
-        if (result == null || !result.isValid()) return;
+        if (result == null) return;
+        if (!result.isValid()) {
+            // The camera is answering but sees no tags at all. Say so on the screen instead
+            // of leaving the last list of tags up.
+            tagsInView = "";
+            pipelineInUse = result.getPipelineIndex();
+            return;
+        }
 
         // The SDK polls the camera faster than the camera makes pictures, so most loops hand
         // us the same picture again. The camera's own timestamp tells us when it is new.
@@ -284,13 +297,16 @@ public class HiveAim {
         if (n >= 2 && spread > 1e-6) {
             double slope = (sumOffsetTx[target] - n * meanOffset * meanTx) / spread;
             if (Math.abs(slope) >= MIN_DEGREES_PER_INCH && Math.abs(slope) <= MAX_DEGREES_PER_INCH) {
-                degreesPerInch = slope;
+                degreesPerInch[target] = slope;
+                degreesPerInchNanos[target] = now;
                 centre = meanTx - slope * meanOffset;
                 distance = 1.0 / Math.tan(Math.toRadians(Math.abs(slope)));
             }
-        } else if (Double.isFinite(degreesPerInch)) {
-            // Only one tag: use the last known scale to step from that tag to the middle.
-            centre = meanTx - degreesPerInch * meanOffset;
+        } else if (Double.isFinite(degreesPerInch[target])
+                && now - degreesPerInchNanos[target] <= SCALE_MEMORY_SECONDS * 1e9) {
+            // Only one tag: use this sticker's last known scale to step from that tag to the
+            // middle. If the scale is old (we may have moved a long way) aim at the tag itself.
+            centre = meanTx - degreesPerInch[target] * meanOffset;
         }
         // A distance to the DOWN cell would pick the wrong shot speed (it is about two feet
         // further away), so only the up cell's distance is passed on.
@@ -306,7 +322,9 @@ public class HiveAim {
     void onFrame(double txDegrees, double distance, double ageSeconds, long now, boolean headingOk) {
         if (!Double.isFinite(txDegrees)) return;
         boolean wasRecent = lastSeenNanos != 0 && now - lastSeenNanos <= DISTANCE_SECONDS * 1e9;
-        errorDegrees = TX_SIGN * txDegrees - AIM_OFFSET_DEGREES;
+        // Adding the offset makes the hive look further right than it is, so the robot turns
+        // further right.
+        errorDegrees = TX_SIGN * txDegrees + AIM_OFFSET_DEGREES;
         lastSeenNanos = now;
 
         if (headingOk && historyCount > 0) {

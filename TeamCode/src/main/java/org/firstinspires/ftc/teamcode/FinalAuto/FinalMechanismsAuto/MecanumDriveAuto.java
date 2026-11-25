@@ -106,6 +106,10 @@ public class MecanumDriveAuto {
                 motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                 motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
             }
+            // Pedro remembers the last power it sent each wheel and skips "the same" value.
+            // The refused write is in that memory, so zero everything through Pedro: the
+            // next update() then really sends the powers again.
+            if (follower != null) follower.drivetrain.stop(true);
         } catch (TargetPositionNotSetException stillDown) {
             // Still coming back. Tried again on the next refusal.
         }

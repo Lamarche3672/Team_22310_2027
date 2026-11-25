@@ -20,8 +20,12 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 public final class AutoHandoff {
     /** The field heading that points away from the RED drivers. Blue is the opposite. */
     public static final double RED_DRIVERS_FACE_DEGREES = 0;
-    /** An auto heading older than this is from an earlier run and is ignored. */
-    private static final long FRESH_NANOS = 180_000_000_000L;
+    /**
+     * How long an auto's heading is trusted. In a match teleop is initialised within the 8
+     * second changeover. In practice the robot is usually picked up and put somewhere else
+     * before teleop, and by then this has run out, so a stale heading is not used.
+     */
+    private static final long FRESH_NANOS = 30_000_000_000L;
 
     private static double endHeading = Double.NaN;
     private static boolean endedBlue;

@@ -162,8 +162,19 @@ public final class FlywheelControl {
             atSpeed = false;
             feedReference = Double.NaN;
             feedWaitSinceNanos = 0;
+            // "Steady for a while" has to start again too. Otherwise wheels sitting at the old
+            // speed would count as levelled off for the new one the instant it is set.
+            levelSinceNanos = spinStartNanos;
+            levelLowest = speed();
+            levelHighest = levelLowest;
+            lastAtSpeedNanos = spinStartNanos;
         }
         target = ticksPerSecond;
+    }
+
+    /** Call when nobody is feeding, so time spent idle does not count as "waited long enough". */
+    public void cancelFeedWait() {
+        feedWaitSinceNanos = 0;
     }
 
     /** Lets the wheels coast to a stop. */
@@ -277,7 +288,9 @@ public final class FlywheelControl {
     /** aheadBy: how far this wheel is ahead of the other (ticks/s, smoothed); negative if behind. */
     private double matched(double common, double aheadBy) {
         if (common == 0) return 0;
-        double trim = -MATCH_GAIN / 1000.0 * 0.5 * aheadBy * Math.signum(target);
+        // aheadBy is signed, so this is right for both directions: a wheel that is ahead (more
+        // positive going forwards, more negative in reverse) is pulled back toward the other.
+        double trim = -MATCH_GAIN / 1000.0 * 0.5 * aheadBy;
         trim = Math.max(-MAX_MATCH_POWER, Math.min(MAX_MATCH_POWER, trim));
         double value = common + trim;
         value = target > 0 ? Math.max(0, value) : Math.min(0, value);
@@ -310,8 +323,10 @@ public final class FlywheelControl {
         }
     }
 
+    /** Steady, at least half way there, and not above the target (that would be coasting down). */
     private boolean hasLevelledOff(double measured, long now) {
-        return target > 0 && measured >= 0.5 * target && now - levelSinceNanos >= LEVEL_MS * 1e6;
+        return target > 0 && measured >= 0.5 * target && measured <= target + READY_TOLERANCE
+                && now - levelSinceNanos >= LEVEL_MS * 1e6;
     }
 
     /** True right now, this loop. Use isReady() to decide when to shoot. */

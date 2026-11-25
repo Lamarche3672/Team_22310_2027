@@ -39,7 +39,7 @@ From the competition manual (sections 9.6, 9.9, 10.5):
 - At the start of a match the up cells are red 34-37 and blue 42-45 (the tag numbers under them).
 - Shooting at the other alliance's hive, or at the outside of a cell on purpose, is a foul (G417).
 
-The camera works out which cell is up by itself: when it can see both of our stickers, the higher one is the up cell.
+The camera works out which cell is up by itself: when it can see both of our stickers, the higher one is the up cell. It remembers that for 30 seconds; after that a single sticker in view is simply taken as the target.
 
 ## Shot setup (once, about 5 minutes)
 
@@ -178,7 +178,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
    - Blue Weak: x 88, y 136, heading 270
 7. **Run each auto you will use.** Watch the "Last aim" line: it says whether the camera aimed the shot.
 8. **Pinpoint cable test.** INIT an auto, pull the Pinpoint cable for half a second, plug it back. It should say "Pinpoint restarted".
-9. **After auto.** Teleop now sets "forward" by itself from where auto ended (the Drive line says "forward set by auto"). Check it once: push the left stick away from you and the robot should drive away from you. If it is wrong, tap START the old way, and fix `RED_DRIVERS_FACE_DEGREES` in `Shared/AutoHandoff.java`. Without an auto first, forward is still whichever way the robot faces at INIT.
+9. **After auto.** Teleop now sets "forward" by itself from where auto ended (the Drive line says "forward set by auto"). Check it once: push the left stick away from you and the robot should drive away from you. If it is wrong, tap START the old way, and fix `RED_DRIVERS_FACE_DEGREES` in `Shared/AutoHandoff.java`. This only applies when teleop is initialised within 30 seconds of the auto ending (always true in a match). Otherwise forward is whichever way the robot faces at INIT, like before.
 10. **Limelight.** Do the setup list above and check the AIM line shows our tag numbers.
 11. Fresh battery every match (13 V or more resting).
 
@@ -231,7 +231,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 **Nov 25 (revamp)**
 - New `Shared/` folder: one copy of the battery guard, flywheel control, intake/index, camera aim and shot table, used by teleop and auto.
 - Autonomous aims every shot with the Limelight and uses the saved shot speeds.
-- The aim knows the hive tips: it picks the up cell, finds the middle of its sticker from whatever tags are in view, and remembers a tip from auto into teleop.
+- The aim knows the hive tips: it picks the up cell, finds the middle of its sticker from whatever tags are in view, and remembers which cell is up for 30 seconds after it last saw both.
 - Hive distance now comes from how far apart the tags look. No Limelight 3D setting needed.
 - Auto aim is about 30% quicker to lock and no longer overshoots when there is delay in the loop.
 - Teleop takes "forward" from where auto ended, so no START tap after auto.

@@ -64,9 +64,16 @@ public final class Battery {
     /** Smooths out single noisy readings before they move the limits or the compensation. */
     private static final double SMOOTHING_SECONDS = 0.15;
 
+    /** A hub that has not given a good reading for this long is left out (it may have dropped off). */
+    private static final long READING_FRESH_NANOS = 1_000_000_000L;
+    /** The hubs are read 50 ms apart, so a quick sag looks like a difference. Only say so if it lasts. */
+    private static final long HUBS_DIFFER_FOR_NANOS = 1_000_000_000L;
+
     private final List<VoltageSensor> sensors = new ArrayList<>();
     private final double[] readings;
+    private long[] readingNanos = new long[0];
     private int nextSensor;
+    private long hubsDifferSinceNanos;
 
     private double volts = Double.NaN;
     private double smoothedVolts = Double.NaN;
@@ -79,12 +86,14 @@ public final class Battery {
     public Battery(HardwareMap hardwareMap) {
         for (VoltageSensor sensor : hardwareMap.voltageSensor) sensors.add(sensor);
         readings = new double[sensors.size()];
+        readingNanos = new long[sensors.size()];
         java.util.Arrays.fill(readings, Double.NaN);
     }
 
     public Battery(VoltageSensor sensor) {
         if (sensor != null) sensors.add(sensor);
         readings = new double[sensors.size()];
+        readingNanos = new long[sensors.size()];
         java.util.Arrays.fill(readings, Double.NaN);
     }
 
@@ -138,18 +147,14 @@ public final class Battery {
         tick();
         if (readings.length == 0) return "no voltage sensor";
         StringBuilder text = new StringBuilder();
-        double lowest = Double.POSITIVE_INFINITY;
-        double highest = Double.NEGATIVE_INFINITY;
         for (double reading : readings) {
             if (text.length() > 0) text.append(" / ");
             text.append(Double.isNaN(reading) ? "?" : String.format("%.1f", reading));
-            if (!Double.isNaN(reading)) {
-                lowest = Math.min(lowest, reading);
-                highest = Math.max(highest, reading);
-            }
         }
         text.append(String.format("  (lowest %.1f)", lowestVolts));
-        if (highest - lowest > HUB_DIFFERENCE_WARNING_VOLTS) text.append("  HUBS DIFFER: check the XT30 cable between them");
+        if (hubsDifferSinceNanos != 0 && System.nanoTime() - hubsDifferSinceNanos > HUBS_DIFFER_FOR_NANOS) {
+            text.append("  HUBS DIFFER: check the XT30 cable between them");
+        }
         return text.toString();
     }
 
@@ -160,12 +165,25 @@ public final class Battery {
             // One hub per turn, so two hubs are each read ten times a second.
             double reading = sensors.get(nextSensor).getVoltage();
             // A failed read comes back as 0. Ignore it rather than panic the limiter.
-            if (Double.isFinite(reading) && reading > 1.0) readings[nextSensor] = reading;
+            if (Double.isFinite(reading) && reading > 1.0) {
+                readings[nextSensor] = reading;
+                readingNanos[nextSensor] = now;
+            }
             nextSensor = (nextSensor + 1) % sensors.size();
 
+            // The lowest of the hubs that are still answering. A hub that sagged and then
+            // dropped off must not hold the whole robot at its last low reading forever.
             double lowest = Double.NaN;
-            for (double value : readings) {
-                if (!Double.isNaN(value) && !(lowest <= value)) lowest = value;
+            double highest = Double.NaN;
+            for (int i = 0; i < readings.length; i++) {
+                if (Double.isNaN(readings[i]) || now - readingNanos[i] > READING_FRESH_NANOS) continue;
+                if (!(lowest <= readings[i])) lowest = readings[i];
+                if (!(highest >= readings[i])) highest = readings[i];
+            }
+            if (highest - lowest > HUB_DIFFERENCE_WARNING_VOLTS) {
+                if (hubsDifferSinceNanos == 0) hubsDifferSinceNanos = now;
+            } else {
+                hubsDifferSinceNanos = 0;
             }
             if (!Double.isNaN(lowest)) {
                 volts = lowest;

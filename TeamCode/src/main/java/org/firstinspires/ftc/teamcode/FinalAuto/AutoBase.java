@@ -171,6 +171,7 @@ public abstract class AutoBase extends LinearOpMode {
 
             Pose start = startPose();
             String problem = null;
+            String recovered = null;
             while (opModeInInit()) {
                 // The robot can sit in INIT for minutes. If the Pinpoint glitches in that
                 // time, set it up again instead of letting the whole auto die before START.
@@ -180,6 +181,9 @@ public abstract class AutoBase extends LinearOpMode {
                     try {
                         drive.init(hardwareMap, start);
                         problem = null;
+                        // Keep what happened on the screen: it is ready again, but somebody
+                        // should still look at that cable before the match.
+                        recovered = fault.getMessage();
                     } catch (RuntimeException stillBad) {
                         problem = stillBad.getMessage();
                     }
@@ -187,6 +191,7 @@ public abstract class AutoBase extends LinearOpMode {
                 if (aim != null) aim.update(drive.pose().heading(), true);
 
                 telemetry.addLine(problem == null ? "READY - " + autoName() : "NOT READY: " + problem);
+                if (recovered != null) telemetry.addLine("Set up again after a fault: " + recovered);
                 if (!missing.isEmpty()) telemetry.addLine(missing);
                 telemetry.addLine("Load 4 pollen. Robot on the start position.");
                 telemetry.addData("Should read about", "x %.0f, y %.0f, heading %.0f",
@@ -198,6 +203,9 @@ public abstract class AutoBase extends LinearOpMode {
             }
             if (!opModeIsActive()) return;
 
+            // The match starts NOW (INIT may have been minutes ago), so the hive is in its
+            // starting position from this moment.
+            HiveAim.matchStart();
             autoTimer.reset();
             schedule(autoRoutine());
 
