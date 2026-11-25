@@ -10,6 +10,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
+import org.firstinspires.ftc.teamcode.Shared.AutoHandoff;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.HubReset;
 
@@ -79,6 +80,7 @@ public class MecanumDriveFinal {
     private long initNanos;
     private boolean needsRezero;
     private boolean wasNearStart = true;
+    private boolean forwardFromAuto;
 
     /** For OpModes that only have a drive (the tag align test). MAIN TELEOP shares one Battery. */
     public void init(HardwareMap hardwareMap) {
@@ -116,6 +118,12 @@ public class MecanumDriveFinal {
         } catch (RuntimeException noPinpoint) {
             pinpoint = null;
         }
+
+        // Straight after an auto we know which way the robot is really facing on the field,
+        // so "forward" can be set for the drivers without anyone touching START.
+        double fromAuto = AutoHandoff.takeForwardOffset();
+        forwardFromAuto = pinpoint != null && Double.isFinite(fromAuto);
+        if (forwardFromAuto) headingOffsetRadians = fromAuto;
     }
 
     private void configureMotors() {
@@ -363,6 +371,7 @@ public class MecanumDriveFinal {
         if (headingReady) {
             headingOffsetRadians = headingRadians;
             needsRezero = false;
+            forwardFromAuto = false;
         }
     }
 
@@ -390,7 +399,7 @@ public class MecanumDriveFinal {
     }
 
     public String getDriveStatus() {
-        if (isFieldRelative()) return "Ready (field-centric)";
+        if (isFieldRelative()) return forwardFromAuto ? "Ready (field-centric, forward set by auto)" : "Ready (field-centric)";
         if (isWaitingForHeading()) return "STOPPED: waiting for Pinpoint";
         if (pinpoint == null) return "ROBOT-CENTRIC: no Pinpoint in the robot config";
         if (needsRezero) return "ROBOT-CENTRIC: Pinpoint restarted - face forward, tap START";
@@ -410,7 +419,7 @@ public class MecanumDriveFinal {
             nextCurrentMotor = (nextCurrentMotor + 1) % motors.length;
         }
         double limit = battery.powerLimit();
-        telemetry.addData("Battery (V)", "%.1f now, %.1f lowest", battery.volts(), battery.lowestVolts());
+        telemetry.addData("Battery (V per hub)", battery.describe());
         telemetry.addData("Drive power limit", limit < 0.999
                 ? String.format("%.0f%% - battery low, power eased off", limit * 100) : "100%");
         telemetry.addData("Drive amps FL / BL / FR / BR", "%.1f / %.1f / %.1f / %.1f",

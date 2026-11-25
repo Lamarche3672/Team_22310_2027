@@ -16,11 +16,15 @@ import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
  */
 public class FlywheelAuto {
     /**
-     * Speeds in encoder ticks per second. The HD Hex tops out at 2800 and can only hold about
-     * 2380 under load, so 2300 is "nearly flat out, but still a speed it can keep".
-     * These are used when there is no saved shot for the distance. Tune them on a field.
+     * Speeds in encoder ticks per second, used when there is no saved shot for the distance.
+     *
+     * The HD Hex tops out at 2800 on a full battery with no load. What it can HOLD, with room
+     * left to recover after each pollen, drops with the battery: about 2260 at 12 V and about
+     * 2060 at 11 V. 2100 is fast and still a speed the wheels can keep through a volley, so
+     * every pollen leaves at the same speed. (It was 3000, then 2300: both just ran flat out.)
+     * Tune it on a field.
      */
-    public static final double HIGH_VELOCITY = 2300;
+    public static final double HIGH_VELOCITY = 2100;
     public static final double LOW_VELOCITY = 1800;
 
     private FlywheelControl control;

@@ -29,6 +29,18 @@ Before START, on either gamepad: **X = blue alliance, B = red alliance**. After 
 
 **To shoot:** hold RIGHT BUMPER and LEFT BUMPER. The robot does the timing: the index only feeds when the flywheels are at speed, so you can hold both from the start. Gamepad 1 buzzes when the wheels are ready, gamepad 2 buzzes when the aim is locked.
 
+## How scoring works (and why the aim does what it does)
+
+From the competition manual (sections 9.6, 9.9, 10.5):
+
+- Each alliance's hive is a seesaw with a CELL at each end. **Only the cell that is tilted UP can be scored in.**
+- Enough pollen in the up cell TIPS the hive (20 points). The other cell is then the up one.
+- The up cell's opening faces outward, toward its end of the field. So **you shoot from the end the up cell faces**, and after a tip you shoot from the other end. Our Strong auto does exactly that: shoot, cross the field, shoot again.
+- At the start of a match the up cells are red 34-37 and blue 42-45 (the tag numbers under them).
+- Shooting at the other alliance's hive, or at the outside of a cell on purpose, is a foul (G417).
+
+The camera works out which cell is up by itself: when it can see both of our stickers, the higher one is the up cell.
+
 ## Shot setup (once, about 5 minutes)
 
 The shooter picks its speed from how far away the hive is. It has to be taught first.
@@ -45,7 +57,8 @@ The shooter picks its speed from how far away the hive is. It has to be taught f
 - Between two saved distances it uses a speed in between.
 - Nothing saved yet? RIGHT BUMPER uses the Y preset (1500 high / 900 low).
 - Autonomous uses the same saved shots when its camera can see the hive.
-- No hive distance on the screen? Turn on "Full 3D" for AprilTags in the Limelight pipeline. Aiming works without it; only the distance needs it.
+- The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
+- If the camera is moved or re-angled, save the shots again.
 
 ## Auto aim
 
@@ -54,8 +67,21 @@ Hold LEFT TRIGGER on gamepad 2. The robot turns to face our hive and stays locke
 How it works: the camera only says *where* the hive is. The turning is done on the Pinpoint gyro, which is read every loop with no delay. That is why it is quick and why it stays locked when the tag blinks out for a moment.
 
 - Red aims at tags 30-37, blue at 38-45. Wrong alliance = it never finds the hive.
-- The Driver Station line "AIM" says what it sees, including which tag numbers are in view.
+- It aims at the middle of the up cell's sticker, even when only some of its four tags are in view.
+- If it can only see the down cell it still points at the hive and says "only the DOWN cell in view". The shot speed then stays on the last known distance.
+- The Driver Station line "AIM" says what it sees, including which tag numbers are in view and which pipeline the camera is on.
 - It uses Limelight pipeline 0 and assumes the camera looks the way the shooter shoots.
+
+### Limelight setup (do this once, in the Limelight web page)
+
+The tags are 3 to 4 feet up and face the floor, so the camera has to be tilted up about 25 to 35 degrees to see them.
+
+1. Robot config: the Limelight is an "Ethernet Device" named `limelight`.
+2. Pipeline 0 is a Fiducial / AprilTag pipeline, family "AprilTag Classic 36h11".
+3. ID filter empty (or 30-45). Minimum area 0.
+4. Exposure as low as still reads the tags while the robot spins (high exposure blurs them), gain up to compensate.
+5. "Ignore NetworkTables Index" is NOT ticked (or the code cannot pick the pipeline).
+6. 640x480 is fast. Go to 1280x960 only if far tags drop out.
 
 If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim.java`:
 
@@ -64,6 +90,7 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 | Turns AWAY from the hive | `TX_SIGN` to -1 |
 | Always a bit left or right | `AIM_OFFSET_DEGREES` (+ aims further right) |
 | Wobbles back and forth | lower `KP` and `KD` together (try 1.8 and 0.22) |
+| Picks the lower cell | `IMAGE_Y_GROWS_DOWN` to false |
 | Slow, or stops short | raise both (try 3.0 and 0.36). Keep KD about 0.12 x KP |
 | AprilTag pipeline is not slot 0 | `PIPELINE` |
 
@@ -77,7 +104,7 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 | BlueAllianceWeak | Same, mirrored |
 
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
-- Shot speed in auto: the saved shot for the measured distance, otherwise `HIGH_VELOCITY` (2300) in `FlywheelAuto.java`.
+- Shot speed in auto: the saved shot for the measured distance, otherwise `HIGH_VELOCITY` (2100) in `FlywheelAuto.java`. 2100 is a speed the wheels can hold through a whole volley; 2300 and 3000 just ran them flat out.
 - Every auto is parked by 24 s no matter what, and selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
@@ -93,7 +120,14 @@ The battery used to drop from 11 V to 4 V and once reset a hub mid-match. Now:
 - The flywheels limit their own current while spinning up (about 10 A for both, not 17).
 - If a hub does restart, every motor sets itself up again and carries on. The Driver Station shows "A HUB LOST POWER".
 
-Code can only soften it. A worn battery, a loose XT30 or a weak power switch still has to be fixed with a wrench.
+Why it happens: if the four drive motors, two flywheels, intake and index all start together they can ask for 55 to 75 A, from a battery behind a 20 A fuse. A worn battery loses several volts at that.
+
+Code can only soften it. The rest is hardware:
+
+- **Batteries.** A full pack rests at 13 V or more. "11 V at the start" means nearly empty. If you can get a goBILDA Battery Health Analyzer: match packs should read 130 milliohms or less, and anything over 200 should be retired.
+- **XT30 plugs.** The Expansion Hub gets its power through the Control Hub and the XT30 cable between them. Loose plugs usually mean squashed pins; open the pins up a little rather than gluing.
+- **The Driver Station shows each hub's voltage.** If they differ by more than about half a volt it says "HUBS DIFFER": that is the cable between them, not the battery.
+- **Check the flywheel gearbox.** The code is told the flywheels are HD Hex motors with 40:1 gearboxes. A 40:1 output only turns 150 rpm, which is very slow for a shooter unless something gears it back up. REV's own launchers use the HD Hex with no gearbox. The code does not care (the encoder is on the motor either way), but the gearbox adds friction and current.
 
 ## How the code is laid out
 
@@ -106,6 +140,7 @@ teamcode/
     HiveAim             Limelight -> which way to face, and how far the hive is
     ShotTable           the saved "distance -> speed" shots
     HubReset            recovering when a hub loses power
+    AutoHandoff         tells teleop which way the robot faced when auto ended
 
   FinalTeleOp/
     MainTeleOp          the match teleop: wires gamepads to mechanisms
@@ -143,8 +178,9 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
    - Blue Weak: x 88, y 136, heading 270
 7. **Run each auto you will use.** Watch the "Last aim" line: it says whether the camera aimed the shot.
 8. **Pinpoint cable test.** INIT an auto, pull the Pinpoint cable for half a second, plug it back. It should say "Pinpoint restarted".
-9. **After auto.** At teleop INIT, "forward" is whichever way the robot faces. Driver 2: point it away from you and tap START.
-10. Fresh battery every match.
+9. **After auto.** Teleop now sets "forward" by itself from where auto ended (the Drive line says "forward set by auto"). Check it once: push the left stick away from you and the robot should drive away from you. If it is wrong, tap START the old way, and fix `RED_DRIVERS_FACE_DEGREES` in `Shared/AutoHandoff.java`. Without an auto first, forward is still whichever way the robot faces at INIT.
+10. **Limelight.** Do the setup list above and check the AIM line shows our tag numbers.
+11. Fresh battery every match (13 V or more resting).
 
 ## What the Driver Station is telling you
 
@@ -157,6 +193,8 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | Index is waiting for the flywheels | Normal while shooting: the next pollen goes when the wheels are back at speed |
 | A FLYWHEEL READS 0 | Flywheel encoder cable or a jam |
 | Drive power limit under 100% | Battery low; power eased off so the robot doesn't brown out |
+| HUBS DIFFER | The two hubs see different voltages: check the XT30 cable between them |
+| only the DOWN cell in view | The camera can't see the up cell's tags. You may be at the wrong end of the field for this cell |
 | AIM: only sees tags ... | The camera sees tags, but not our hive's. Wrong alliance, or facing the wrong hive |
 | camera not answering | Limelight unplugged or still starting (about 20 s after power on) |
 
@@ -193,7 +231,14 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 **Nov 25 (revamp)**
 - New `Shared/` folder: one copy of the battery guard, flywheel control, intake/index, camera aim and shot table, used by teleop and auto.
 - Autonomous aims every shot with the Limelight and uses the saved shot speeds.
+- The aim knows the hive tips: it picks the up cell, finds the middle of its sticker from whatever tags are in view, and remembers a tip from auto into teleop.
+- Hive distance now comes from how far apart the tags look. No Limelight 3D setting needed.
 - Auto aim is about 30% quicker to lock and no longer overshoots when there is delay in the loop.
+- Teleop takes "forward" from where auto ended, so no START tap after auto.
+- The battery guard reads every hub (the lowest one counts), and the drive and intake go easier while the flywheels spin up.
+- Flywheel gain and wheel matching re-tuned against how the hub really measures speed (steps of 20 ticks/s, about 25 ms late).
+- Auto flywheel speed 2100 (was 2300).
+- The Pinpoint tuner rejects a nonsense custom pod scale.
 - Consistent shots: the index only feeds when the flywheels are at speed, in teleop and auto.
 - The index runs slowly when outtaking (0.25 instead of 0.45).
 - One battery guard for the whole robot; intake and index now ramp up too.

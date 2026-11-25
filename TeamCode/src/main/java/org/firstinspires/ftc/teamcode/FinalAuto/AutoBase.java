@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.Volley;
+import org.firstinspires.ftc.teamcode.Shared.AutoHandoff;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.HiveAim;
 import org.firstinspires.ftc.teamcode.Shared.HubReset;
@@ -160,6 +161,7 @@ public abstract class AutoBase extends LinearOpMode {
         HubReset.clear();
         // Remembered by MAIN TELEOP, which starts a few seconds after this ends.
         HiveAim.blueAlliance = isBlueAlliance();
+        HiveAim.matchStart();
         try {
             telemetry.addLine("Starting... keep the robot STILL");
             telemetry.update();
@@ -228,6 +230,10 @@ public abstract class AutoBase extends LinearOpMode {
                 Scheduler.reset();
                 stopMechanisms();
                 if (aim != null) aim.stop();
+                // Tell teleop which way the robot ended up facing (see AutoHandoff).
+                AutoHandoff.save(drive.pose().heading(), isBlueAlliance());
+            } catch (RuntimeException noPose) {
+                // The drive never got as far as having a pose. Teleop just starts as usual.
             } finally {
                 drive.stop();
             }

@@ -43,7 +43,10 @@ public final class FlywheelControl {
 
     // ---- gains. F = 1.0 means "exactly the theoretical feedforward". P is power per 1000
     // ticks/s of error, I is power per 1000 ticks/s of error held for one second.
-    public static final double DEFAULT_P = 1.0;
+    // P = 0.7 came from a sweep against a model of the hub's speed reading (which lags about
+    // 25 ms and moves in steps of 20 ticks/s): higher overshoots a light wheel, lower is slow
+    // to recover after a pollen. If the real wheels hunt up and down, lower P first.
+    public static final double DEFAULT_P = 0.7;
     public static final double DEFAULT_F = 1.0;
     public static final double DEFAULT_I = 0.5;
 
@@ -71,8 +74,12 @@ public final class FlywheelControl {
 
     private static final double INTEGRATE_WITHIN = 200;
     private static final double MAX_INTEGRAL_POWER = 0.1;
-    private static final double MATCH_GAIN = 2.0;
-    private static final double MAX_MATCH_POWER = 0.1;
+    // Matching the two wheels. The hub reports speed in steps of about 20 ticks/s, so the raw
+    // difference between the wheels flickers. The trim works on a smoothed difference: it is
+    // there to take out a steady mismatch, not to react to every reading.
+    private static final double MATCH_GAIN = 1.5;
+    private static final double MAX_MATCH_POWER = 0.05;
+    private static final double MATCH_SMOOTHING_SECONDS = 0.25;
     private static final double DEAD_ENCODER_BELOW = 50;
     /** Skip motor writes that change the power by less than this; each write costs loop time. */
     private static final double WRITE_THRESHOLD = 0.005;
@@ -97,6 +104,8 @@ public final class FlywheelControl {
     private double integral;
     private double rightVelocity;
     private double leftVelocity;
+    /** Smoothed (right - left) speed, used to trim the wheels toward each other. */
+    private double mismatch;
     private long lastUpdateNanos;
     private long lastWriteNanos;
     private long lastReadNanos;
@@ -186,8 +195,10 @@ public final class FlywheelControl {
 
         double measured = speed();
         power = target == 0 ? 0 : nextPower(measured, dt);
-        rightPower = matched(power, rightVelocity);
-        leftPower = matched(power, leftVelocity);
+        updateMismatch(dt);
+        // mismatch is "how far the right wheel is ahead of the left".
+        rightPower = matched(power, mismatch);
+        leftPower = matched(power, -mismatch);
         boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
                 || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
                 || (power == 0 && (sentRight != 0 || sentLeft != 0));
@@ -233,6 +244,9 @@ public final class FlywheelControl {
         double supply = Double.isNaN(battery.volts()) ? Battery.NOMINAL_VOLTS : battery.volts();
         double backEmf = measured / MAX_TICKS_PER_SECOND * Battery.NOMINAL_VOLTS / supply;
         double headroom = spinUpVolts(supply) / supply;
+        // Still held back by the current cap = still spinning up. Tell the battery guard, so
+        // the drive and intake go a little easier until the wheels are up.
+        if (Math.abs(wanted) > Math.abs(backEmf) + headroom) battery.noteFlywheelSpinUp();
         wanted = Math.max(backEmf - headroom, Math.min(backEmf + headroom, wanted));
         return Math.max(-1.0, Math.min(1.0, wanted));
     }
@@ -247,15 +261,23 @@ public final class FlywheelControl {
 
     /**
      * The same power on both wheels leaves them at slightly different speeds if one has more
-     * friction, and unequal wheels curve the shot. This nudges each wheel toward the average.
-     * Skipped when an encoder is dead, because then "the difference" is meaningless.
+     * friction, and unequal wheels curve the shot. The trim gives the slower wheel a little
+     * more and the faster one a little less. Skipped when an encoder is dead, because then
+     * "the difference" is meaningless.
      */
-    private double matched(double common, double wheelVelocity) {
-        if (common == 0) return 0;
+    private void updateMismatch(double dt) {
         boolean bothAlive = Math.abs(rightVelocity) >= DEAD_ENCODER_BELOW && Math.abs(leftVelocity) >= DEAD_ENCODER_BELOW;
-        if (!bothAlive) return common;
-        double average = 0.5 * (rightVelocity + leftVelocity);
-        double trim = MATCH_GAIN / 1000.0 * (average - wheelVelocity);
+        if (target == 0 || !bothAlive) {
+            mismatch = 0;
+            return;
+        }
+        mismatch += (rightVelocity - leftVelocity - mismatch) * Math.min(1.0, dt / MATCH_SMOOTHING_SECONDS);
+    }
+
+    /** aheadBy: how far this wheel is ahead of the other (ticks/s, smoothed); negative if behind. */
+    private double matched(double common, double aheadBy) {
+        if (common == 0) return 0;
+        double trim = -MATCH_GAIN / 1000.0 * 0.5 * aheadBy * Math.signum(target);
         trim = Math.max(-MAX_MATCH_POWER, Math.min(MAX_MATCH_POWER, trim));
         double value = common + trim;
         value = target > 0 ? Math.max(0, value) : Math.min(0, value);
