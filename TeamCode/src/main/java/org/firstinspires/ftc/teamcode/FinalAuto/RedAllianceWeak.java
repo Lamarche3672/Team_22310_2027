@@ -13,18 +13,30 @@ import com.pedropathing.paths.Path;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
-import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;
-import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.Volley;
 
+/**
+ * RED ALLIANCE WEAK: the simple, safe auto for when our partner wants the garden.
+ *
+ *   1. drive up the field to the shooting spot (one smooth path, no stops)
+ *   2. shoot the 4 preloads
+ *   then AutoBase parks.
+ *
+ * It stays out of the garden side entirely. Positions are red coordinates in inches;
+ * BlueAllianceWeak reuses this class turned half a turn.
+ */
 @Autonomous(name = "RedAllianceWeak", group = "Autonomous", preselectTeleOp = "MAIN TELEOP")
 public class RedAllianceWeak extends AutoBase {
 
+    /** Used when there is no saved shot for the distance the camera measures. */
     private static final double SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
+    /** The drive takes about 4 s. Starting the flywheels 1.2 s in has them ready on arrival
+     *  without running them (and the battery) for the whole trip. */
     private static final double SPIN_UP_AFTER_MS = 1200;
     private static final double APPROACH_TIMEOUT_MS = 9000;
     private static final double SHOOT_SPOT_REACH_INCHES = 6;
 
-    private static final boolean FLOWER_PICKUP = false; // cant pick up flowers yet
+    // Optional flower trip. Off: the robot cannot take pollen out of flowers yet.
+    private static final boolean FLOWER_PICKUP = false;
     private static final double FLOWER_SPEED_INCHES_PER_SECOND = 25;
     private static final double FLOWER_INTAKE_MS = 1500;
     private static final double FLOWER_TIMEOUT_MS = 4000;
@@ -68,7 +80,7 @@ public class RedAllianceWeak extends AutoBase {
                 step("2  Shoot preloads", conditional(
                         () -> drive.isNear(shoot, SHOOT_SPOT_REACH_INCHES)
                                 && drive.isFacing(shoot, SHOOT_AIM_DEGREES),
-                        Volley.shoot(flywheel, intake, SHOT_VELOCITY),
+                        volley(SHOT_VELOCITY),
                         flywheel.stopCommand())),
 
                 conditional(
@@ -81,7 +93,7 @@ public class RedAllianceWeak extends AutoBase {
     private Command flowerCycle() {
         return sequential(
                 step("Flower: collect 4 more", sequential(
-                        intake.intakeCommand(IndexIntakeAuto.INTAKE_POWER, 0.3),
+                        intake.intakeCommand(0.3),
                         drive.followSlowly(pickUpRefresh(), FLOWER_SPEED_INCHES_PER_SECOND, FLOWER_TIMEOUT_MS),
                         waitMs(FLOWER_INTAKE_MS),
                         intake.stopCommand())),
@@ -92,10 +104,11 @@ public class RedAllianceWeak extends AutoBase {
                 step("Flower: shoot", conditional(
                         () -> drive.isNear(getFrontZoneForShooting, SHOOT_SPOT_REACH_INCHES)
                                 && drive.isFacing(getFrontZoneForShooting, SHOOT_AIM_DEGREES),
-                        Volley.shoot(flywheel, intake, SHOT_VELOCITY),
+                        volley(SHOT_VELOCITY),
                         flywheel.stopCommand())));
     }
 
+    /** The three legs joined into one path, so the robot flows through instead of stopping at each corner. */
     public Path toShootingSpot() {
         return Paths.path(rotateDeadSide2(), rotateforShooting(), shoot());
     }

@@ -3,86 +3,47 @@ package org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto;
 import static com.pedropathing.ivy.commands.Commands.instant;
 
 import com.pedropathing.ivy.Command;
-import com.qualcomm.robotcore.exception.TargetPositionNotSetException;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
+import org.firstinspires.ftc.teamcode.Shared.Battery;
+import org.firstinspires.ftc.teamcode.Shared.IntakeAndIndex;
 
+/**
+ * The intake and index belt for autonomous: the same motors as teleop
+ * (Shared/IntakeAndIndex), wrapped in commands an auto routine can put in a sequence.
+ */
 public class IndexIntakeAuto {
+    private IntakeAndIndex motors;
 
-    public static final double INTAKE_POWER = 1.0;
-    public static final double INDEX_FEED_POWER = -1.0;
-    public static final double INTAKE_OUTTAKE_POWER = -1.0;
-    public static final double INDEX_OUTTAKE_POWER = 0.5;
-    public static final double INTAKE_POWER_WHILE_FEEDING = 1.0;
-
-    private DcMotor intakeMotor;
-    private DcMotor indexMotor;
-    private double intakePower;
-    private double indexPower;
-
-    public void init(HardwareMap hardwareMap) {
-        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
-        intakeMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-
-        indexMotor = hardwareMap.get(DcMotor.class, "index_motor");
-        indexMotor.setDirection(DcMotorSimple.Direction.FORWARD);
-
-        configure();
-        stop();
+    public void init(HardwareMap hardwareMap, Battery battery) {
+        motors = new IntakeAndIndex(hardwareMap, battery);
     }
 
-    private void configure() {
-        intakeMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        indexMotor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+    /** AutoBase calls this every loop so the power ramps keep moving. */
+    public void update() {
+        if (motors != null) motors.update();
     }
 
-    public void intake(double power) {
-        setPowers(power, 0.0);
+    /** Intake on, with the belt creeping (indexSpeed 0 to 1) so pollen make room for the next. */
+    public void intake(double indexSpeed) {
+        if (motors != null) motors.intake(indexSpeed);
     }
 
-    public void intake(double power, double indexSpeed) {
-        setPowers(power, INDEX_FEED_POWER * Math.max(0.0, Math.min(1.0, indexSpeed)));
-    }
-
-    public void feedShooter() {
-        setPowers(INTAKE_POWER_WHILE_FEEDING, INDEX_FEED_POWER);
+    /** Push pollen into the flywheels. scale 0 to 1, see FlywheelControl.feedScale(). */
+    public void feedShooter(double scale) {
+        if (motors != null) motors.feed(scale);
     }
 
     public void outtake() {
-        setPowers(INTAKE_OUTTAKE_POWER, INDEX_OUTTAKE_POWER);
+        if (motors != null) motors.outtake();
     }
 
     public void stop() {
-        setPowers(0.0, 0.0);
+        if (motors != null) motors.stop();
     }
 
-    private void setPowers(double intake, double index) {
-        intakePower = intake;
-        indexPower = index;
-        if (intakeMotor == null || indexMotor == null) return;
-        try {
-            intakeMotor.setPower(intake);
-            indexMotor.setPower(index);
-        } catch (TargetPositionNotSetException hubReset) {
-            HubReset.forget(intakeMotor, indexMotor);
-            try {
-                configure();
-                intakeMotor.setPower(intake);
-                indexMotor.setPower(index);
-            } catch (TargetPositionNotSetException stillDown) {
-            }
-        }
-    }
-
-    public Command intakeCommand(double power) {
-        return instant(() -> intake(power));
-    }
-
-    public Command intakeCommand(double power, double indexSpeed) {
-        return instant(() -> intake(power, indexSpeed));
+    public Command intakeCommand(double indexSpeed) {
+        return instant(() -> intake(indexSpeed));
     }
 
     public Command outtakeCommand() {
@@ -94,6 +55,7 @@ public class IndexIntakeAuto {
     }
 
     public void addTelemetry(Telemetry telemetry) {
-        telemetry.addData("Intake / index power", "%.2f / %.2f", intakePower, indexPower);
+        if (motors == null) return;
+        telemetry.addData("Intake / index power", "%.2f / %.2f", motors.intakePower(), motors.indexPower());
     }
 }

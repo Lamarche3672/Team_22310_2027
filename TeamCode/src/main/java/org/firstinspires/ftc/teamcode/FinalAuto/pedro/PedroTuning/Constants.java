@@ -77,12 +77,18 @@ public final class Constants {
     );
     // ======================= FORESIGHT TUNER RESULT: END ========================
 
+    // Everything below builds the Pedro objects from the numbers above. Autos call create();
+    // the tuners call the individual pieces.
+
     public static Mecanum createDrivetrain(HardwareMap map) {
+        // One request per hub per loop for all encoder reads, instead of one per read.
         for (LynxModule hub : map.getAll(LynxModule.class)) {
             hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
         }
         String[] names = {drivetrainConfig.frontLeftName.get(), drivetrainConfig.frontRightName.get(),
                 drivetrainConfig.backLeftName.get(), drivetrainConfig.backRightName.get()};
+        // Zero the motors and put them in plain power mode ourselves before Pedro touches
+        // them. The last OpMode may have left them in another mode, and Pedro assumes this one.
         for (String name : names) {
             DcMotorEx motor = map.get(DcMotorEx.class, name);
             motor.setPower(0);
@@ -91,11 +97,13 @@ public final class Constants {
         return new Mecanum(map, drivetrainConfig);
     }
 
+    /** The tuned Pinpoint. Keep the robot still while this runs: it recalibrates the gyro. */
     public static PinpointGuard createLocalizer(HardwareMap map) {
         if (!LOCALIZER_TUNED || !Double.isFinite(localizerConfig.xPodOffset.get())
                 || !Double.isFinite(localizerConfig.yPodOffset.get()))
             throw new IllegalStateException("Pinpoint is not tuned yet. Run Pinpoint Tuner, paste its"
                     + " result over the PINPOINT TUNER RESULT block in Constants.java, then install the app again.");
+        // false = a missing odometry pod is an error here. Driving a path on one pod would be wrong.
         return PinpointGuard.open(map, localizerConfig, false);
     }
 
@@ -106,8 +114,10 @@ public final class Constants {
         return new Foresight(foresightConfig);
     }
 
+    /** The whole path follower, ready to drive. Throws with a plain message if tuning is not done. */
     public static Follower create(HardwareMap map) {
         Foresight algorithm = createAlgorithm();
+        // Drivetrain first, so the motors are already stopped while the Pinpoint starts up.
         Mecanum drivetrain = createDrivetrain(map);
         try {
             return new Follower(createLocalizer(map), drivetrain, algorithm);

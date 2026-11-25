@@ -1,131 +1,220 @@
-## TeamCode Module
+# Team 22310 robot code
 
-Welcome!
+Everything our robot runs in a match is in this folder. This page says how to drive it, how the code is laid out, what to check before a comp, and what changed.
 
-This module, TeamCode, is the place where you will write/paste the code for your team's
-robot controller App. This module is currently empty (a clean slate) but the
-process for adding OpModes is straightforward.
+It builds and passes the desktop tests and the simulator. **The camera aim, the one-button shot speed and the new flywheel control have not been proven on the real robot yet.** Do the checklist in "Before a comp".
 
-## Creating your own OpModes
+## Controls
 
-The easiest way to create your own OpMode is to copy a Sample OpMode and make it your own.
+![controls](controls.svg)
 
-Sample opmodes exist in the FtcRobotController module.
-To locate these samples, find the FtcRobotController module in the "Project/Android" tab.
+| Gamepad 1 (mechanisms) | Does |
+|---|---|
+| RIGHT TRIGGER | Intake |
+| LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
+| RIGHT BUMPER (hold) | Spin up the shooter to the right speed |
+| LEFT BUMPER (hold) | Shoot. The index waits for the flywheels by itself |
+| Y | Backup speed high / low, only used when the camera can't see the hive |
+| BACK | Open / close shot setup |
 
-Expand the following tree elements:
- FtcRobotController/java/org.firstinspires.ftc.robotcontroller/external/samples
+| Gamepad 2 (driving) | Does |
+|---|---|
+| LEFT STICK | Drive (field-centric) |
+| RIGHT STICK | Turn |
+| LEFT TRIGGER (hold) | Auto aim at our hive |
+| RIGHT TRIGGER (hold) | Slow mode |
+| START (tap) | Make the way the robot faces "forward" |
 
-### Naming of Samples
+Before START, on either gamepad: **X = blue alliance, B = red alliance**. After an auto it already knows.
 
-To gain a better understanding of how the samples are organized, and how to interpret the
-naming system, it will help to understand the conventions that were used during their creation.
+**To shoot:** hold RIGHT BUMPER and LEFT BUMPER. The robot does the timing: the index only feeds when the flywheels are at speed, so you can hold both from the start. Gamepad 1 buzzes when the wheels are ready, gamepad 2 buzzes when the aim is locked.
 
-These conventions are described (in detail) in the sample_conventions.md file in this folder.
+## Shot setup (once, about 5 minutes)
 
-To summarize: A range of different samples classes will reside in the java/external/samples.
-The class names will follow a naming convention which indicates the purpose of each class.
-The prefix of the name will be one of the following:
+The shooter picks its speed from how far away the hive is. It has to be taught first.
 
-Basic:  	This is a minimally functional OpMode used to illustrate the skeleton/structure
-            of a particular style of OpMode.  These are bare bones examples.
+1. Put the robot where you normally shoot. The camera has to see our hive.
+2. Gamepad 1: press BACK. The Driver Station shows SHOT SETUP and the hive distance.
+3. Hold both bumpers and shoot. D-PAD up / down changes the speed by 25 until it scores.
+4. Press A. That speed is saved for that distance.
+5. Repeat at one or two other distances (one close, one far).
+6. Press BACK.
 
-Sensor:    	This is a Sample OpMode that shows how to use a specific sensor.
-            It is not intended to drive a functioning robot, it is simply showing the minimal code
-            required to read and display the sensor values.
+- Saved shots live on the Control Hub and survive new code installs.
+- X deletes the saved shot nearest to where you are.
+- Between two saved distances it uses a speed in between.
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (1500 high / 900 low).
+- Autonomous uses the same saved shots when its camera can see the hive.
+- No hive distance on the screen? Turn on "Full 3D" for AprilTags in the Limelight pipeline. Aiming works without it; only the distance needs it.
 
-Robot:	    This is a Sample OpMode that assumes a simple two-motor (differential) drive base.
-            It may be used to provide a common baseline driving OpMode, or
-            to demonstrate how a particular sensor or concept can be used to navigate.
+## Auto aim
 
-Concept:	This is a sample OpMode that illustrates performing a specific function or concept.
-            These may be complex, but their operation should be explained clearly in the comments,
-            or the comments should reference an external doc, guide or tutorial.
-            Each OpMode should try to only demonstrate a single concept so they are easy to
-            locate based on their name.  These OpModes may not produce a drivable robot.
+Hold LEFT TRIGGER on gamepad 2. The robot turns to face our hive and stays locked on, and you can keep driving with the left stick.
 
-After the prefix, other conventions will apply:
+How it works: the camera only says *where* the hive is. The turning is done on the Pinpoint gyro, which is read every loop with no delay. That is why it is quick and why it stays locked when the tag blinks out for a moment.
 
-* Sensor class names are constructed as:    Sensor - Company - Type
-* Robot class names are constructed as:     Robot - Mode - Action - OpModetype
-* Concept class names are constructed as:   Concept - Topic - OpModetype
+- Red aims at tags 30-37, blue at 38-45. Wrong alliance = it never finds the hive.
+- The Driver Station line "AIM" says what it sees, including which tag numbers are in view.
+- It uses Limelight pipeline 0 and assumes the camera looks the way the shooter shoots.
 
-Once you are familiar with the range of samples available, you can choose one to be the
-basis for your own robot.  In all cases, the desired sample(s) needs to be copied into
-your TeamCode module to be used.
+If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim.java`:
 
-This is done inside Android Studio directly, using the following steps:
+| Problem | Change |
+|---|---|
+| Turns AWAY from the hive | `TX_SIGN` to -1 |
+| Always a bit left or right | `AIM_OFFSET_DEGREES` (+ aims further right) |
+| Wobbles back and forth | lower `KP` and `KD` together (try 1.8 and 0.22) |
+| Slow, or stops short | raise both (try 3.0 and 0.36). Keep KD about 0.12 x KP |
+| AprilTag pipeline is not slot 0 | `PIPELINE` |
 
- 1) Locate the desired sample class in the Project/Android tree.
+## Autos
 
- 2) Right click on the sample class and select "Copy"
+| Auto | What it does |
+|---|---|
+| Red Alliance Strong | Shoots 4 preloads, intakes the garden, drives across, shoots 4 more, parks |
+| Blue Alliance Strong | Same, mirrored |
+| RedAllianceWeak | Drives to the shooting spot, shoots 4 preloads, parks |
+| BlueAllianceWeak | Same, mirrored |
 
- 3) Expand the  TeamCode/java folder
+- **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
+- Shot speed in auto: the saved shot for the measured distance, otherwise `HIGH_VELOCITY` (2300) in `FlywheelAuto.java`.
+- Every auto is parked by 24 s no matter what, and selects MAIN TELEOP afterwards.
+- A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
+- Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
+- Flower pickup is written but switched off.
 
- 4) Right click on the org.firstinspires.ftc.teamcode folder and select "Paste"
+## Battery protection
 
- 5) You will be prompted for a class name for the copy.
-    Choose something meaningful based on the purpose of this class.
-    Start with a capital letter, and remember that there may be more similar classes later.
+The battery used to drop from 11 V to 4 V and once reset a hub mid-match. Now:
 
-Once your copy has been created, you should prepare it for use on your robot.
-This is done by adjusting the OpMode's name, and enabling it to be displayed on the
-Driver Station's OpMode list.
+- `Shared/Battery.java` watches the voltage for the whole robot.
+- Low voltage caps the drive power and slows how fast any motor may ramp up.
+- Drive, intake and index all ramp up over a fraction of a second instead of jumping to full.
+- The flywheels limit their own current while spinning up (about 10 A for both, not 17).
+- If a hub does restart, every motor sets itself up again and carries on. The Driver Station shows "A HUB LOST POWER".
 
-Each OpMode sample class begins with several lines of code like the ones shown below:
+Code can only soften it. A worn battery, a loose XT30 or a weak power switch still has to be fixed with a wrench.
+
+## How the code is laid out
 
 ```
- @TeleOp(name="Template: Linear OpMode", group="Linear Opmode")
- @Disabled
+teamcode/
+  Shared/               used by BOTH teleop and auto, so they can never disagree
+    Battery             voltage watch + power limits
+    FlywheelControl     runs the shooter wheels at a speed, says when they are ready
+    IntakeAndIndex      intake roller + index belt, directions and speeds in one place
+    HiveAim             Limelight -> which way to face, and how far the hive is
+    ShotTable           the saved "distance -> speed" shots
+    HubReset            recovering when a hub loses power
+
+  FinalTeleOp/
+    MainTeleOp          the match teleop: wires gamepads to mechanisms
+    FinalMechanisms/
+      MecanumDriveFinal   field-centric drive
+      Shooter             gamepad 1 shooter buttons + shot setup
+      IndexIntake         gamepad 1 intake / index buttons
+    RobotSensors/         test OpModes (camera, colour sensor, turret)
+
+  FinalAuto/
+    AutoBase            what all four autos share (park deadline, clean-up, blue mirroring)
+    RedAllianceStrong, RedAllianceWeak      the routes (blue ones are one line each)
+    FinalMechanismsAuto/
+      MecanumDriveAuto    Pedro drive as commands that can't hang, plus camera aim
+      Volley              one volley: aim, spin up, feed, stop
+      FlywheelAuto, IndexIntakeAuto    the shared mechanisms as auto commands
+    pedro/              Pedro Pathing config and tuners (see pedro/PedroTuning/README.md)
+
+  SavedBackupCode/      old code, kept for reference
 ```
 
-The name that will appear on the driver station's "opmode list" is defined by the code:
- ``name="Template: Linear OpMode"``
-You can change what appears between the quotes to better describe your opmode.
-The "group=" portion of the code can be used to help organize your list of OpModes.
+Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons live in `FinalTeleOp/`. Routes live in `FinalAuto/`.
 
-As shown, the current OpMode will NOT appear on the driver station's OpMode list because of the
-  ``@Disabled`` annotation which has been included.
-This line can simply be deleted , or commented out, to make the OpMode visible.
+## Before a comp
 
+1. **Flywheel direction.** Wheels off the ground, hold RIGHT BUMPER. If they spin the wrong way, flip `DIRECTION` in `Shared/FlywheelControl.java` (one line, fixes teleop and auto).
+2. **Flywheels smooth?** Under a second to speed, then steady. If they hunt, lower `DEFAULT_P` in `FlywheelControl.java` (try 0.6).
+3. **Auto aim.** LEFT TRIGGER with the hive in view. Table above if it is wrong.
+4. **Shot setup.** Save 2 or 3 shots.
+5. **Outtake.** LEFT TRIGGER: the index should hand pollen back gently. Speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java` (0.25).
+6. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
+   - Red Strong: x 56, y 8, heading 270
+   - Blue Strong: x 88, y 136, heading 90
+   - Red Weak: x 56, y 8, heading 90
+   - Blue Weak: x 88, y 136, heading 270
+7. **Run each auto you will use.** Watch the "Last aim" line: it says whether the camera aimed the shot.
+8. **Pinpoint cable test.** INIT an auto, pull the Pinpoint cable for half a second, plug it back. It should say "Pinpoint restarted".
+9. **After auto.** At teleop INIT, "forward" is whichever way the robot faces. Driver 2: point it away from you and tap START.
+10. Fresh battery every match.
 
+## What the Driver Station is telling you
 
-## ADVANCED Multi-Team App management:  Cloning the TeamCode Module
+| Message | Means |
+|---|---|
+| A HUB LOST POWER | Battery or power cable problem. The code recovered; check battery, switch, XT30 cables |
+| INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
+| ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
+| Pinpoint restarted - face forward, tap START | Pinpoint cable blipped. Point the robot away from you and tap START |
+| Index is waiting for the flywheels | Normal while shooting: the next pollen goes when the wheels are back at speed |
+| A FLYWHEEL READS 0 | Flywheel encoder cable or a jam |
+| Drive power limit under 100% | Battery low; power eased off so the robot doesn't brown out |
+| AIM: only sees tags ... | The camera sees tags, but not our hive's. Wrong alliance, or facing the wrong hive |
+| camera not answering | Limelight unplugged or still starting (about 20 s after power on) |
 
-In some situations, you have multiple teams in your club and you want them to all share
-a common code organization, with each being able to *see* the others code but each having
-their own team module with their own code that they maintain themselves.
+## Where to change numbers
 
-In this situation, you might wish to clone the TeamCode module, once for each of these teams.
-Each of the clones would then appear along side each other in the Android Studio module list,
-together with the FtcRobotController module (and the original TeamCode module).
+| What | Where |
+|---|---|
+| Auto routes, speeds, timings | top of `RedAllianceStrong.java` / `RedAllianceWeak.java` |
+| Auto flywheel speed | top of `FlywheelAuto.java` |
+| Teleop backup speeds (1500 / 900) | top of `Shooter.java` |
+| Flywheel direction, smoothness, "ready" tolerance | top of `Shared/FlywheelControl.java` |
+| Intake / index / outtake power | top of `Shared/IntakeAndIndex.java` |
+| Auto aim | top of `Shared/HiveAim.java` |
+| Battery limits | top of `Shared/Battery.java` |
+| Stick feel, slow mode speed | top of `MecanumDriveFinal.java` |
+| How long auto feeds a volley | `FEED_MS` in `Volley.java` |
+| Pedro tuning | `FinalAuto/pedro/PedroTuning/Constants.java` |
 
-Selective Team phones can then be programmed by selecting the desired Module from the pulldown list
-prior to clicking to the green Run arrow.
+Change the number instead of reverting a whole file.
 
-Warning:  This is not for the inexperienced Software developer.
-You will need to be comfortable with File manipulations and managing Android Studio Modules.
-These changes are performed OUTSIDE of Android Studios, so close Android Studios before you do this.
- 
-Also.. Make a full project backup before you start this :)
+## How it was tested
 
-To clone TeamCode, do the following:
+No robot was available, so everything was checked on a laptop:
 
-Note: Some names start with "Team" and others start with "team".  This is intentional.
+- desktop tests with fake motors, gamepads, Pinpoint and battery (drive, flywheels, feed timing, shot setup, hub restarts, the whole teleop with devices missing)
+- a motor and battery model for the flywheels
+- a turn simulation for the auto aim (54 different robots: fast, slow, sticky, with camera delay)
+- the four real auto routines run in a field simulator through ten scenarios (blocked by a wall, dead flywheel, stuck robot, ...). All end parked with everything off.
 
-1)  Using your operating system file management tools, copy the whole "TeamCode"
-    folder to a sibling folder with a corresponding new name, eg: "Team0417".
+That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
-2)  In the new Team0417 folder, delete the TeamCode.iml file.
+## What changed
 
-3)  the new Team0417 folder, rename the "src/main/java/org/firstinspires/ftc/teamcode" folder
-    to a matching name with a lowercase 'team' eg:  "team0417".
+**Nov 25 (revamp)**
+- New `Shared/` folder: one copy of the battery guard, flywheel control, intake/index, camera aim and shot table, used by teleop and auto.
+- Autonomous aims every shot with the Limelight and uses the saved shot speeds.
+- Auto aim is about 30% quicker to lock and no longer overshoots when there is delay in the loop.
+- Consistent shots: the index only feeds when the flywheels are at speed, in teleop and auto.
+- The index runs slowly when outtaking (0.25 instead of 0.45).
+- One battery guard for the whole robot; intake and index now ramp up too.
+- Diagonal driving no longer bends for the first tenth of a second.
+- Flywheel direction is defined once. `FlywheelTunerPIDF` is now `Shooter` (it stopped being a PIDF tuner).
+- Every file has comments that say why, not just what.
+- This readme replaces CHANGES.md.
 
-4)  In the new Team0417/src/main folder, edit the "AndroidManifest.xml" file, change the line that contains
-         package="org.firstinspires.ftc.teamcode"
-    to be
-         package="org.firstinspires.ftc.team0417"
+**Nov 25 (earlier)**
+- Auto aim in MAIN TELEOP, one-button shooter speed with shot setup, slow mode, alliance picked at INIT.
+- Only MAIN TELEOP left in the "TeamCode" group on the Driver Station.
 
-5)  Add:    include ':Team0417' to the "/settings.gradle" file.
-    
-6)  Open up Android Studios and clean out any old files by using the menu to "Build/Clean Project""
+**Nov 24**
+- "TargetPositionNotSetException" crash fixed (a hub losing power for a moment).
+- Stuttery flywheels fixed: our own flywheel control instead of the hub's.
+- FTCLib removed (unused duplicate of SolversLib).
+- Auto stops if the Pinpoint drops out or restarts, and recovers from a glitch during INIT.
+- Teleop still drives if a mechanism or the Pinpoint is missing.
+
+**Nov 23**
+- New autos: Red / Blue, Strong / Weak, on a shared `AutoBase`.
+- Smoother teleop drive, low battery limiter, field-centric with the Pinpoint.
+- Battery drain and the 11 V to 4 V drop fixed (drive motors were in the wrong run mode).
+- Colour sensor red / blue swap fixed. Pedro "Pinpoint not ready" fixed.

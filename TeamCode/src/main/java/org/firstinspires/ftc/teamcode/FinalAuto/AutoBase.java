@@ -12,19 +12,42 @@ import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.Scheduler;
 import com.pedropathing.math.Pose;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HiveAim;
-import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
+import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.Volley;
+import org.firstinspires.ftc.teamcode.Shared.Battery;
+import org.firstinspires.ftc.teamcode.Shared.HiveAim;
+import org.firstinspires.ftc.teamcode.Shared.HubReset;
+import org.firstinspires.ftc.teamcode.Shared.ShotTable;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Everything the four scoring autos have in common. A real auto (RedAllianceStrong, ...)
+ * only has to say where it starts, where it parks, and what it does in between.
+ *
+ * What this class guarantees, whatever the routine does:
+ *   - the robot is parked before the buzzer: at PARK_DEADLINE_MS the scoring routine is cut
+ *     off wherever it is and the robot drives to the parking spot
+ *   - intake and flywheels are off at the end, on STOP, and if anything crashes
+ *   - a missing intake, flywheel or camera does not stop the auto. It still drives and parks.
+ *
+ * Blue autos are the red ones turned half a turn about the middle of the field, so each
+ * route is written once, in red coordinates.
+ */
 public abstract class AutoBase extends LinearOpMode {
 
+    /** How long to wait for the robot to come to rest on a spot before moving on anyway. */
     protected static final double SETTLE_TIMEOUT_MS = 1500;
     protected static final double PARK_TIMEOUT_MS = 4000;
+    /** Only shoot if the robot faces within this many degrees of where the route says. */
     protected static final double SHOOT_AIM_DEGREES = 10;
+    // 24 s deadline + 4 s park drive + 1.5 s settle = 29.5 s worst case, inside the 30 s auto.
     protected static final double PARK_DEADLINE_MS = 24000;
     private static final double PARK_ALREADY_THERE_INCHES = 1;
     private static final double FIELD_MIDDLE_INCHES = 72;
@@ -32,6 +55,11 @@ public abstract class AutoBase extends LinearOpMode {
     protected final MecanumDriveAuto drive = new MecanumDriveAuto();
     protected final IndexIntakeAuto intake = new IndexIntakeAuto();
     protected final FlywheelAuto flywheel = new FlywheelAuto();
+    protected Battery battery;
+    /** The camera aim. Null when there is no Limelight; then autos shoot on the route heading alone. */
+    protected HiveAim aim;
+    /** The shots saved in teleop shot setup. Empty until the team has saved some. */
+    protected List<double[]> shotPoints = new ArrayList<>();
 
     protected final ElapsedTime autoTimer = new ElapsedTime();
     protected String currentStep = "Waiting for start";
@@ -42,12 +70,14 @@ public abstract class AutoBase extends LinearOpMode {
 
     protected abstract Pose parkPose();
 
+    /** The scoring part of the routine. Parking is added after it automatically. */
     protected abstract Command scoringRoutine();
 
     protected boolean isBlueAlliance() {
         return false;
     }
 
+    /** Use this to make every pose, so the same route works for both alliances. */
     protected final PoseFactory alliancePoseFactory() {
         PoseFactory red = PoseFactory.degrees();
         return isBlueAlliance() ? red.rotateAround(FIELD_MIDDLE_INCHES, FIELD_MIDDLE_INCHES, 180) : red;
@@ -55,6 +85,8 @@ public abstract class AutoBase extends LinearOpMode {
 
     public final Command autoRoutine() {
         return sequential(
+                // raceWith: whichever finishes first ends the other. So at the deadline the
+                // scoring routine is interrupted and we fall through to parking.
                 scoringRoutine().raceWith(waitMs(PARK_DEADLINE_MS)),
                 instant(this::stopMechanisms),
 
@@ -66,6 +98,7 @@ public abstract class AutoBase extends LinearOpMode {
     }
 
     private Command park() {
+        // lazy: the path is built when parking starts, from wherever the robot is by then.
         return lazy(() -> {
             Pose here = drive.pose();
             Pose spot = parkPose();
@@ -74,8 +107,17 @@ public abstract class AutoBase extends LinearOpMode {
         });
     }
 
+    /** Names a part of the routine; the name shows on the Driver Station while it runs. */
     protected final Command step(String name, Command command) {
         return sequential(instant(() -> currentStep = name), command);
+    }
+
+    /**
+     * One volley: aim with the camera if it can see the hive, spin up, feed, stop.
+     * fallbackVelocity is used when there is no saved shot for the distance (or no camera).
+     */
+    protected final Command volley(double fallbackVelocity) {
+        return Volley.shoot(flywheel, intake, drive, aim, shotPoints, fallbackVelocity);
     }
 
     protected final void stopMechanisms() {
@@ -83,31 +125,53 @@ public abstract class AutoBase extends LinearOpMode {
         flywheel.stop();
     }
 
+    /**
+     * Sets up everything except the drive. Returns the lines to show for anything that is
+     * missing, or an empty string when it is all there.
+     */
+    public final String initMechanisms(HardwareMap map) {
+        String missing = "";
+        battery = new Battery(map);
+        try {
+            intake.init(map, battery);
+        } catch (RuntimeException e) {
+            missing += "INTAKE OFF: " + e.getMessage() + "\n";
+        }
+        try {
+            flywheel.init(map, battery);
+        } catch (RuntimeException e) {
+            missing += "FLYWHEEL OFF: " + e.getMessage() + "\n";
+        }
+        try {
+            HiveAim camera = new HiveAim();
+            camera.init(map);
+            aim = camera;
+        } catch (RuntimeException e) {
+            aim = null;
+            missing += "CAMERA AIM OFF: " + e.getMessage() + "\n";
+        }
+        shotPoints = ShotTable.load();
+        return missing;
+    }
+
     @Override
     public void runOpMode() {
         Scheduler.reset();
         HubReset.clear();
+        // Remembered by MAIN TELEOP, which starts a few seconds after this ends.
         HiveAim.blueAlliance = isBlueAlliance();
         try {
             telemetry.addLine("Starting... keep the robot STILL");
             telemetry.update();
 
-            String missing = "";
-            try {
-                intake.init(hardwareMap);
-            } catch (RuntimeException e) {
-                missing += "INTAKE OFF: " + e.getMessage() + "\n";
-            }
-            try {
-                flywheel.init(hardwareMap);
-            } catch (RuntimeException e) {
-                missing += "FLYWHEEL OFF: " + e.getMessage() + "\n";
-            }
+            String missing = initMechanisms(hardwareMap);
             drive.init(hardwareMap, startPose());
 
             Pose start = startPose();
             String problem = null;
             while (opModeInInit()) {
+                // The robot can sit in INIT for minutes. If the Pinpoint glitches in that
+                // time, set it up again instead of letting the whole auto die before START.
                 try {
                     drive.update();
                 } catch (IllegalStateException fault) {
@@ -118,12 +182,15 @@ public abstract class AutoBase extends LinearOpMode {
                         problem = stillBad.getMessage();
                     }
                 }
+                if (aim != null) aim.update(drive.pose().heading(), true);
+
                 telemetry.addLine(problem == null ? "READY - " + autoName() : "NOT READY: " + problem);
                 if (!missing.isEmpty()) telemetry.addLine(missing);
                 telemetry.addLine("Load 4 pollen. Robot on the start position.");
                 telemetry.addData("Should read about", "x %.0f, y %.0f, heading %.0f",
                         start.x(), start.y(), Math.toDegrees(start.heading()));
                 drive.addTelemetry(telemetry);
+                if (aim != null) telemetry.addData("Camera", aim.view());
                 telemetry.update();
                 sleep(50);
             }
@@ -133,8 +200,12 @@ public abstract class AutoBase extends LinearOpMode {
             schedule(autoRoutine());
 
             while (opModeIsActive()) {
+                // Order matters: read the sensors, let the mechanisms react, then let the
+                // routine decide what happens next.
                 drive.update();
+                if (aim != null) aim.update(drive.pose().heading(), true);
                 flywheel.update();
+                intake.update();
                 Scheduler.execute();
 
                 String hubWarning = HubReset.warning();
@@ -143,16 +214,20 @@ public abstract class AutoBase extends LinearOpMode {
                 telemetry.addData("Step", currentStep);
                 telemetry.addData("Time (s)", "%.1f", autoTimer.seconds());
                 drive.addTelemetry(telemetry);
+                if (aim != null) telemetry.addData("Camera", aim.view());
                 flywheel.addTelemetry(telemetry);
                 intake.addTelemetry(telemetry);
                 telemetry.update();
             }
         } catch (RuntimeException error) {
+            // Pressing STOP while the Pinpoint is still starting throws from inside the
+            // driver. That is not an error worth a red popup, so only real ones are passed on.
             if (!isStopRequested()) throw error;
         } finally {
             try {
                 Scheduler.reset();
                 stopMechanisms();
+                if (aim != null) aim.stop();
             } finally {
                 drive.stop();
             }

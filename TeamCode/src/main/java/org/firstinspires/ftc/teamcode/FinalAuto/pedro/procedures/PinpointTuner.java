@@ -14,6 +14,21 @@ import org.firstinspires.ftc.teamcode.FinalAuto.pedro.PedroTuning.PinpointGuard;
 
 import java.util.OptionalDouble;
 
+/**
+ * The Pinpoint Tuner on the Driver Station ("Pedro Tuning" OpMode). It walks someone through
+ * measuring what Pedro needs to know about our odometry, with the robot pushed by hand:
+ *
+ *   1. (custom pods only) push a measured distance, to get ticks per inch
+ *   2. push forward: is the forward pod counting the right way?
+ *   3. push left: same question for the sideways pod
+ *   4. spin about half a turn on the spot: where are the pods relative to the centre?
+ *
+ * At the end it prints a block of Java to paste into Constants.java.
+ *
+ * Each step is its own small OpMode (the PinpointStage classes at the bottom of this file).
+ * They all read the Pinpoint through PinpointGuard, so one failed read is skipped instead of
+ * killing the step, which is what "Pinpoint not ready" used to be.
+ */
 public class PinpointTuner extends Procedure {
     enum PodType {
         SWING_ARM,
@@ -21,6 +36,7 @@ public class PinpointTuner extends Procedure {
         CUSTOM
     }
 
+    /** Our robot is about 17 inches across, so an offset bigger than this is a bad measurement. */
     private static final double MAX_OFFSET_INCHES = 18.0;
 
     public PinpointTuner() {
@@ -119,6 +135,7 @@ public class PinpointTuner extends Procedure {
                 + "PINPOINT TUNER RESULT: START and END. Install the app again, then run Tests > Pose Test.");
     }
 
+    /** Unwraps a step's result. If the step failed, shows why and returns null so run() stops. */
     private <T> T finish(PinpointStageResult<T> result) throws InterruptedException {
         if (result == null) {
             abort("That step was stopped before the Pinpoint finished starting. Run the tuner again and "
@@ -132,6 +149,10 @@ public class PinpointTuner extends Procedure {
         return result.value;
     }
 
+    /**
+     * The Pinpoint settings used DURING tuning. Offsets are zero on purpose: step 4 measures
+     * them from how much a pure spin looks like a movement when the offsets are zero.
+     */
     static PinpointConfig config(String name, PodType podType, OptionalDouble customTicksPerInch,
                                  boolean xReversed, boolean yReversed) {
         return new PinpointConfig(c -> {
@@ -155,6 +176,7 @@ public class PinpointTuner extends Procedure {
     }
 }
 
+/** What a step hands back: either a value, or the reason it could not get one. */
 final class PinpointStageResult<T> {
     final T value;
     final String failure;
@@ -173,6 +195,10 @@ final class PinpointStageResult<T> {
     }
 }
 
+/**
+ * The part every step shares: open the Pinpoint (robot still for a second), wait for START,
+ * run the measurement, and turn any Pinpoint fault into a message instead of a crash.
+ */
 abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
     PinpointStage(String title, String description) {
         super(title, description, true);
@@ -187,6 +213,8 @@ abstract class PinpointStage<T> extends TuningOpMode<PinpointStageResult<T>> {
         telemetry.addLine("KEEP THE ROBOT STILL - the Pinpoint is starting (about 1 second)");
         telemetry.update();
         try {
+            // true = pod faults are allowed here. A pod that is not detected is exactly the
+            // kind of thing the tuner should let you see and fix.
             PinpointGuard pinpoint = PinpointGuard.open(hardwareMap, config(), true);
             waitForStart();
             if (isStopRequested()) return null;
@@ -241,7 +269,14 @@ class PinpointCustomScale extends PinpointStage<Double> {
         if (travel == 0)
             throw new IllegalStateException("The forward pod did not count at all. Check the pod wheel "
                     + "touches the floor and its cable is in the Pinpoint X port.");
-        return Math.abs((double) travel) / distance;
+        // Real pods are a few hundred ticks per inch (the goBILDA 4-bar is about 505). A
+        // handful of ticks over the whole push is the wheel jittering, not a measurement.
+        double ticksPerInch = Math.abs((double) travel) / distance;
+        if (ticksPerInch < 50 || ticksPerInch > 5000)
+            throw new IllegalStateException(String.format("That works out to %.1f ticks per inch, which is"
+                    + " not a real pod. Push the robot the full %.0f inches in a straight line and try again.",
+                    ticksPerInch, distance));
+        return ticksPerInch;
     }
 }
 

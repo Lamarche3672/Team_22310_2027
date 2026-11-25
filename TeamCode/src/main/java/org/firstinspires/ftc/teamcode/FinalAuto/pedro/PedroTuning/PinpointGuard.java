@@ -10,9 +10,28 @@ import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver.DeviceStatus;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
+/**
+ * Sits between Pedro Pathing and the goBILDA Pinpoint and decides which readings to believe.
+ *
+ * Pedro's own Pinpoint localizer trusts every read. On our robot the odd I2C read fails (the
+ * Pinpoint then reports NOT_READY and all zeros), and one such read used to be enough to send
+ * the tuners into "Pinpoint not ready" or to hand Pedro a pose of (0, 0, 0) mid-path.
+ *
+ * What this does instead:
+ *   - a bad read is skipped: Pedro keeps getting the last good pose
+ *   - a run of bad reads lasting MAX_BAD_STREAK_SECONDS is a real fault, and update() throws
+ *     with a message that says what to check (the light colour, the port, the cable)
+ *   - a Pinpoint that restarted (its cable lost power) is caught, because it comes back
+ *     looking healthy but with its position and settings wiped
+ *
+ * It implements Pedro's Localizer, so Pedro uses it exactly like the real one.
+ */
 public final class PinpointGuard implements Localizer {
+    /** Longest wait at INIT for the Pinpoint to become READY (calibration takes ~0.25 s). */
     public static final double READY_TIMEOUT_SECONDS = 5.0;
+    /** A pod or gyro fault has to persist this long at INIT before we call it real. */
     public static final double FAULT_CONFIRM_SECONDS = 1.5;
+    /** While driving: bad reads for this long means the Pinpoint is gone, not just hiccuping. */
     public static final double MAX_BAD_STREAK_SECONDS = 1.0;
     private static final int MIN_BAD_STREAK_READS = 3;
 
@@ -31,6 +50,8 @@ public final class PinpointGuard implements Localizer {
     private int badStreak;
     private long badStreakStart;
     private String warning;
+    // The pod offsets as the Pinpoint itself reported them right after setup. Used to tell a
+    // Pinpoint that restarted (offsets back to 0) from one that just missed a few reads.
     private double baseXmm;
     private double baseYmm;
     private boolean restarted;
@@ -80,12 +101,14 @@ public final class PinpointGuard implements Localizer {
     @Override
     public void update() {
         read();
+        // STOP was pressed: reads fail while the OpMode shuts down, and that is not a fault.
         if (Thread.currentThread().isInterrupted()) return;
         if (badStreak >= MIN_BAD_STREAK_READS
                 && secondsSince(badStreakStart) >= MAX_BAD_STREAK_SECONDS)
             throw new IllegalStateException(explain());
     }
 
+    /** Always the last GOOD pose and velocity, never a failed read. */
     @Override
     public MotionState state() {
         return goodState;
@@ -135,7 +158,11 @@ public final class PinpointGuard implements Localizer {
         localizer.update();
         status = pinpoint.getDeviceStatus();
         reads++;
+        // The tuners allow pod faults on purpose: finding a pod that is not detected is
+        // exactly what they are for. Autonomous does not.
         boolean good = status == DeviceStatus.READY || (allowPodFaults && isPodFault(status));
+        // First healthy-looking read after an outage: make sure it is the same Pinpoint
+        // state we set up, not a freshly rebooted one.
         if (good && badStreak > 0 && lostConfig()) good = false;
         lastReadGood = good;
         if (lastReadGood) {
@@ -149,7 +176,9 @@ public final class PinpointGuard implements Localizer {
         }
     }
 
+    /** True if the pod offsets no longer match what we set: the Pinpoint has rebooted. */
     private boolean lostConfig() {
+        // The tuner runs before offsets exist (both 0), so there is nothing to compare.
         if (Math.abs(baseXmm) < 1 && Math.abs(baseYmm) < 1) return false;
         try {
             restarted = Math.abs(pinpoint.getXOffset(DistanceUnit.MM) - baseXmm) > 1

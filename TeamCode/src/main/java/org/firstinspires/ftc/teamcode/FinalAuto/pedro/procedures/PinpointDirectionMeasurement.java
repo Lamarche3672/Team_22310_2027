@@ -1,6 +1,17 @@
 package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
+/**
+ * The Pinpoint Tuner's "push the robot forward / left" step: decides whether a pod counts the
+ * right way round or needs REVERSED in the config.
+ *
+ * It watches the raw encoder ticks while someone pushes the robot. Most of the code is about
+ * refusing a bad push (too short, wobbled both ways, wrong pod moved) with a message that says
+ * what to do differently, because a wrong direction here makes every later step wrong.
+ *
+ * Kept separate from the tuner so it can be tested on a laptop (tools/tests).
+ */
 final class PinpointDirectionMeasurement {
+    /** true = measuring the forward (X) pod, false = the sideways (Y) pod. */
     private final boolean forward;
     private final double ticksPerInch;
     private double positiveTicks;
@@ -15,6 +26,7 @@ final class PinpointDirectionMeasurement {
         this.ticksPerInch = ticksPerInch;
     }
 
+    /** Call every loop with the raw ticks. Remembers the furthest it went each way. */
     void sample(int xTicks, int yTicks) {
         double primary = forward ? xTicks : yTicks;
         double secondary = forward ? yTicks : xTicks;
@@ -52,6 +64,7 @@ final class PinpointDirectionMeasurement {
         return null;
     }
 
+    /** True when the push registered as backwards, so the pod direction must be flipped. */
     boolean reversed() {
         if (failure() != null) throw new IllegalStateException(failure());
         return negativeTicks > positiveTicks;

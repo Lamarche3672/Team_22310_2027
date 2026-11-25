@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms;
+package org.firstinspires.ftc.teamcode.Shared;
 
 import com.qualcomm.robotcore.util.ReadWriteFile;
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
@@ -8,14 +8,27 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * The list of "from this far away, spin the flywheels this fast" that the drive team saves
+ * during shot setup (gamepad 1 BACK, then A).
+ *
+ * Each saved shot is a pair {distance in inches, flywheel speed in ticks per second}. The list
+ * is kept sorted by distance. Asking for a distance between two saved shots gives a speed in
+ * between; closer than the closest or further than the furthest gives that end's speed.
+ *
+ * It is stored as a small text file on the Control Hub (FIRST/settings/shot_speeds.txt), one
+ * "distance speed" per line, so it survives power cycles and new code installs.
+ */
 public final class ShotTable {
     private static final String FILE_NAME = "shot_speeds.txt";
+    /** Saving within this distance of an existing shot replaces it instead of adding another. */
     public static final double SAME_SPOT_INCHES = 6;
     public static final double DELETE_WITHIN_INCHES = 12;
     public static final int MAX_POINTS = 12;
 
     private ShotTable() { }
 
+    /** The speed for this distance, or NaN if nothing is saved or the distance is unknown. */
     public static double speedFor(List<double[]> points, double distance) {
         if (points.isEmpty() || !Double.isFinite(distance)) return Double.NaN;
         double[] first = points.get(0);
@@ -31,6 +44,7 @@ public final class ShotTable {
         return points.get(points.size() - 1)[1];
     }
 
+    /** Adds a shot, keeping the list sorted. Returns false if it was nonsense or the list is full. */
     public static boolean add(List<double[]> points, double distance, double speed) {
         if (!Double.isFinite(distance) || !Double.isFinite(speed) || distance <= 0 || speed <= 0) return false;
         int nearest = nearest(points, distance);
@@ -91,6 +105,8 @@ public final class ShotTable {
         return text.toString();
     }
 
+    // Reading and writing must never be able to stop an OpMode, so every kind of failure
+    // (no file, damaged file, no storage permission, not running on a robot) is swallowed.
     public static List<double[]> load() {
         try {
             File file = AppUtil.getInstance().getSettingsFile(FILE_NAME);
@@ -105,6 +121,7 @@ public final class ShotTable {
         try {
             File file = AppUtil.getInstance().getSettingsFile(FILE_NAME);
             ReadWriteFile.writeFile(file, format(points));
+            // Read it straight back: the only way to know the write really worked.
             return load().size() == points.size();
         } catch (Throwable problem) {
             return false;

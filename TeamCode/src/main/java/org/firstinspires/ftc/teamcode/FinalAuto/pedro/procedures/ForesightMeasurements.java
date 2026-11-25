@@ -2,6 +2,11 @@ package org.firstinspires.ftc.teamcode.FinalAuto.pedro.procedures;
 
 import java.util.List;
 
+/**
+ * Sanity checks on the numbers each Foresight Tuner stage produces. A stage that ran with bad
+ * localization can hand back zero, NaN, or a half-filled list; pasted into Constants those
+ * would make the robot do something wild. Better to stop the tuner with a clear message.
+ */
 final class ForesightMeasurements {
     private ForesightMeasurements() { }
 

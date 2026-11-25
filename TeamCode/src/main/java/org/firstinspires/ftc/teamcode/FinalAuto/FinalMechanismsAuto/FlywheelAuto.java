@@ -5,105 +5,61 @@ import static com.pedropathing.ivy.commands.Commands.waitMs;
 import static com.pedropathing.ivy.commands.Commands.waitUntil;
 
 import com.pedropathing.ivy.Command;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.teamcode.Shared.Battery;
+import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
 
+/**
+ * The shooter flywheels for autonomous: the same controller teleop uses
+ * (Shared/FlywheelControl), wrapped in commands an auto routine can put in a sequence.
+ */
 public class FlywheelAuto {
-    public static final double HIGH_VELOCITY = 2300; // was 3000, the 40:1 HD Hex tops out at 2800
+    /**
+     * Speeds in encoder ticks per second. The HD Hex tops out at 2800 and can only hold about
+     * 2380 under load, so 2300 is "nearly flat out, but still a speed it can keep".
+     * These are used when there is no saved shot for the distance. Tune them on a field.
+     */
+    public static final double HIGH_VELOCITY = 2300;
     public static final double LOW_VELOCITY = 1800;
-
-    public static final double P = 0;
-    public static final double F = 0;
-    public static final double I = 0;
-    public static final double READY_TOLERANCE = 75;
-    public static final double READY_HOLD_MS = 100;
-    public static final double LEVEL_BAND = 120;
-    public static final double LEVEL_MS = 300;
 
     private FlywheelControl control;
 
-    private double rightVelocity;
-    private double leftVelocity;
-    private double speed;
-    private boolean atSpeed;
-    private long atSpeedSinceNanos;
-    private double levelLowest;
-    private double levelHighest;
-    private long levelSinceNanos;
-
-    public void init(HardwareMap hardwareMap) {
-        control = new FlywheelControl(hardwareMap, DcMotorSimple.Direction.FORWARD);
-        double[] gains = chooseGains();
-        control.setGains(gains[0], gains[1], gains[2]);
+    public void init(HardwareMap hardwareMap, Battery battery) {
+        control = new FlywheelControl(hardwareMap, battery);
         stop();
     }
 
-    public static double[] chooseGains() {
-        if (P != 0 || F != 0) return new double[] {P, F, I};
-        return new double[] {FlywheelControl.DEFAULT_P, FlywheelControl.DEFAULT_F, FlywheelControl.DEFAULT_I};
-    }
+    // Every method is safe to call when init() failed (no flywheel motors in the config):
+    // the auto then simply runs without shooting.
 
     public void spinUp(double velocity) {
-        if (control == null) return;
-        if (velocity != control.target()) atSpeed = false;
-        control.setTarget(velocity);
+        if (control != null) control.setTarget(velocity);
     }
 
     public void stop() {
-        atSpeed = false;
         if (control != null) control.stop();
     }
 
-    private double target() {
-        return control == null ? 0 : control.target();
-    }
-
+    /** AutoBase calls this every loop. */
     public void update() {
-        if (control == null) return;
-        long now = System.nanoTime();
-        control.update();
-        rightVelocity = control.rightVelocity();
-        leftVelocity = control.leftVelocity();
-        speed = control.speed();
-        double target = target();
-
-        boolean inBand = target > 0 && Math.abs(target - speed) <= READY_TOLERANCE;
-        if (inBand && !atSpeed) atSpeedSinceNanos = now;
-        atSpeed = inBand;
-
-        levelLowest = Math.min(levelLowest, speed);
-        levelHighest = Math.max(levelHighest, speed);
-        if (target <= 0 || levelHighest - levelLowest > LEVEL_BAND) {
-            levelLowest = speed;
-            levelHighest = speed;
-            levelSinceNanos = now;
-        }
-    }
-
-    public double speed() {
-        return speed;
-    }
-
-    public boolean isAtSpeed() {
-        return atSpeed;
+        if (control != null) control.update();
     }
 
     public boolean isReady() {
-        long now = System.nanoTime();
-        return (atSpeed && now - atSpeedSinceNanos >= READY_HOLD_MS * 1e6) || hasLevelledOff(now);
+        return control != null && control.isReady();
     }
 
-    private boolean hasLevelledOff(long now) {
-        return target() > 0
-                && speed >= 0.5 * target()
-                && now - levelSinceNanos >= LEVEL_MS * 1e6;
+    /** 0 to 1: how hard the index may feed right now. 1 if there are no flywheels to wait for. */
+    public double feedScale() {
+        return control == null ? 1.0 : control.feedScale();
     }
 
     public Command spinUpCommand(double velocity) {
         return instant(() -> spinUp(velocity));
     }
 
+    /** Waits for the wheels to be ready, but never longer than timeoutMs. */
     public Command waitUntilReady(double timeoutMs) {
         return waitUntil(this::isReady).raceWith(waitMs(timeoutMs));
     }
@@ -113,14 +69,14 @@ public class FlywheelAuto {
     }
 
     public void addTelemetry(Telemetry telemetry) {
-        double target = target();
+        if (control == null) return;
+        double target = control.target();
         telemetry.addData("Flywheel target", "%.0f", target);
         if (target > FlywheelControl.HOLDABLE_TICKS_PER_SECOND) {
             telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what the motors can hold (%.0f).",
                     target, FlywheelControl.HOLDABLE_TICKS_PER_SECOND));
         }
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f", rightVelocity, leftVelocity);
-        telemetry.addData("Flywheel power", "%.2f", control == null ? 0 : control.power());
-        telemetry.addData("Flywheel", isReady() ? "READY" : atSpeed ? "at speed" : target > 0 ? "spinning up" : "off");
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f", control.rightVelocity(), control.leftVelocity());
+        telemetry.addData("Flywheel", control.isReady() ? "READY" : target > 0 ? "spinning up" : "off");
     }
 }
