@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 1560" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<rect width="1280" height="1560" fill="#FFFFFF"/>
+<text x="56" y="76" font-size="40" font-weight="700" fill="#14181F">MAIN TELEOP controls</text>
+<text x="56" y="110" font-size="19" fill="#5B6472">Team 22310. Grey buttons do nothing.</text>
+<rect x="32" y="140" width="1216" height="620" rx="22" fill="#F5F6F8"/>
+<text x="56" y="186" font-size="27" font-weight="700" fill="#14181F">GAMEPAD 1 &#8211; mechanisms</text>
+<text x="56" y="214" font-size="18" fill="#5B6472">Intake, shooter. Pair with START + A.</text>
+<rect x="422" y="284" width="96" height="48" rx="14" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="470" y="308" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">LT</text>
+<rect x="762" y="284" width="96" height="48" rx="14" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="810" y="308" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">RT</text>
+<rect x="400" y="338" width="140" height="34" rx="12" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="470" y="360" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">LB</text>
+<rect x="740" y="338" width="140" height="34" rx="12" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="810" y="360" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">RB</text>
+<path d="M 390 414 Q 390 374 435 374 L 845 374 Q 890 374 890 414 L 908 610 Q 912 668 862 664 Q 826 660 790 590 L 490 590 Q 454 660 418 664 Q 368 668 372 610 Z" fill="#E3E6EB" stroke="#B9C0CC" stroke-width="2.5"/>
+<path d="M 477 400 h 26 v 27 h 27 v 26 h -27 v 27 h -26 v -27 h -27 v -26 h 27 Z" fill="#FFFFFF" stroke="#14181F" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="562" cy="528" r="40" fill="#CDD2DA" stroke="#B9C0CC" stroke-width="2"/>
+<circle cx="562" cy="528" r="27" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<circle cx="718" cy="528" r="40" fill="#CDD2DA" stroke="#B9C0CC" stroke-width="2"/>
+<circle cx="718" cy="528" r="27" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<circle cx="790" cy="404" r="19" fill="#CA8A04" stroke="#14181F" stroke-width="2.5"/>
+<text x="790" y="410" font-size="17" font-weight="700" text-anchor="middle" fill="#FFFFFF">Y</text>
+<circle cx="790" cy="476" r="19" fill="#16A34A" stroke="#14181F" stroke-width="2.5"/>
+<text x="790" y="482" font-size="17" font-weight="700" text-anchor="middle" fill="#FFFFFF">A</text>
+<circle cx="754" cy="440" r="19" fill="#2563EB" stroke="#14181F" stroke-width="2.5"/>
+<text x="754" y="446" font-size="17" font-weight="700" text-anchor="middle" fill="#FFFFFF">X</text>
+<circle cx="826" cy="440" r="19" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="826" y="446" font-size="17" font-weight="700" text-anchor="middle" fill="#5B6472">B</text>
+<rect x="572" y="419" width="52" height="22" rx="11" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="598" y="464" font-size="11" font-weight="700" text-anchor="middle" fill="#5B6472">BACK</text>
+<rect x="656" y="419" width="52" height="22" rx="11" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="682" y="464" font-size="11" font-weight="700" text-anchor="middle" fill="#5B6472">START</text>
+<text x="336" y="290" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT TRIGGER</text>
+<text x="336" y="314" font-size="18" text-anchor="end" fill="#14181F">Spit everything out</text>
+<path d="M 348 294 L 370 294 L 416 304" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="416" cy="304" r="4" fill="#14181F"/>
+<text x="336" y="362" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT BUMPER (hold)</text>
+<text x="336" y="386" font-size="18" text-anchor="end" fill="#C2410C">SHOOT (feeds the pollen in)</text>
+<path d="M 348 366 L 370 366 L 394 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="394" cy="352" r="4" fill="#14181F"/>
+<text x="336" y="444" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">D-PAD up / down</text>
+<text x="336" y="468" font-size="18" text-anchor="end" fill="#14181F">Shot setup only: speed</text>
+<path d="M 348 448 L 370 448 L 444 440" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="444" cy="440" r="4" fill="#14181F"/>
+<text x="336" y="532" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">BACK</text>
+<text x="336" y="556" font-size="18" text-anchor="end" fill="#14181F">Open / close shot setup</text>
+<path d="M 348 536 L 370 536 L 566 430" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="566" cy="430" r="4" fill="#14181F"/>
+<text x="944" y="290" font-size="18" font-weight="700" fill="#14181F">RIGHT TRIGGER</text>
+<text x="944" y="314" font-size="18" fill="#14181F">Intake</text>
+<path d="M 932 294 L 910 294 L 864 304" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="864" cy="304" r="4" fill="#14181F"/>
+<text x="944" y="362" font-size="18" font-weight="700" fill="#14181F">RIGHT BUMPER (hold)</text>
+<text x="944" y="386" font-size="18" fill="#14181F">Spin up the shooter</text>
+<path d="M 932 366 L 910 366 L 886 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="886" cy="352" r="4" fill="#14181F"/>
+<text x="944" y="434" font-size="18" font-weight="700" fill="#14181F">Y</text>
+<text x="944" y="458" font-size="18" fill="#14181F">Backup speed high / low</text>
+<path d="M 932 438 L 910 438 L 815 404" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="815" cy="404" r="4" fill="#14181F"/>
+<text x="944" y="506" font-size="18" font-weight="700" fill="#14181F">A</text>
+<text x="944" y="530" font-size="18" fill="#14181F">Shot setup only: save</text>
+<path d="M 932 510 L 910 510 L 815 476" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="815" cy="476" r="4" fill="#14181F"/>
+<text x="944" y="578" font-size="18" font-weight="700" fill="#14181F">X</text>
+<text x="944" y="602" font-size="18" fill="#14181F">Shot setup only: delete</text>
+<path d="M 932 582 L 765 582 L 765 456" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="765" cy="456" r="4" fill="#14181F"/>
+<text x="640" y="726" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">To shoot: hold RIGHT BUMPER, wait for the buzz, then hold LEFT BUMPER.</text>
+<rect x="32" y="790" width="1216" height="620" rx="22" fill="#F5F6F8"/>
+<text x="56" y="836" font-size="27" font-weight="700" fill="#14181F">GAMEPAD 2 &#8211; driving</text>
+<text x="56" y="864" font-size="18" fill="#5B6472">Pair with START + B.</text>
+<rect x="422" y="934" width="96" height="48" rx="14" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="470" y="958" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">LT</text>
+<rect x="762" y="934" width="96" height="48" rx="14" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="810" y="958" font-size="15" font-weight="700" text-anchor="middle" fill="#14181F">RT</text>
+<rect x="400" y="988" width="140" height="34" rx="12" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="470" y="1010" font-size="15" font-weight="700" text-anchor="middle" fill="#5B6472">LB</text>
+<rect x="740" y="988" width="140" height="34" rx="12" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="810" y="1010" font-size="15" font-weight="700" text-anchor="middle" fill="#5B6472">RB</text>
+<path d="M 390 1064 Q 390 1024 435 1024 L 845 1024 Q 890 1024 890 1064 L 908 1260 Q 912 1318 862 1314 Q 826 1310 790 1240 L 490 1240 Q 454 1310 418 1314 Q 368 1318 372 1260 Z" fill="#E3E6EB" stroke="#B9C0CC" stroke-width="2.5"/>
+<path d="M 477 1050 h 26 v 27 h 27 v 26 h -27 v 27 h -26 v -27 h -27 v -26 h 27 Z" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5" stroke-linejoin="round"/>
+<circle cx="562" cy="1178" r="40" fill="#CDD2DA" stroke="#B9C0CC" stroke-width="2"/>
+<circle cx="562" cy="1178" r="27" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<circle cx="718" cy="1178" r="40" fill="#CDD2DA" stroke="#B9C0CC" stroke-width="2"/>
+<circle cx="718" cy="1178" r="27" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<circle cx="790" cy="1054" r="19" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="790" y="1060" font-size="17" font-weight="700" text-anchor="middle" fill="#5B6472">Y</text>
+<circle cx="790" cy="1126" r="19" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="790" y="1132" font-size="17" font-weight="700" text-anchor="middle" fill="#5B6472">A</text>
+<circle cx="754" cy="1090" r="19" fill="#2563EB" stroke="#14181F" stroke-width="2.5"/>
+<text x="754" y="1096" font-size="17" font-weight="700" text-anchor="middle" fill="#FFFFFF">X</text>
+<circle cx="826" cy="1090" r="19" fill="#DC2626" stroke="#14181F" stroke-width="2.5"/>
+<text x="826" y="1096" font-size="17" font-weight="700" text-anchor="middle" fill="#FFFFFF">B</text>
+<rect x="572" y="1069" width="52" height="22" rx="11" fill="#D5D9E0" stroke="#B4BBC7" stroke-width="1.5"/>
+<text x="598" y="1114" font-size="11" font-weight="700" text-anchor="middle" fill="#5B6472">BACK</text>
+<rect x="656" y="1069" width="52" height="22" rx="11" fill="#FFFFFF" stroke="#14181F" stroke-width="3"/>
+<text x="682" y="1114" font-size="11" font-weight="700" text-anchor="middle" fill="#5B6472">START</text>
+<text x="336" y="940" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT TRIGGER (hold)</text>
+<text x="336" y="964" font-size="18" text-anchor="end" fill="#C2410C">AUTO AIM at our hive</text>
+<path d="M 348 944 L 370 944 L 416 954" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="416" cy="954" r="4" fill="#14181F"/>
+<text x="336" y="1182" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT STICK</text>
+<text x="336" y="1206" font-size="18" text-anchor="end" fill="#14181F">Drive (field-centric)</text>
+<path d="M 348 1186 L 370 1186 L 529 1178" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="529" cy="1178" r="4" fill="#14181F"/>
+<text x="944" y="940" font-size="18" font-weight="700" fill="#14181F">RIGHT TRIGGER (hold)</text>
+<text x="944" y="964" font-size="18" fill="#14181F">Slow mode</text>
+<path d="M 932 944 L 910 944 L 864 954" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="864" cy="954" r="4" fill="#14181F"/>
+<text x="944" y="1026" font-size="18" font-weight="700" fill="#14181F">START (tap)</text>
+<text x="944" y="1050" font-size="18" fill="#14181F">Set which way is forward</text>
+<path d="M 932 1030 L 910 1030 L 714 1080" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="714" cy="1080" r="4" fill="#14181F"/>
+<text x="944" y="1098" font-size="18" font-weight="700" fill="#14181F">B, before START</text>
+<text x="944" y="1122" font-size="18" fill="#14181F">Red alliance</text>
+<path d="M 932 1102 L 910 1102 L 851 1090" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="851" cy="1090" r="4" fill="#14181F"/>
+<text x="944" y="1264" font-size="18" font-weight="700" fill="#14181F">X, before START</text>
+<text x="944" y="1288" font-size="18" fill="#14181F">Blue alliance</text>
+<path d="M 932 1268 L 765 1268 L 765 1106" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="765" cy="1106" r="4" fill="#14181F"/>
+<text x="944" y="1182" font-size="18" font-weight="700" fill="#14181F">RIGHT STICK</text>
+<text x="944" y="1206" font-size="18" fill="#14181F">Turn</text>
+<path d="M 932 1186 L 910 1186 L 751 1178" fill="none" stroke="#9AA3B2" stroke-width="2"/>
+<circle cx="751" cy="1178" r="4" fill="#14181F"/>
+<text x="640" y="1376" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">Buzz on this gamepad = aimed. Long buzz = field-centric lost, two short = back.</text>
+<text x="56" y="1482" font-size="18" fill="#5B6472">Before START, on either gamepad: X = blue alliance, B = red alliance. It remembers the alliance from auto.</text>
+<text x="56" y="1510" font-size="18" fill="#5B6472">Shot setup: stand where you shoot, BACK, D-PAD until it scores, A to save. Do it at 2 or 3 distances.</text>
+</svg>

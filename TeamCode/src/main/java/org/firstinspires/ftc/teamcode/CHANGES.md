@@ -1,142 +1,148 @@
-# Code changes, Nov 23
+# Robot code notes
 
-Quick notes on what changed in the robot code and what to check before we trust it.
+For the comp on Saturday Nov 28. Read "Before the comp" at least once.
 
-**Not tested on the real robot yet.** It builds and passes the simulator, that's it.
+Everything here builds and passes the desktop tests and simulator. The auto aim, the one-button shot speed and the new flywheel control have **not been on the real robot yet**. Test them Thursday / Friday.
+
+## Controls
+
+![controls](controls.svg)
+
+| Gamepad 1 (mechanisms) | Does |
+|---|---|
+| RIGHT TRIGGER | Intake |
+| LEFT TRIGGER | Spit everything out (wins over everything else) |
+| RIGHT BUMPER (hold) | Spin up the shooter to the right speed |
+| LEFT BUMPER (hold) | Shoot (feeds the pollen in) |
+| Y | Backup speed high / low, only used when the camera can't see the hive |
+| BACK | Open / close shot setup |
+
+| Gamepad 2 (driving) | Does |
+|---|---|
+| LEFT STICK | Drive (field-centric) |
+| RIGHT STICK | Turn |
+| LEFT TRIGGER (hold) | Auto aim at our hive |
+| RIGHT TRIGGER (hold) | Slow mode |
+| START (tap) | Make the way the robot faces "forward" |
+
+Before START, on either gamepad: **X = blue alliance, B = red alliance**. After an auto it already knows.
+
+**To shoot:** hold RIGHT BUMPER, wait for gamepad 1 to buzz, hold LEFT BUMPER. Driver holds LEFT TRIGGER to aim; gamepad 2 buzzes when aimed.
+
+## Shot setup (do this once, about 5 minutes)
+
+The shooter picks its speed from how far the hive is. It has to learn that first.
+
+1. Put the robot where you normally shoot. The camera has to see our hive.
+2. Gamepad 1: press BACK. The Driver Station shows SHOT SETUP and the hive distance.
+3. Hold RIGHT BUMPER and shoot. D-PAD up / down changes the speed by 25 until it scores.
+4. Press A. That speed is saved for that distance.
+5. Do it again at 1 or 2 other distances (one close, one far).
+6. Press BACK to finish.
+
+- Saved shots stay on the Control Hub, even after installing new code.
+- X deletes the saved shot nearest to where you are.
+- Until something is saved, RIGHT BUMPER uses the Y preset (1500 high / 900 low), like before.
+- Between two saved distances it picks a speed in between.
+- If the Driver Station never shows a hive distance, the Limelight pipeline needs "Full 3D" turned on for AprilTags. Aiming still works without it.
+
+## Auto aim
+
+- Hold LEFT TRIGGER on gamepad 2. The robot turns to face our hive and holds it. You can still drive around while it aims.
+- The camera finds the hive, then the Pinpoint gyro holds the direction. So it stays aimed even if the tag blinks out for a second.
+- Red looks for tags 30-37, blue for 38-45. Wrong alliance = it never finds the hive.
+- If the camera can't see the hive, the right stick still turns the robot.
+- It uses Limelight pipeline 0 and assumes the camera points the same way the shooter shoots.
+
+If it's wrong on the real robot, change one number at the top of `FinalTeleOp/FinalMechanisms/HiveAim.java`:
+
+| Problem | Change |
+|---|---|
+| Turns AWAY from the hive | `TX_SIGN` to -1 |
+| Aims a bit left or right every time | `AIM_OFFSET_DEGREES` (+ aims further right) |
+| Wobbles back and forth | lower `KP` (try 0.7) |
+| Too slow / stops short | raise `KP` (try 1.3) |
 
 ## Autos
 
 | Auto | What it does |
 |---|---|
 | Red Alliance Strong | Shoots 4 preloads, intakes the garden, drives across, shoots again, parks |
-| Blue Alliance Strong | Same thing, mirrored for blue |
+| Blue Alliance Strong | Same thing, mirrored |
 | RedAllianceWeak | Drives to the shooting spot, shoots 4 preloads, parks |
-| BlueAllianceWeak | Same thing, mirrored for blue |
+| BlueAllianceWeak | Same thing, mirrored |
 
-- Every auto gives up and parks at 24 s if something goes wrong.
-- Every auto selects MAIN TELEOP afterwards.
-- The indexer runs slowly while intaking to make room for more pollen.
-- Flower pickup is in the code but turned off (`FLOWER_CYCLE` / `FLOWER_PICKUP`).
-- Blue is just red rotated 180 degrees. Change red and blue changes too.
+- Every auto parks by 24 s no matter what, and selects MAIN TELEOP after.
+- Auto shoots at `HIGH_VELOCITY = 2300` (top of `FlywheelAuto.java`). There is no camera in auto, so this number has to be right for the auto shooting spots. Tune it on a field.
+- Blue is red rotated 180 degrees. Change red and blue changes too. Blue has never been on a field.
+- Flower pickup is in the code but turned off.
 
-Files:
-- `FinalAuto/AutoBase.java` is the shared part of all four autos
-- `FinalAuto/FinalMechanismsAuto/` has the auto versions of drive, intake, flywheel
-- `FinalMechanismsAuto/Volley.java` is one round of shooting
+## Before the comp
 
-## Teleop
-
-- Sticks are smoother (less twitchy near the middle, no dead spot).
-- Robot speeds up gradually, stops right away when you let go.
-- Low battery: power gets limited smoothly instead of the robot browning out.
-- Gamepad 2 buzzes when field-centric turns off (long) or back on (2 short).
-
-### All controls
-
-| Gamepad 1 | Does |
-|---|---|
-| RIGHT TRIGGER | Intake |
-| LEFT TRIGGER | Outtake everything (wins over everything else) |
-| LEFT BUMPER | Index inwards (feeds the shooter) |
-| RIGHT BUMPER (hold) | Spin flywheels |
-| RIGHT + LEFT BUMPER | Shoot |
-| Y | Flywheel high / low speed |
-| BACK | Unlock flywheel tuning |
-| D-PAD | Change P and F (only when unlocked) |
-| X | Change step size |
-| A | Save P and F (auto uses them too) |
-
-| Gamepad 2 | Does |
-|---|---|
-| LEFT STICK | Drive (field-centric) |
-| RIGHT STICK | Turn |
-| OPTIONS (let go) | Make the way the robot faces "forward" |
-
-Gamepad 1 buzzes when the flywheels are at speed.
-
-## Bugs fixed
-
-- Battery dropping from 11 V to 4 V while driving (drive motors were in the wrong run mode)
-- Flywheels staying on and draining the battery
-- Pairing a controller mid match reset the heading
-- A loose odometry pod cable turned off field-centric
-- Indexer stuttering while shooting
-- Autos kept pushing into a wall after getting stuck
-- Colour sensor had red and blue swapped
-- Auto align aimed at the wrong tags and had forward backwards
-- Driver Station telemetry flickering
-- Pedro "Pinpoint not ready" in the tuners
-
-## Nov 24 fixes
-
-- FTCLib removed from `TeamCode/build.gradle`. Nothing used it and it was the same library as SolversLib twice. SolversLib is still there. Do a Gradle sync after pulling.
-- Auto: if the Pinpoint stops answering, the robot stops instead of driving blind for a second.
-- Auto: only shoots if it is actually facing the target (within 10 degrees).
-- Auto: park deadline moved to 24 s so the worst case still ends before 30 s.
-- "22310 Pedro Auto Test" never got past the first leg. Fixed.
-- Flywheels: pressing the bumper again while the wheels are still spinning no longer brakes them first.
-- Heading reset now happens when you let go of OPTIONS, so pairing with START + A/B can't trigger it.
-- Drive still ramps up when loops are slow.
-- Auto align opmode renamed to "April Tag Auto Align" (it drives the robot, it is not just a camera test). Its tuning can't go negative anymore.
-- Turret align ignores results from the wrong Limelight pipeline.
-- Backup opmodes: "Mecanum Field Oriented" used the run mode that caused the brownouts, and "Index" / "Omnidirectional Intake" could never move their motor. Fixed.
-
-### More Nov 24 fixes (things that could go wrong at a comp)
-
-- MAIN TELEOP still drives if the intake, flywheel or Pinpoint is missing from the config. It says what is off on the Driver Station.
-- If the Pinpoint cable blips and the Pinpoint restarts, auto stops instead of driving from a wrong position. In teleop it goes robot-centric until you press OPTIONS.
-- If the Pinpoint glitches while the robot sits in INIT before auto, it sets itself up again instead of crashing.
-- Pressing STOP right after INIT on an auto no longer shows a fake error.
-- Flywheels coast down before reversing (LEFT TRIGGER while still spinning used to slam them backwards). Same for the auto spin-up after a stop.
-- Auto shooting waits for the wheels to recover between pollen even when they can't reach the target speed.
-- Driver Station says so if a flywheel reads 0 (encoder cable or jam).
-- LEFT TRIGGER (outtake) now always wins over RIGHT TRIGGER and LEFT BUMPER.
-- Gamepad 2 buzzes at START if field-centric is not available.
-- "Straight Line Test" and "Angled Line Test" moved to the "Test" group so nobody picks them in a match.
-
-## Nov 24: "TargetPositionNotSetException" crash
-
-**What it was:** our code never uses RUN_TO_POSITION. The SDK shows that message whenever a hub refuses to switch a motor on, and a hub does that right after it loses power for a moment. Driving and shooting at the same time pulls a lot of current, the battery voltage dips, a hub resets, and the next motor command crashed the whole OpMode.
-
-**What changed:**
-- Every motor (drive, flywheels, intake, index, in teleop and auto) now catches that refusal, sets the motor up again (mode, brake, flywheel PIDF) and keeps going. No more crash.
-- The Driver Station shows "A HUB LOST POWER" when it happens. If you see it, the robot has a power problem: check the battery (charge, age), the power switch, the XT30 cable between the hubs, and that the battery connector is tight.
-- The drive's low-battery limiter now reacts about twice as fast, so the voltage dips less.
-
-**Auto `HIGH_VELOCITY`** is now 2300 (was 3000, more than the 40:1 HD Hex can reach, so the wheels just ran flat out).
-
-## Nov 24: stuttery flywheels
-
-**What it was:**
-- The hub ran its own speed loop on each flywheel motor separately. Whenever a wheel went a bit over speed it braked hard, then pushed again, so the wheels stuttered.
-- In auto, the shooter stopped and restarted the feed after every pollen, so it stuttered on purpose.
-
-**What changed:**
-- New `FlywheelControl.java` runs both flywheels from our code with the same power. It never brakes the wheels, it adjusts for battery voltage, and it limits current while spinning up so the battery doesn't dip.
-- On the desktop model of your motors: at speed in about 0.3 s (0.5 s on a tired battery while driving), holds within about 1%, back to speed about 0.1 s after each pollen, about 10 A for both motors at most.
-- Auto feeds all 4 pollen in one smooth push (2.5 s), no stopping.
-- Teleop flywheel direction is `FORWARD` (Kim's change), the same as auto.
-- Tuning numbers have new meanings, so old saved values are ignored. Defaults: P = 1.0, F = 1.0. BACK, then d-pad and A still tune and save. F = 1.0 means "the right power for the motor's top speed"; raise it if the wheels sit a bit under target.
-
-## Check before a match
-
-1. Flywheel direction. Teleop and auto are both `FORWARD` now. Check once with the wheels off the ground that they spin the shooting way.
-2. Flywheel speed in auto. `HIGH_VELOCITY` is now 2300. If shots land short or long from the auto spots, change it in `FlywheelAuto.java` (2380 is about the most the motors can hold).
-3. Start pose. After INIT the Driver Station shows where the robot should be. It has to match where the robot really is.
+1. **Flywheel direction.** Wheels off the ground, hold RIGHT BUMPER. They should spin the shooting way. If not, change `FORWARD` in `FlywheelTunerPIDF.java` and `FlywheelAuto.java`.
+2. **Flywheels smooth?** They should spin up in under a second and hold steady. If they hunt up and down, lower `DEFAULT_P` in `FlywheelControl.java` (try 0.6).
+3. **Auto aim.** Hold LEFT TRIGGER with the hive in view. See the table above if it's wrong.
+4. **Shot setup.** Save 2 or 3 shots (see above).
+5. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
    - Red Strong: x 56, y 8, heading 270
    - Blue Strong: x 88, y 136, heading 90
    - Red Weak: x 56, y 8, heading 90
    - Blue Weak: x 88, y 136, heading 270
-4. Blue autos have never been on a field. Test before using them.
+6. **Auto shot speed.** Run each auto you plan to use and fix `HIGH_VELOCITY`.
+7. **Pinpoint cable test.** INIT an auto, pull the Pinpoint cable for half a second, plug it back. It should say "Pinpoint restarted".
+8. **After auto.** At teleop INIT, "forward" is whatever way the robot is facing. Driver 2: point the robot away from you and tap START.
+9. Fresh battery every match. Low battery = slower flywheels and shorter shots.
 
-## Where to change stuff
+## What the Driver Station is telling you
+
+| Message | Means |
+|---|---|
+| A HUB LOST POWER | Battery / power cable problem. The code recovered, but check the battery, switch and XT30 cables |
+| INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
+| ROBOT-CENTRIC | No Pinpoint heading. Driving still works, just not field-centric. Auto aim needs the Pinpoint |
+| Pinpoint restarted - face forward, tap START | Pinpoint cable blipped. Point the robot away from you and tap START |
+| A FLYWHEEL READS 0 | Flywheel encoder cable or a jam |
+| Drive power limit under 100% | Battery is low, drive power eased off so the robot doesn't brown out |
+| camera not answering | Limelight unplugged or still starting (takes about 20 s after power on) |
+
+## Where to change numbers
 
 | What | Where |
 |---|---|
 | Auto speeds, timings, positions | top of `RedAllianceStrong.java` / `RedAllianceWeak.java` |
-| Flywheel speeds for auto | top of `FlywheelAuto.java` |
-| How the sticks feel | top of `MecanumDriveFinal.java` (`STICK_LINEAR_PART`, `MAX_POWER_RISE_PER_SECOND`) |
-| Shooting time per volley | `Volley.java` (`FEED_MS`) |
+| Auto flywheel speed | top of `FlywheelAuto.java` |
+| Teleop backup speeds (1500 / 900) | top of `FlywheelTunerPIDF.java` |
+| Flywheel smoothness | `DEFAULT_P` in `FlywheelControl.java` |
+| Auto aim | top of `HiveAim.java` |
+| How the sticks feel, slow mode speed | top of `MecanumDriveFinal.java` |
+| How long auto feeds a volley | `FEED_MS` in `Volley.java` |
+| Intake / index power | top of `IndexIntake.java` |
 | Pedro tuning | `FinalAuto/pedro/PedroTuning/Constants.java` |
 
 If something feels off, change the number instead of reverting the whole file.
+
+## What changed
+
+**Nov 25**
+- Auto aim built into MAIN TELEOP (gamepad 2 LEFT TRIGGER).
+- One button shooter: RIGHT BUMPER spins to the speed for the hive distance. Shot setup saves speeds on the robot.
+- Slow mode on gamepad 2 RIGHT TRIGGER.
+- Alliance picked at INIT (X / B), remembered from auto.
+- Flywheels are judged "at speed" on their average, and the two wheels are kept matched.
+- Auto still drives and parks if the intake or flywheel is missing from the config.
+- Only MAIN TELEOP is left in the "TeamCode" group on the Driver Station. Test and backup opmodes moved to "Test".
+- P / F tuning on the gamepad is gone. It isn't needed with the new flywheel control.
+
+**Nov 24**
+- "TargetPositionNotSetException" crash fixed. It was a hub losing power for a moment when driving and shooting together. Motors now set themselves up again and carry on.
+- Stuttery flywheels fixed. New `FlywheelControl.java` runs both wheels smoothly from our code. Auto feeds a volley in one push.
+- FTCLib removed from `build.gradle` (unused, duplicate of SolversLib).
+- Auto: stops if the Pinpoint drops out or restarts, only shoots when facing the target, recovers from a Pinpoint glitch during INIT.
+- Teleop still drives if a mechanism or the Pinpoint is missing.
+- Heading reset moved to releasing START so pairing a gamepad can't trigger it.
+
+**Nov 23**
+- New autos: Red / Blue Strong and Weak on a shared `AutoBase`.
+- Smoother teleop drive, low battery limiter, field-centric with the Pinpoint.
+- Battery drain and 11 V to 4 V drop fixed (drive motors were in the wrong run mode).
+- Colour sensor red / blue swap fixed. Pedro "Pinpoint not ready" fixed.

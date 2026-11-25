@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "TeleOpCodeTestOne", group = "TeamCode")
+@TeleOp(name = "TeleOpCodeTestOne", group = "Test")
 public class MainCommand extends OpMode {
 
     private static final double INTAKE_POWER = 1.0;

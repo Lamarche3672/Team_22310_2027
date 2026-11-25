@@ -10,10 +10,12 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 
 public class MecanumDriveFinal {
     private static final double DRIVE_DEADZONE = 0.05;
     private static final double STICK_LINEAR_PART = 0.4;
+    private static final double SLOW_SCALE = 0.4;
     private static final double POWER_WRITE_THRESHOLD = 0.01;
     private static final long POWER_RESEND_NANOS = 250_000_000L;
 
@@ -58,6 +60,8 @@ public class MecanumDriveFinal {
     private long lastGoodHeadingNanos;
     private long initNanos;
     private boolean needsRezero;
+    private double headingRate;
+    private boolean slow;
     private boolean wasNearStart = true;
 
     public void init(HardwareMap hardwareMap) {
@@ -83,6 +87,8 @@ public class MecanumDriveFinal {
         hadHeading = false;
         needsRezero = false;
         wasNearStart = true;
+        headingRate = 0;
+        slow = false;
         initNanos = System.nanoTime();
         try {
             pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
@@ -147,6 +153,11 @@ public class MecanumDriveFinal {
         rotate = Math.max(-1.0, Math.min(1.0, rotate));
         if (rotateIsStick) {
             rotate = Math.abs(rotate) > DRIVE_DEADZONE ? Math.signum(rotate) * stickCurve(Math.abs(rotate)) : 0;
+        }
+        if (slow) {
+            forward *= SLOW_SCALE;
+            strafe *= SLOW_SCALE;
+            if (rotateIsStick) rotate *= SLOW_SCALE;
         }
 
         long now = System.nanoTime();
@@ -240,12 +251,32 @@ public class MecanumDriveFinal {
 
     public void driveFieldRelative(double forward, double strafe, double rotate) {
         updateHeading();
+        driveField(forward, strafe, rotate, false);
+    }
+
+    public void driveField(double forward, double strafe, double rotate, boolean rotateIsPower) {
         if (isWaitingForHeading()) {
             stop();
             return;
         }
         driveCubic(forward, strafe, rotate, isFieldRelative()
-                ? AngleUnit.normalizeRadians(headingRadians - headingOffsetRadians) : 0, true);
+                ? AngleUnit.normalizeRadians(headingRadians - headingOffsetRadians) : 0, !rotateIsPower);
+    }
+
+    public void setSlow(boolean slow) {
+        this.slow = slow;
+    }
+
+    public boolean isSlow() {
+        return slow;
+    }
+
+    public double rawHeading() {
+        return headingRadians;
+    }
+
+    public double headingRate() {
+        return headingRate;
     }
 
     public void updateHeading() {
@@ -270,6 +301,8 @@ public class MecanumDriveFinal {
                 needsRezero = true;
             }
             wasNearStart = nearStart;
+            double rate = pinpoint.getHeadingVelocity(UnnormalizedAngleUnit.RADIANS);
+            headingRate = Double.isFinite(rate) ? rate : 0;
             headingRadians = heading;
             lastGoodHeadingNanos = now;
             hadHeading = true;
@@ -289,7 +322,7 @@ public class MecanumDriveFinal {
         if (isFieldRelative()) return "Ready (field-centric)";
         if (isWaitingForHeading()) return "STOPPED: waiting for Pinpoint";
         if (pinpoint == null) return "ROBOT-CENTRIC: no Pinpoint in the robot config";
-        if (needsRezero) return "ROBOT-CENTRIC: Pinpoint restarted - face forward, press OPTIONS";
+        if (needsRezero) return "ROBOT-CENTRIC: Pinpoint restarted - face forward, tap START";
         return "ROBOT-CENTRIC: Pinpoint heading unavailable";
     }
 

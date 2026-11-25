@@ -17,6 +17,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.IndexIntakeAuto;
 import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.MecanumDriveAuto;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HiveAim;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 
 public abstract class AutoBase extends LinearOpMode {
@@ -86,12 +87,22 @@ public abstract class AutoBase extends LinearOpMode {
     public void runOpMode() {
         Scheduler.reset();
         HubReset.clear();
+        HiveAim.blueAlliance = isBlueAlliance();
         try {
             telemetry.addLine("Starting... keep the robot STILL");
             telemetry.update();
 
-            intake.init(hardwareMap);
-            flywheel.init(hardwareMap);
+            String missing = "";
+            try {
+                intake.init(hardwareMap);
+            } catch (RuntimeException e) {
+                missing += "INTAKE OFF: " + e.getMessage() + "\n";
+            }
+            try {
+                flywheel.init(hardwareMap);
+            } catch (RuntimeException e) {
+                missing += "FLYWHEEL OFF: " + e.getMessage() + "\n";
+            }
             drive.init(hardwareMap, startPose());
 
             Pose start = startPose();
@@ -108,6 +119,7 @@ public abstract class AutoBase extends LinearOpMode {
                     }
                 }
                 telemetry.addLine(problem == null ? "READY - " + autoName() : "NOT READY: " + problem);
+                if (!missing.isEmpty()) telemetry.addLine(missing);
                 telemetry.addLine("Load 4 pollen. Robot on the start position.");
                 telemetry.addData("Should read about", "x %.0f, y %.0f, heading %.0f",
                         start.x(), start.y(), Math.toDegrees(start.heading()));
@@ -127,6 +139,7 @@ public abstract class AutoBase extends LinearOpMode {
 
                 String hubWarning = HubReset.warning();
                 if (hubWarning != null) telemetry.addLine(hubWarning);
+                if (!missing.isEmpty()) telemetry.addLine(missing);
                 telemetry.addData("Step", currentStep);
                 telemetry.addData("Time (s)", "%.1f", autoTimer.seconds());
                 drive.addTelemetry(telemetry);

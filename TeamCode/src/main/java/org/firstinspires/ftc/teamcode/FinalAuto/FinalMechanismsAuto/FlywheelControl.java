@@ -26,6 +26,8 @@ public final class FlywheelControl {
 
     private static final double INTEGRATE_WITHIN = 200;
     private static final double MAX_INTEGRAL_POWER = 0.1;
+    private static final double MATCH_GAIN = 2.0;
+    private static final double MAX_MATCH_POWER = 0.1;
     private static final double DEAD_ENCODER_BELOW = 50;
     private static final double WRITE_THRESHOLD = 0.005;
     private static final long RESEND_NANOS = 250_000_000L;
@@ -42,7 +44,10 @@ public final class FlywheelControl {
 
     private double target;
     private double power;
-    private double sentPower = Double.NaN;
+    private double rightPower;
+    private double leftPower;
+    private double sentRight = Double.NaN;
+    private double sentLeft = Double.NaN;
     private double integral;
     private double rightVelocity;
     private double leftVelocity;
@@ -105,7 +110,9 @@ public final class FlywheelControl {
         target = 0;
         integral = 0;
         power = 0;
-        write(0, true);
+        rightPower = 0;
+        leftPower = 0;
+        write(0, 0, true);
     }
 
     public void update() {
@@ -121,8 +128,24 @@ public final class FlywheelControl {
         readBattery(now);
 
         power = target == 0 ? 0 : nextPower(speed(), dt);
-        boolean changed = Math.abs(power - sentPower) >= WRITE_THRESHOLD || (power == 0 && sentPower != 0);
-        write(power, changed || now - lastWriteNanos >= RESEND_NANOS);
+        rightPower = matched(power, rightVelocity);
+        leftPower = matched(power, leftVelocity);
+        boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
+                || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
+                || (power == 0 && (sentRight != 0 || sentLeft != 0));
+        write(rightPower, leftPower, changed || now - lastWriteNanos >= RESEND_NANOS);
+    }
+
+    private double matched(double common, double wheelVelocity) {
+        if (common == 0) return 0;
+        boolean bothAlive = Math.abs(rightVelocity) >= DEAD_ENCODER_BELOW && Math.abs(leftVelocity) >= DEAD_ENCODER_BELOW;
+        if (!bothAlive) return common;
+        double average = 0.5 * (rightVelocity + leftVelocity);
+        double trim = MATCH_GAIN / 1000.0 * (average - wheelVelocity);
+        trim = Math.max(-MAX_MATCH_POWER, Math.min(MAX_MATCH_POWER, trim));
+        double value = common + trim;
+        value = target > 0 ? Math.max(0, value) : Math.min(0, value);
+        return Math.max(-1.0, Math.min(1.0, value));
     }
 
     public double speed() {
@@ -170,22 +193,23 @@ public final class FlywheelControl {
         if (Double.isFinite(reading) && reading > 1.0) volts = reading;
     }
 
-    private void write(double value, boolean send) {
+    private void write(double rightValue, double leftValue, boolean send) {
         if (!send) return;
         try {
-            right.setPower(value);
-            left.setPower(value);
+            right.setPower(rightValue);
+            left.setPower(leftValue);
         } catch (TargetPositionNotSetException hubReset) {
             HubReset.forget(right, left);
             try {
                 configure();
-                right.setPower(value);
-                left.setPower(value);
+                right.setPower(rightValue);
+                left.setPower(leftValue);
             } catch (TargetPositionNotSetException stillDown) {
                 return;
             }
         }
-        sentPower = value;
+        sentRight = rightValue;
+        sentLeft = leftValue;
         lastWriteNanos = System.nanoTime();
     }
 }

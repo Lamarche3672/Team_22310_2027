@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "Index", group = "TeamCode")
+@TeleOp(name = "Index", group = "Test")
 public class Index extends OpMode {
 
     private static final double INDEX_POWER = 1.0;

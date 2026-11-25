@@ -5,7 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@TeleOp(name = "Omnidirectional Intake", group = "TeamCode")
+@TeleOp(name = "Omnidirectional Intake", group = "Test")
 public class OmnidirectionalIntake extends OpMode {
 
     private static final double INTAKE_POWER = 1;

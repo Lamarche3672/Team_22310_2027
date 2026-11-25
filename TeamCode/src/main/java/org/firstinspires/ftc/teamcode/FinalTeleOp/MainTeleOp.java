@@ -1,28 +1,32 @@
 /*
-LEFT BUMPER: Index inwards
-LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
+GAMEPAD 1 (mechanisms)
 RIGHT TRIGGER: Intake
-RIGHT BUMPER: Flywheels (hold)
-LEFT BUMPER + RIGHT BUMPER: Shoot
-Y: Flywheel speed high/low
-BACK: Unlock flywheel tuning
-D-PAD: Tune P and F, X changes step size
-A: Save P and F
+LEFT TRIGGER: Outtakes everything, but at different speeds (index, intake, shooter)
+RIGHT BUMPER (hold): Spin the shooter to the speed for this distance
+LEFT BUMPER (hold): Index inwards = shoot (wait for the buzz)
+Y: Backup shooter speed high/low (only used when the camera can't see the hive)
+BACK: Shot setup. Then D-PAD up/down = speed, A = save for this distance, X = delete
 
-GAMEPAD 2
+GAMEPAD 2 (driving)
 LEFT STICK: Drive
 RIGHT STICK: Turn
-OPTIONS (let go): Make current direction forward
+LEFT TRIGGER (hold): Auto aim at our hive
+RIGHT TRIGGER (hold): Slow mode
+START (tap): Make current direction forward
+
+BEFORE START (either gamepad): X = blue alliance, B = red alliance
 */
 
 package org.firstinspires.ftc.teamcode.FinalTeleOp;
 import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.SavedBackupCode.Drive.Mechanisms.FlywheelTesting;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.FlywheelTunerPIDF;
+import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HiveAim;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.HubReset;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.IndexIntake;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
@@ -45,6 +49,12 @@ public class MainTeleOp extends OpMode {
     private boolean lostFieldRelative;
     private boolean intakeOk;
     private boolean flywheelOk;
+    private final HiveAim aim = new HiveAim();
+    private boolean aimOk;
+    private boolean aiming;
+    private boolean wasAimed;
+    private final boolean[] redPressClean = new boolean[2];
+    private final boolean[] redHeld = new boolean[2];
     private String problems = "";
     private final ElapsedTime loopTimer = new ElapsedTime();
 
@@ -77,14 +87,32 @@ public class MainTeleOp extends OpMode {
 
         drive.init(hardwareMap);
         //aprilTag.init();
+        try {
+            aim.init(hardwareMap);
+            aimOk = true;
+        } catch (RuntimeException e) {
+            problems += "AUTO AIM OFF: " + e.getMessage() + "\n";
+        }
     }
 
     @Override
     public void init_loop() {
         drive.updateHeading();
+        chooseAlliance(gamepad1, 0);
+        chooseAlliance(gamepad2, 1);
+        telemetry.addLine("ALLIANCE: " + HiveAim.allianceName() + "   (X = blue, B = red)");
         telemetry.addLine("Keep robot STILL during calibration; wait for Pinpoint READY.");
         addDriveTelemetry();
         telemetry.update();
+    }
+
+    private void chooseAlliance(Gamepad gamepad, int index) {
+        if (gamepad.x && !gamepad.start) HiveAim.blueAlliance = true;
+        boolean red = gamepad.b;
+        if (red && !redHeld[index]) redPressClean[index] = !gamepad.start;
+        if (red && gamepad.start) redPressClean[index] = false;
+        if (!red && redHeld[index] && redPressClean[index]) HiveAim.blueAlliance = false;
+        redHeld[index] = red;
     }
 
     @Override
@@ -97,11 +125,17 @@ public class MainTeleOp extends OpMode {
 
     @Override
     public void loop() {
+        drive.updateHeading();
+        if (aimOk) aim.update(drive.rawHeading(), drive.isHeadingReady());
+
         //----------PLAYER ONE-------------
 
-        if (intakeOk) intakeIndex.loop(gamepad1, telemetry);
+        if (flywheelOk) {
+            FlywheelTunerPIDF.setHiveDistance(aimOk ? aim.distanceInches() : Double.NaN);
+            FlywheelTunerPIDF.loop(telemetry, gamepad1);
+        }
         //flywheelTesting.loop(gamepad1, telemetry);
-        if (flywheelOk) FlywheelTunerPIDF.loop(telemetry, gamepad1);
+        if (intakeOk) intakeIndex.loop(gamepad1, telemetry);
 
         //----------PLAYER TWO-------------
 
@@ -117,7 +151,22 @@ public class MainTeleOp extends OpMode {
         }
         optionsHeld = options;
 
-        drive.driveFieldRelative(forward, strafe, rotate);
+        drive.setSlow(gamepad2.right_trigger > 0.3);
+        aiming = aimOk && gamepad2.left_trigger > 0.3;
+        double aimPower = aiming
+                ? aim.rotatePower(drive.rawHeading(), drive.headingRate(), drive.isHeadingReady()) : Double.NaN;
+        if (Double.isNaN(aimPower)) {
+            drive.driveField(forward, strafe, rotate, false);
+        } else {
+            drive.driveField(forward, strafe, aimPower, true);
+        }
+        if (!aiming) aim.release();
+        boolean aimed = aiming && aim.isAimed();
+        if (aimed && !wasAimed) gamepad2.rumble(150);
+        wasAimed = aimed;
+
+        telemetry.addData("AIM (" + HiveAim.allianceName() + " hive)", aimOk ? aim.status(aiming) : "OFF");
+        if (drive.isSlow()) telemetry.addLine("SLOW MODE");
         addDriveTelemetry();
 
         boolean fieldRelative = drive.isFieldRelative();
@@ -142,7 +191,7 @@ public class MainTeleOp extends OpMode {
         telemetry.addData("Field heading (deg)", drive.getFieldHeadingDegrees());
         telemetry.addData("Drive", drive.getDriveStatus());
         drive.addPowerTelemetry(telemetry);
-        telemetry.addLine("Options: make current robot direction field-forward");
+        telemetry.addLine("START (gamepad 2): make current robot direction field-forward");
 
     }
 
@@ -157,6 +206,7 @@ public class MainTeleOp extends OpMode {
         //----------PLAYER TWO-------------
 
         drive.stop();
+        aim.stop();
 
     }
 }

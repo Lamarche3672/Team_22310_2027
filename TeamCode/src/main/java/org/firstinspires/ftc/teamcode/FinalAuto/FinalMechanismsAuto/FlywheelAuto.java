@@ -25,31 +25,23 @@ public class FlywheelAuto {
 
     private double rightVelocity;
     private double leftVelocity;
+    private double speed;
     private boolean atSpeed;
     private long atSpeedSinceNanos;
     private double levelLowest;
     private double levelHighest;
     private long levelSinceNanos;
-    private String gainSource = "";
 
     public void init(HardwareMap hardwareMap) {
         control = new FlywheelControl(hardwareMap, DcMotorSimple.Direction.FORWARD);
         double[] gains = chooseGains();
         control.setGains(gains[0], gains[1], gains[2]);
-        gainSource = describeGainSource();
         stop();
     }
 
     public static double[] chooseGains() {
         if (P != 0 || F != 0) return new double[] {P, F, I};
-        double[] saved = FlywheelTuning.load();
-        if (saved != null) return saved;
         return new double[] {FlywheelControl.DEFAULT_P, FlywheelControl.DEFAULT_F, FlywheelControl.DEFAULT_I};
-    }
-
-    public static String describeGainSource() {
-        if (P != 0 || F != 0) return "typed into FlywheelAuto";
-        return FlywheelTuning.load() != null ? "saved from the teleop tuner" : "starting values (not tuned yet)";
     }
 
     public void spinUp(double velocity) {
@@ -73,26 +65,24 @@ public class FlywheelAuto {
         control.update();
         rightVelocity = control.rightVelocity();
         leftVelocity = control.leftVelocity();
+        speed = control.speed();
         double target = target();
 
-        boolean inBand = target > 0
-                && Math.abs(target - rightVelocity) <= READY_TOLERANCE
-                && Math.abs(target - leftVelocity) <= READY_TOLERANCE;
+        boolean inBand = target > 0 && Math.abs(target - speed) <= READY_TOLERANCE;
         if (inBand && !atSpeed) atSpeedSinceNanos = now;
         atSpeed = inBand;
 
-        double slower = Math.min(rightVelocity, leftVelocity);
-        levelLowest = Math.min(levelLowest, slower);
-        levelHighest = Math.max(levelHighest, slower);
+        levelLowest = Math.min(levelLowest, speed);
+        levelHighest = Math.max(levelHighest, speed);
         if (target <= 0 || levelHighest - levelLowest > LEVEL_BAND) {
-            levelLowest = slower;
-            levelHighest = slower;
+            levelLowest = speed;
+            levelHighest = speed;
             levelSinceNanos = now;
         }
     }
 
-    public double slowerWheelSpeed() {
-        return Math.min(rightVelocity, leftVelocity);
+    public double speed() {
+        return speed;
     }
 
     public boolean isAtSpeed() {
@@ -106,7 +96,7 @@ public class FlywheelAuto {
 
     private boolean hasLevelledOff(long now) {
         return target() > 0
-                && Math.min(rightVelocity, leftVelocity) >= 0.5 * target()
+                && speed >= 0.5 * target()
                 && now - levelSinceNanos >= LEVEL_MS * 1e6;
     }
 
@@ -132,6 +122,5 @@ public class FlywheelAuto {
         telemetry.addData("Flywheel right / left", "%.0f / %.0f", rightVelocity, leftVelocity);
         telemetry.addData("Flywheel power", "%.2f", control == null ? 0 : control.power());
         telemetry.addData("Flywheel", isReady() ? "READY" : atSpeed ? "at speed" : target > 0 ? "spinning up" : "off");
-        telemetry.addData("Flywheel P, F, I", gainSource);
     }
 }

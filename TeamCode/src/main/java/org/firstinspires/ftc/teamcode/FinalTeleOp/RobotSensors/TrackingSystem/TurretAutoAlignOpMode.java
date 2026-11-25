@@ -5,7 +5,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-@TeleOp(name = "Turret April Tag Align", group = "TeamCode")
+@TeleOp(name = "Turret April Tag Align", group = "Test")
 public class TurretAutoAlignOpMode extends OpMode {
     private static final int LIMELIGHT_PIPELINE = 8;
     private static final long MAX_RESULT_AGE_MS = 250;

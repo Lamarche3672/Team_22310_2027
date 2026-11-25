@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.FinalMechanisms.MecanumDriveFinal;
 import org.firstinspires.ftc.teamcode.FinalTeleOp.RobotSensors.AprilTagLimelightTest;
 
-@TeleOp(name = "April Tag Auto Align", group = "TeamCode")
+@TeleOp(name = "April Tag Auto Align", group = "Test")
 
 public class AprilTagAutoAlignMecanum extends OpMode {
     private final AprilTagLimelightTest aprilTagLimelightTest = new AprilTagLimelightTest();
