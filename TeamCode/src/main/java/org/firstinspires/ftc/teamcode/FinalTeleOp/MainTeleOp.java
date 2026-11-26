@@ -96,6 +96,12 @@ public class MainTeleOp extends OpMode {
             problems += "FLYWHEEL OFF: " + e.getMessage() + "\n";
         }
 
+        // Both of those failing at once is nearly always the Expansion Hub, not the names.
+        if (!intakeOk || !shooterOk) {
+            String hub = HubReset.missingHubNote(hardwareMap);
+            if (hub != null) problems = hub + "\n";
+        }
+
         //----------PLAYER TWO-------------
 
         // The drive is the one thing we cannot do without, so it is allowed to stop INIT.

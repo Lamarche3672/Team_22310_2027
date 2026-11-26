@@ -143,6 +143,11 @@ public abstract class AutoBase extends LinearOpMode {
         } catch (RuntimeException e) {
             missing += "FLYWHEEL OFF: " + e.getMessage() + "\n";
         }
+        // Intake and flywheels both gone is nearly always the Expansion Hub, not the names.
+        if (!missing.isEmpty()) {
+            String hub = HubReset.missingHubNote(map);
+            if (hub != null) missing = hub + "\n";
+        }
         try {
             HiveAim camera = new HiveAim();
             camera.init(map);

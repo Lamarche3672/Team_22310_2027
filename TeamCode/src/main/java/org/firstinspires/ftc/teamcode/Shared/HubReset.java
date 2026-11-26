@@ -1,8 +1,10 @@
 package org.firstinspires.ftc.teamcode.Shared;
 
 import com.qualcomm.hardware.lynx.LynxController;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorController;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
 /**
  * Helps the robot carry on after a hub loses power for a moment.
@@ -48,6 +50,23 @@ public final class HubReset {
             DcMotorController controller = motor.getController();
             if (controller instanceof LynxController) ((LynxController) controller).forgetLastKnown();
         }
+    }
+
+    /**
+     * The intake, the index and both flywheels are plugged into the Expansion Hub. If the
+     * Control Hub cannot find that hub when the robot starts, the SDK leaves every one of them
+     * out of the hardware map, and its own message ("unable to find a hardware device with
+     * name right_flywheel") sends people off checking names that are fine. Driving still
+     * works, because the drive motors are on the Control Hub.
+     *
+     * Call this when a mechanism failed to set up. It returns what is really wrong, or null
+     * if both hubs are there (and then the name really is the problem).
+     */
+    public static String missingHubNote(HardwareMap hardwareMap) {
+        if (hardwareMap.getAll(LynxModule.class).size() >= 2) return null;
+        return "EXPANSION HUB NOT FOUND - intake, index and flywheels are OFF.\n"
+                + "The motor names are fine. Check the Expansion Hub has power (light on) and the\n"
+                + "cable between the two hubs is pushed in at both ends, then restart the robot.";
     }
 
     /** A line for the Driver Station, or null when nothing has happened. */

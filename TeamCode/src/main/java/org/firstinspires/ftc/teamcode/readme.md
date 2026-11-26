@@ -66,6 +66,14 @@ Hold LEFT TRIGGER on gamepad 2. The robot turns to face our hive and stays locke
 
 How it works: the camera only says *where* the hive is. The turning is done on the Pinpoint gyro, which is read every loop with no delay. That is why it is quick and why it stays locked when the tag blinks out for a moment.
 
+The turn itself has three parts:
+
+- **Turn and brake.** Power = `KP` x how far off - `KD` x how fast it is turning, up to full power.
+- **Friction push.** A mecanum drive needs a fair bit of power before it turns at all, so plain KP/KD gets most of the way and then crawls the last few degrees. Whenever the robot is closing in slower than it should for how far off it is, extra power builds until it is not. It finds the robot's friction by pushing, so there is nothing to measure.
+- **Safety net.** If the robot swings through the target and back, KP and KD are turned down a step each swing until it settles, and the AIM line says "WOBBLING".
+
+The AIM line shows how long the last lock took ("AIMED (locked in 0.45 s)"). Use that number when you change anything.
+
 - Red aims at tags 30-37, blue at 38-45. Wrong alliance = it never finds the hive.
 - It aims at the middle of the up cell's sticker, even when only some of its four tags are in view.
 - If it can only see the down cell it still points at the hive and says "only the DOWN cell in view". The shot speed then stays on the last known distance.
@@ -89,9 +97,12 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 |---|---|
 | Turns AWAY from the hive | `TX_SIGN` to -1 |
 | Always a bit left or right | `AIM_OFFSET_DEGREES` (+ aims further right) |
-| Wobbles back and forth | lower `KP` and `KD` together (try 1.8 and 0.22) |
+| Wobbles, or the AIM line says WOBBLING | lower `KP` and `KD` together (try 2.8 and 0.35) |
+| Sails past the hive, then comes back | raise `KD` only (try 0.50) |
 | Picks the lower cell | `IMAGE_Y_GROWS_DOWN` to false |
-| Slow, or stops short | raise both (try 3.0 and 0.36). Keep KD about 0.12 x KP |
+| Whole turn is slow | raise `KP` and `KD` together (try 4.5 and 0.45) |
+| Fast at first, slow over the last few degrees | raise `PUSH_PER_SECOND` (try 2.5) |
+| Twitches when it is nearly there | lower `PUSH_PER_SECOND` (try 1.0), or raise `REST_DEGREES` to 1.0 |
 | AprilTag pipeline is not slot 0 | `PIPELINE` |
 
 ## Autos
@@ -187,7 +198,9 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | Message | Means |
 |---|---|
 | A HUB LOST POWER | Battery or power cable problem. The code recovered; check battery, switch, XT30 cables |
+| EXPANSION HUB NOT FOUND | The Control Hub could not find the Expansion Hub when the robot started, so the intake, index and flywheels do not exist (driving still works: those motors are on the Control Hub). The names are not the problem. Check the Expansion Hub's power and the cable between the hubs, then restart the robot |
 | INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
+| AIM: ... WOBBLING | The aim swung past the hive and calmed itself down. Lower `KP` and `KD` in `Shared/HiveAim.java` |
 | ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
 | Pinpoint restarted - face forward, tap START | Pinpoint cable blipped. Point the robot away from you and tap START |
 | Index is waiting for the flywheels | Normal while shooting: the next pollen goes when the wheels are back at speed |
@@ -221,12 +234,20 @@ No robot was available, so everything was checked on a laptop:
 
 - desktop tests with fake motors, gamepads, Pinpoint and battery (drive, flywheels, feed timing, shot setup, hub restarts, the whole teleop with devices missing)
 - a motor and battery model for the flywheels
-- a turn simulation for the auto aim (54 different robots: fast, slow, sticky, with camera delay)
+- a turn simulation for the auto aim (about 550 turns: light and heavy robots, easy and sticky turning, slow loops, wrong camera timing)
 - the four real auto routines run in a field simulator through ten scenarios (blocked by a wall, dead flywheel, stuck robot, ...). All end parked with everything off.
 
 That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
 ## What changed
+
+**Nov 26**
+- Auto aim is faster. The old one crawled the last few degrees on a robot that is hard to turn. In the simulation a sticky robot now locks in about 0.6 s instead of 1.1 s, and an easy-turning one in about 0.4 s (that one was already quick).
+- The aim can use full power (was 70%). While the flywheels spin up or the battery is tired, its top power comes down so it cannot brown out a hub.
+- The aim backs itself off if it ever swings through the target, and says WOBBLING.
+- Pictures taken in the middle of a fast turn count for less, so a small error in the camera's timing no longer drags the aim past the hive.
+- The AIM line shows how long the lock took.
+- "EXPANSION HUB NOT FOUND" replaces the confusing "unable to find right_flywheel" when the Expansion Hub is not connected.
 
 **Nov 25 (revamp)**
 - New `Shared/` folder: one copy of the battery guard, flywheel control, intake/index, camera aim and shot table, used by teleop and auto.

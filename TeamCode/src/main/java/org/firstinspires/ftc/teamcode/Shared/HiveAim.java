@@ -71,21 +71,46 @@ public class HiveAim {
     public static final double AIM_OFFSET_DEGREES = 0;
 
     // ---- the turn controller: power = KP x error - KD x turn rate (error in radians, rate in
-    // radians per second). These came out of a simulation sweep over fast and slow robots with
-    // 0 to 50 ms of delay. The ratio matters most: KD about 0.12 x KP is what stops overshoot
-    // when there is delay in the loop. Raising KP alone makes it wobble.
-    public static final double KP = 2.5;
-    public static final double KD = 0.30;
-    public static final double MAX_TURN_POWER = 0.7;
-    /** A small extra shove in the right direction so the last few degrees are not left hanging. */
-    public static final double MIN_TURN_POWER = 0.05;
-    // A mecanum drive needs a certain power before it turns at all, and that depends on the
-    // carpet. If we are off target and not moving, add power slowly until it breaks free.
-    public static final double STALL_PUSH_PER_SECOND = 0.4;
-    public static final double MAX_STALL_PUSH = 0.25;
+    // radians per second), up to full power. KD is the brake: it is what stops the robot
+    // sailing past the hive. Want it snappier? Raise both together (4.5 and 0.45). Wobbles?
+    // Lower both (2.8 and 0.35).
+    public static final double KP = 3.5;
+    public static final double KD = 0.40;
+    public static final double MAX_TURN_POWER = 1.0;
+
+    // ---- the friction push. KP x error gets tiny as the error gets small, and a mecanum
+    // drive needs a fair bit of power before it turns at all (more on a heavy robot, more on
+    // sticky tiles). On its own, the controller above gets most of the way round and then
+    // crawls the last several degrees. That crawl is what made the aim feel slow.
+    // So: the robot should always be closing in at a rate that fits how far off it still is.
+    // Whenever it is slower than that, extra power builds up until it is not. Nothing here
+    // needs to know how much friction the robot has; it finds out by pushing.
+    /** Further out than PUSH_FAR_DEGREES the robot should close at least this fast: 3 x error per second. */
+    public static final double CLOSING_RATE_PER_RADIAN = 3.0;
+    public static final double PUSH_PER_SECOND = 1.5;
+    /** Closing at twice the wanted rate: the push has done its job, take it off again (per second). */
+    public static final double PUSH_EASE_PER_SECOND = 3.0;
+    public static final double MAX_PUSH = 0.45;
+    /** Closer than this the push only builds if the robot is properly stuck, or it would hunt. */
+    public static final double PUSH_FAR_DEGREES = 2.0;
+    /** The push fades out over the last degree and a half so it cannot kick the robot past the target. */
+    public static final double PUSH_FADE_DEGREES = 1.5;
+    // How long the robot has to be too slow before the push starts to build. Long enough that
+    // the first moment of every turn (wheels not up to speed yet) does not count.
+    public static final double SLOW_SECONDS = 0.04;
+    public static final double STUCK_SECONDS = 0.08;
     public static final double STALLED_TURN_RATE = 0.1;
-    /** This close and this still: stop correcting, or the motors would buzz forever. */
-    public static final double REST_DEGREES = 0.4;
+    /** This close and this still: stop correcting. Chasing the last fraction of a degree only makes it hunt. */
+    public static final double REST_DEGREES = 0.7;
+
+    // ---- the safety net. If the robot swings through the target and out the other side by
+    // more than SWING_DEGREES, the gains are too hot for this robot (or the loop is running
+    // slow). Each swing like that turns KP and KD down a step until it settles. The Driver
+    // Station says so when it happens: that is the cue to lower KP and KD for good.
+    public static final double SWING_DEGREES = 2.5;
+    public static final double SWING_STEP = 0.7;
+    public static final double SWING_FLOOR = 0.4;
+    public static final double SWING_FORGET_SECONDS = 1.5;
 
     // ---- "aimed" (for the buzz and for autonomous). Two thresholds so it does not flicker:
     // tight to become aimed, a bit looser to stay aimed. The cell opening is 20 inches wide,
@@ -104,6 +129,13 @@ public class HiveAim {
     // The SDK asks the camera 100 times a second but the camera only has a new picture every
     // 20 to 50 ms, so a "new" picture has already waited a while. Half a frame on average.
     private static final double EXTRA_LATENCY_SECONDS = 0.015;
+    // A picture taken while the robot turned slower than TRUSTED_SPIN (radians per second) is
+    // believed completely. From there the belief drops, down to DOUBTED_TRUST at DOUBTED_SPIN.
+    private static final double TRUSTED_SPIN = 0.5;
+    private static final double DOUBTED_SPIN = 2.5;
+    private static final double DOUBTED_TRUST = 0.2;
+    /** The turn rate at the moment of a picture is measured over this long before it. */
+    private static final long SPIN_SAMPLE_NANOS = 40_000_000L;
     // Tags further apart than MAX or closer together than MIN (in degrees per inch of sticker)
     // would put the hive under a foot or over 90 feet away. That is a misread, not a distance.
     private static final double MIN_DEGREES_PER_INCH = 0.05;
@@ -142,6 +174,7 @@ public class HiveAim {
     private static long upCellSeenNanos;
     private boolean aimingAtDownCell;
     private int lastTarget = -1;
+    private boolean newTarget;
     // How many degrees one inch of sticker covers, with its sign (which way round the sticker
     // looks), kept per cell: the two stickers are at different distances and can be seen from
     // opposite sides.
@@ -150,8 +183,21 @@ public class HiveAim {
 
     private boolean aimed;
     private boolean wasAimed;
-    private double stallPush;
     private long lastControlNanos;
+    // The friction push: how much extra power is on right now (always toward the target), and
+    // how long the robot has been closing too slowly.
+    private double push;
+    private double slowSeconds;
+    // Which side of the target we are on (+1 = target is to the left), and how far out we got
+    // on this side. Used to spot the robot swinging back and forth through the target.
+    private int side;
+    private boolean passedTarget;
+    private double furthestThisSide;
+    private int swings;
+    private long lastSwingNanos;
+    // How long the last lock took, for the Driver Station.
+    private long aimStartNanos;
+    private double lockSeconds = Double.NaN;
 
     /** Call at the start of a match (autonomous does): the hive is back in its starting position. */
     public static void matchStart() {
@@ -234,6 +280,10 @@ public class HiveAim {
             // "No crosshair" = measured from the centre of the lens, so it cannot be thrown
             // off by somebody moving the crosshair in the Limelight web page.
             tx[i] = tag.getTargetXDegreesNoCrosshair();
+            // Older Limelight firmware does not send that number, and the SDK then hands back
+            // exactly 0 for every tag. A real measurement is never exactly 0, so fall back to
+            // the ordinary one rather than believe the hive is dead ahead.
+            if (tx[i] == 0.0) tx[i] = tag.getTargetXDegrees();
             yPixels[i] = tag.getTargetYPixels();
         }
 
@@ -313,7 +363,10 @@ public class HiveAim {
         if (aimingAtDownCell) distance = Double.NaN;
         // Switched to the other cell (a tip): its distance is a different number, so do not
         // blend it with the old one.
-        if (target != lastTarget) distanceInches = Double.NaN;
+        if (target != lastTarget) {
+            distanceInches = Double.NaN;
+            newTarget = true;
+        }
         lastTarget = target;
         onFrame(centre, distance, ageSeconds, now, headingOk);
     }
@@ -322,6 +375,7 @@ public class HiveAim {
     void onFrame(double txDegrees, double distance, double ageSeconds, long now, boolean headingOk) {
         if (!Double.isFinite(txDegrees)) return;
         boolean wasRecent = lastSeenNanos != 0 && now - lastSeenNanos <= DISTANCE_SECONDS * 1e9;
+        long previousSeenNanos = lastSeenNanos;
         // Adding the offset makes the hive look further right than it is, so the robot turns
         // further right.
         errorDegrees = TX_SIGN * txDegrees + AIM_OFFSET_DEGREES;
@@ -330,8 +384,25 @@ public class HiveAim {
         if (headingOk && historyCount > 0) {
             // Gyro heading is counter-clockwise positive, camera tx is positive to the right,
             // hence the minus.
-            double then = headingAt(now - (long) (ageSeconds * 1e9));
-            aimHeading = AngleUnit.normalizeRadians(then - Math.toRadians(errorDegrees));
+            long taken = now - (long) (ageSeconds * 1e9);
+            double then = headingAt(taken);
+            double fresh = AngleUnit.normalizeRadians(then - Math.toRadians(errorDegrees));
+
+            // How much to believe this picture. "Where was the robot pointing when it was
+            // taken" is only as good as our guess of the picture's age, and in the middle of
+            // a fast turn a guess that is 30 ms out is 5 degrees out. So a picture taken
+            // while spinning only nudges the aim; one taken while nearly still replaces it.
+            // (The hive does not move, so the aim heading only really changes when the robot
+            // drives somewhere else, and that is slow next to a spin.)
+            double spin = Math.abs(AngleUnit.normalizeRadians(then - headingAt(taken - SPIN_SAMPLE_NANOS)))
+                    / (SPIN_SAMPLE_NANOS / 1e9);
+            double trust = 1.0 - (spin - TRUSTED_SPIN) / (DOUBTED_SPIN - TRUSTED_SPIN) * (1.0 - DOUBTED_TRUST);
+            trust = Math.max(DOUBTED_TRUST, Math.min(1.0, trust));
+            // Nothing recent to nudge, or a different cell than last time: start clean.
+            boolean startClean = !hasAim || newTarget || now - previousSeenNanos > SEEN_SECONDS * 1e9;
+            aimHeading = startClean ? fresh
+                    : AngleUnit.normalizeRadians(aimHeading + trust * AngleUnit.normalizeRadians(fresh - aimHeading));
+            newTarget = false;
             hasAim = true;
         } else {
             hasAim = false;
@@ -357,46 +428,89 @@ public class HiveAim {
 
     double rotatePower(double heading, double turnRate, boolean headingOk, long now) {
         aimed = false;
+        if (lastControlNanos == 0) {
+            // First loop of this press of the aim button.
+            aimStartNanos = now;
+            lockSeconds = Double.NaN;
+        }
         double dt = lastControlNanos == 0 ? 0 : Math.min(0.1, (now - lastControlNanos) / 1e9);
         lastControlNanos = now;
         if (lastSeenNanos == 0 || !headingOk || !hasAim) {
-            wasAimed = false;
-            stallPush = 0;
+            forgetTurn();
             return Double.NaN;
         }
         if ((now - lastSeenNanos) / 1e9 > HOLD_SECONDS) {
             hasAim = false;
-            wasAimed = false;
-            stallPush = 0;
+            forgetTurn();
             return Double.NaN;
         }
 
+        // error is how far we still have to turn, positive = to the left (counter-clockwise).
         double error = AngleUnit.normalizeRadians(aimHeading - heading);
         double errorDegreesNow = Math.toDegrees(Math.abs(error));
         double rate = Math.abs(turnRate);
         aimed = errorDegreesNow <= (wasAimed ? STILL_AIMED_DEGREES : AIMED_DEGREES)
                 && rate <= (wasAimed ? STILL_AIMED_TURN_RATE : AIMED_TURN_RATE);
+        if (aimed && !wasAimed && Double.isNaN(lockSeconds)) lockSeconds = (now - aimStartNanos) / 1e9;
         wasAimed = aimed;
 
+        int sideNow = error >= 0 ? 1 : -1;
+        if (side != 0 && sideNow != side) {
+            // Went through the target. Whatever push was on belonged to the other direction.
+            push = 0;
+            // The first time through, "how far out we got" is just where the turn started
+            // from. After that it is how far the robot overshot, and a big one is a swing.
+            if (passedTarget && furthestThisSide >= SWING_DEGREES) {
+                swings++;
+                lastSwingNanos = now;
+            }
+            passedTarget = true;
+            furthestThisSide = 0;
+        }
+        side = sideNow;
+        furthestThisSide = Math.max(furthestThisSide, errorDegreesNow);
+        if (swings > 0 && now - lastSwingNanos > SWING_FORGET_SECONDS * 1e9) swings = 0;
+        double calm = Math.max(SWING_FLOOR, Math.pow(SWING_STEP, swings));
+
         if (errorDegreesNow <= REST_DEGREES && rate <= STALLED_TURN_RATE) {
-            stallPush = 0;
+            push = 0;
+            slowSeconds = 0;
             return 0;
         }
-        if (stallPush * error < 0) stallPush = 0;
-        if (rate < STALLED_TURN_RATE) {
-            stallPush += Math.signum(error) * STALL_PUSH_PER_SECOND * dt;
-            stallPush = Math.max(-MAX_STALL_PUSH, Math.min(MAX_STALL_PUSH, stallPush));
+
+        // How fast we are closing on the target, and how fast we ought to be.
+        double closing = turnRate * sideNow;
+        boolean far = errorDegreesNow > PUSH_FAR_DEGREES;
+        double wanted = Math.max(STALLED_TURN_RATE, far ? CLOSING_RATE_PER_RADIAN * Math.abs(error) : 0);
+        if (closing < wanted) {
+            slowSeconds += dt;
+            if (slowSeconds >= (far ? SLOW_SECONDS : STUCK_SECONDS)) push += PUSH_PER_SECOND * dt;
+        } else {
+            slowSeconds = 0;
+            if (closing > 2 * wanted) push -= PUSH_EASE_PER_SECOND * dt;
         }
-        double push = Math.signum(error) * MIN_TURN_POWER * Math.min(1.0, errorDegreesNow / 3.0);
-        double turnLeft = KP * error - KD * turnRate + push + stallPush;
+        push = Math.max(0, Math.min(MAX_PUSH, push));
+
+        double turnLeft = calm * (KP * error - KD * turnRate)
+                + sideNow * push * Math.min(1.0, errorDegreesNow / PUSH_FADE_DEGREES);
         return -Math.max(-MAX_TURN_POWER, Math.min(MAX_TURN_POWER, turnLeft));
+    }
+
+    /** Clears everything the turn controller remembers from one loop to the next. */
+    private void forgetTurn() {
+        wasAimed = false;
+        push = 0;
+        slowSeconds = 0;
+        side = 0;
+        passedTarget = false;
+        furthestThisSide = 0;
+        swings = 0;
     }
 
     /** Call when the driver lets go of the aim button. */
     public void release() {
         aimed = false;
-        wasAimed = false;
-        stallPush = 0;
+        forgetTurn();
         lastControlNanos = 0;
     }
 
@@ -455,7 +569,12 @@ public class HiveAim {
         }
         if (aiming && !hasAim) return "needs the Pinpoint heading - aim with the stick";
         String cellNote = aimingAtDownCell ? " (only the DOWN cell in view)" : "";
-        if (aiming) return (aimed ? "AIMED" : "aiming...") + cellNote;
+        if (aiming) {
+            // The time it took is there so a change to KP / KD can be judged by a number.
+            String took = Double.isNaN(lockSeconds) ? "" : String.format(" (locked in %.2f s)", lockSeconds);
+            String wobble = swings > 0 ? " - WOBBLING, lower KP and KD in HiveAim" : "";
+            return (aimed ? "AIMED" + took : "aiming...") + cellNote + wobble;
+        }
         return String.format("sees the hive, %.0f deg off%s (hold LEFT TRIGGER to aim)", errorDegrees, cellNote);
     }
 
@@ -483,14 +602,27 @@ public class HiveAim {
         if (historyCount < HISTORY) historyCount++;
     }
 
-    /** The newest remembered heading that is not newer than the given time. */
+    /**
+     * Where the robot was pointing at the given time, worked out from the two remembered
+     * headings either side of it. Taking the nearest older one instead would be up to a whole
+     * loop out of date, which is a couple of degrees in the middle of a fast turn.
+     */
     private double headingAt(long nanos) {
         int newest = (historyNext - 1 + HISTORY) % HISTORY;
-        int index = newest;
+        int older = newest;
+        int newer = -1;
         for (int i = 0; i < historyCount; i++) {
-            index = (newest - i + HISTORY) % HISTORY;
-            if (historyNanos[index] <= nanos) break;
+            older = (newest - i + HISTORY) % HISTORY;
+            if (historyNanos[older] <= nanos) break;
+            newer = older;
         }
-        return historyHeading[index];
+        // Older than everything we remember, or newer than the newest: use the closest one.
+        if (newer < 0 || historyNanos[older] > nanos) return historyHeading[older];
+        long gap = historyNanos[newer] - historyNanos[older];
+        if (gap <= 0) return historyHeading[older];
+        double part = (double) (nanos - historyNanos[older]) / gap;
+        // Go the short way round, so 179 to -179 degrees is a step of 2, not 358.
+        double step = AngleUnit.normalizeRadians(historyHeading[newer] - historyHeading[older]);
+        return AngleUnit.normalizeRadians(historyHeading[older] + part * step);
     }
 }

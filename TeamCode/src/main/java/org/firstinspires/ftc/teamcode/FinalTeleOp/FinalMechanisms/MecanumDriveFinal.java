@@ -39,6 +39,13 @@ public class MecanumDriveFinal {
     private static final double SLOW_SCALE = 0.4;
     /** Power may rise this fast: 4 per second = zero to full in a quarter of a second. */
     private static final double MAX_POWER_RISE_PER_SECOND = 4.0;
+    /**
+     * The auto-aim is not ramped (a ramp would make it late and wobbly), so it can ask all
+     * four wheels for full power in one step. On a healthy battery that is fine. While the
+     * flywheels are spinning up, or on a tired battery, that step is the surge that restarts
+     * a hub, so the aim's ceiling comes down toward this with the battery guard.
+     */
+    private static final double AIM_POWER_WHEN_STRUGGLING = 0.6;
 
     // Motor writes are the slow part of a loop, so tiny changes are skipped. But every power
     // is re-sent at least a few times a second: if a hub restarts it has to hear it again.
@@ -193,6 +200,9 @@ public class MecanumDriveFinal {
         rotate = Math.max(-1.0, Math.min(1.0, rotate));
         if (rotateIsStick) {
             rotate = Math.abs(rotate) > DRIVE_DEADZONE ? Math.signum(rotate) * stickCurve(Math.abs(rotate)) : 0;
+        } else {
+            double ceiling = AIM_POWER_WHEN_STRUGGLING + (1.0 - AIM_POWER_WHEN_STRUGGLING) * battery.accelLimit();
+            rotate = Math.max(-ceiling, Math.min(ceiling, rotate));
         }
         if (slow) {
             forward *= SLOW_SCALE;
