@@ -15,7 +15,7 @@ import java.util.List;
  * Teleop buttons for the shooter flywheels (gamepad 1).
  *
  *   RIGHT BUMPER (hold)  spin up to the right speed for this distance
- *   LEFT TRIGGER         run the wheels backwards slowly (part of "spit everything out")
+ *   LEFT TRIGGER         run the wheels backwards, slower than a shot (part of "spit everything out")
  *   Y                    backup speed high / low, used when the camera cannot see the hive
  *   BACK                 open / close shot setup
  *     in shot setup:  D-PAD up/down = speed,  A = save for this distance,  X = delete nearest
@@ -28,12 +28,21 @@ import java.util.List;
  * The wheels themselves are run by Shared/FlywheelControl, the same code autonomous uses.
  */
 public class Shooter {
-    public double highVelocity = 1500;
-    public double lowVelocity = 900;
+    // The Y presets, used when there is no saved shot for the distance. HIGH is as good as
+    // flat out: the wheels top out at 2800 with nothing touching them, so at 2600 the motors
+    // sit at or near full power and still have a sliver left to hold the speed on a fresh
+    // battery. LOW is for shots from right next to the hive.
+    public double highVelocity = 2600;
+    public double lowVelocity = 1500;
+    /**
+     * LEFT TRIGGER runs the wheels backwards to clear a jam. Slower than shooting on purpose:
+     * it only has to push a pollen back out, not throw it across the robot.
+     */
+    public static final double REVERSE_VELOCITY = 1600;
 
     private static final double SPEED_STEP = 25;
     private static final double SLOWEST_SHOT = 400;
-    private static final double FASTEST_SHOT = FlywheelControl.HOLDABLE_TICKS_PER_SECOND;
+    private static final double FASTEST_SHOT = FlywheelControl.MAX_TICKS_PER_SECOND;
     /** Ignore distance changes worth less than this, so the wheels are not always hunting. */
     private static final double SPEED_CHANGE = 15;
     private static final double KEEP_DISTANCE_SPEED_SECONDS = 4.0;
@@ -121,7 +130,7 @@ public class Shooter {
         // intake and the index.
         boolean wantReverse = gamepad1.left_trigger > TRIGGER_PRESSED;
         boolean wantSpin = gamepad1.right_bumper && !wantReverse;
-        double wantedVelocity = wantSpin ? shotSpeed : wantReverse ? -lowVelocity : 0;
+        double wantedVelocity = wantSpin ? shotSpeed : wantReverse ? -REVERSE_VELOCITY : 0;
 
         // Going straight from forwards to backwards (or back) would make the motors fight the
         // spinning wheels: a big current spike for nothing. Let them coast down first.
@@ -157,9 +166,14 @@ public class Shooter {
         telemetry.addData("SHOOTER", ready ? "READY - shoot (LEFT BUMPER)" : coasting ? "slowing down first..."
                 : wantSpin ? "spinning up..."
                 : wantReverse ? "reversing (left trigger)" : "off - hold RIGHT BUMPER to spin");
-        if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
+        String encoderNote = flywheels.encoderNote();
+        if (encoderNote != null) telemetry.addLine(encoderNote);
+        else if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
         telemetry.addData("Shot speed", "%.0f  %s", shotSpeed, speedSource());
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f", flywheels.rightVelocity(), flywheels.leftVelocity());
+        // The power is here so "slow" can be told apart: a low number with the speed on target
+        // is just a low shot speed, a high number with a low speed is the wheels being held back.
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (power %.0f%%)",
+                flywheels.rightVelocity(), flywheels.leftVelocity(), flywheels.power() * 100);
 
         if (setupOpen) {
             telemetry.addLine("---- SHOT SETUP (BACK = done) ----");

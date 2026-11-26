@@ -80,7 +80,10 @@ public class FlywheelAuto {
             telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what the motors can hold (%.0f).",
                     target, FlywheelControl.HOLDABLE_TICKS_PER_SECOND));
         }
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f", control.rightVelocity(), control.leftVelocity());
+        String encoderNote = control.encoderNote();
+        if (encoderNote != null) telemetry.addLine(encoderNote);
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (power %.0f%%)",
+                control.rightVelocity(), control.leftVelocity(), control.power() * 100);
         telemetry.addData("Flywheel", control.isReady() ? "READY" : target > 0 ? "spinning up" : "off");
     }
 }

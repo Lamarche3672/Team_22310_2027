@@ -55,7 +55,7 @@ The shooter picks its speed from how far away the hive is. It has to be taught f
 - Saved shots live on the Control Hub and survive new code installs.
 - X deletes the saved shot nearest to where you are.
 - Between two saved distances it uses a speed in between.
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (1500 high / 900 low).
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (2600 high, which is flat out / 1500 low). LEFT TRIGGER runs the wheels backwards at 1600.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
 - If the camera is moved or re-angled, save the shots again.
@@ -200,6 +200,8 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | A HUB LOST POWER | Battery or power cable problem. The code recovered; check battery, switch, XT30 cables |
 | EXPANSION HUB NOT FOUND | The Control Hub could not find the Expansion Hub when the robot started, so the intake, index and flywheels do not exist (driving still works: those motors are on the Control Hub). The names are not the problem. Check the Expansion Hub's power and the cable between the hubs, then restart the robot |
 | INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
+| A flywheel encoder counts backwards (handled in code) | That motor's encoder and power wires are opposite ways round. The code flips the reading, so nothing to do before a match |
+| NO FLYWHEEL ENCODERS | Neither flywheel encoder reads anything. The wheels still spin, on power alone, but the speed is not held and shots drift with the battery. Check both encoder cables |
 | AIM: ... WOBBLING | The aim swung past the hive and calmed itself down. Lower `KP` and `KD` in `Shared/HiveAim.java` |
 | ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
 | Pinpoint restarted - face forward, tap START | Pinpoint cable blipped. Point the robot away from you and tap START |
@@ -248,6 +250,10 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 - Pictures taken in the middle of a fast turn count for less, so a small error in the camera's timing no longer drags the aim past the hive.
 - The AIM line shows how long the lock took.
 - "EXPANSION HUB NOT FOUND" replaces the confusing "unable to find right_flywheel" when the Expansion Hub is not connected.
+- Flywheels no longer run slow when an encoder is wrong. An encoder that counted backwards used to hold the wheels at about half the asked speed whatever the setting, and two dead encoders capped them at 56% power. Backwards readings are now flipped, a dead one is covered by the other wheel, and with no encoders at all the wheels run on power alone. The Driver Station says which.
+- Quicker flywheel spin-up on a fresh battery (12.5 V and up).
+- Shooter presets: HIGH is now 2600 (flat out, was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
+- The flywheel line shows the power being sent, next to the two speeds.
 
 **Nov 25 (revamp)**
 - New `Shared/` folder: one copy of the battery guard, flywheel control, intake/index, camera aim and shot table, used by teleop and auto.

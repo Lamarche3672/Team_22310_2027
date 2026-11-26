@@ -21,6 +21,13 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  *     the wheel is already generating, which caps the current without slowing spin-up much.
  *  4. Both wheels get the same power, plus a small trim that pulls the slower one up.
  *
+ * Points 2 to 4 all lean on the wheel encoders, and those are the first thing to go wrong on a
+ * real robot. So the encoders are checked against what the motors are being told to do:
+ *   - reads backwards (encoder and motor wired opposite ways): the reading is flipped
+ *   - one reads nothing: the other one is used for both
+ *   - neither reads anything: the wheels run on feedforward alone, eased in over time
+ * Before this check a bad reading quietly held the wheels at a fraction of their speed.
+ *
  * We drive the motors with plain power (RUN_WITHOUT_ENCODER) instead of the hub's built-in
  * velocity mode. The hub's own loop braked hard every time a wheel went slightly over speed,
  * and that brake-push-brake was the stutter we used to have.
@@ -50,10 +57,14 @@ public final class FlywheelControl {
     public static final double DEFAULT_F = 1.0;
     public static final double DEFAULT_I = 0.5;
 
-    // ---- current limit while spinning up (see point 3 above). On a healthy battery we allow
-    // 7 V across the motor, about 5 A each. Under 11 V that eases down to 3.5 V by 9.5 V.
+    // ---- current limit while spinning up (see point 3 above). At 11 V we allow 7 V across
+    // the motor, about 5 A each. A fresh battery (12.5 V and up) gets 9 V, about 6.5 A each,
+    // for a quicker spin-up. Under 11 V it eases down to 3.5 V by 9.5 V. The voltage is read
+    // while the wheels are pulling current, so a battery that sags gets less straight away.
+    public static final double STRONG_BATTERY_SPIN_UP_VOLTS = 9.0;
     public static final double SPIN_UP_VOLTS = 7.0;
     public static final double LOW_BATTERY_SPIN_UP_VOLTS = 3.5;
+    public static final double STRONG_BATTERY_ABOVE_VOLTS = 12.5;
     public static final double FULL_SPIN_UP_ABOVE_VOLTS = 11.0;
     public static final double GENTLE_SPIN_UP_BELOW_VOLTS = 9.5;
 
@@ -81,6 +92,19 @@ public final class FlywheelControl {
     private static final double MAX_MATCH_POWER = 0.05;
     private static final double MATCH_SMOOTHING_SECONDS = 0.25;
     private static final double DEAD_ENCODER_BELOW = 50;
+    // ---- checking the encoders against the motors
+    /** "Being driven" for these checks: enough power that a healthy wheel is certainly turning. */
+    private static final double DRIVEN_POWER = 0.1;
+    // Driven one way but reading this fast the other way, for this long: that encoder counts
+    // backwards. A wheel cannot really do that, so there is nothing else it could be.
+    private static final double BACKWARDS_ABOVE = 300;
+    private static final double BACKWARDS_SECONDS = 0.4;
+    /** Both wheels driven and both reading nothing for this long: no encoders, run without them. */
+    private static final double NO_READING_SECONDS = 0.5;
+    /** Without a speed reading the current cannot be capped, so the power is eased in instead (per second). */
+    private static final double BLIND_POWER_RISE_PER_SECOND = 2.0;
+    /** Without a speed reading "ready" can only go by the clock. */
+    public static final double BLIND_READY_MS = 1500;
     /** Skip motor writes that change the power by less than this; each write costs loop time. */
     private static final double WRITE_THRESHOLD = 0.005;
     /** Re-send the power this often even if unchanged, so a hub that restarted gets it again. */
@@ -106,6 +130,13 @@ public final class FlywheelControl {
     private double leftVelocity;
     /** Smoothed (right - left) speed, used to trim the wheels toward each other. */
     private double mismatch;
+    // Encoder health. Kept for the whole OpMode: wiring does not fix itself between shots.
+    private double rightEncoderSign = 1;
+    private double leftEncoderSign = 1;
+    private double rightBackwardsSeconds;
+    private double leftBackwardsSeconds;
+    private double noReadingSeconds;
+    private boolean blind;
     private long lastUpdateNanos;
     private long lastWriteNanos;
     private long lastReadNanos;
@@ -122,8 +153,13 @@ public final class FlywheelControl {
     private long feedWaitSinceNanos;
 
     public FlywheelControl(HardwareMap hardwareMap, Battery battery) {
-        right = hardwareMap.get(DcMotorEx.class, "right_flywheel");
-        left = hardwareMap.get(DcMotorEx.class, "left_flywheel");
+        this(hardwareMap.get(DcMotorEx.class, "right_flywheel"),
+                hardwareMap.get(DcMotorEx.class, "left_flywheel"), battery);
+    }
+
+    FlywheelControl(DcMotorEx right, DcMotorEx left, Battery battery) {
+        this.right = right;
+        this.left = left;
         this.battery = battery;
         right.setDirection(DIRECTION);
         left.setDirection(DIRECTION);
@@ -199,10 +235,11 @@ public final class FlywheelControl {
         // While stopped the speed only matters for telemetry and for "are they still spinning
         // the other way?", so a few reads a second is plenty.
         if (target != 0 || now - lastReadNanos >= IDLE_READ_NANOS) {
-            rightVelocity = right.getVelocity();
-            leftVelocity = left.getVelocity();
+            rightVelocity = rightEncoderSign * right.getVelocity();
+            leftVelocity = leftEncoderSign * left.getVelocity();
             lastReadNanos = now;
         }
+        checkEncoders(dt);
 
         double measured = speed();
         power = target == 0 ? 0 : nextPower(measured, dt);
@@ -216,6 +253,44 @@ public final class FlywheelControl {
         write(rightPower, leftPower, changed || now - lastWriteNanos >= RESEND_NANOS);
 
         trackReadiness(measured, now);
+    }
+
+    /**
+     * Compares what the encoders say with what the motors were last told to do, and deals with
+     * the two ways they go wrong.
+     */
+    private void checkEncoders(double dt) {
+        // An encoder that counts backwards makes the controller think the wheel is going the
+        // wrong way, and the current cap then holds it at about a quarter of full power.
+        rightBackwardsSeconds = readsBackwards(rightVelocity, sentRight) ? rightBackwardsSeconds + dt : 0;
+        leftBackwardsSeconds = readsBackwards(leftVelocity, sentLeft) ? leftBackwardsSeconds + dt : 0;
+        if (rightBackwardsSeconds >= BACKWARDS_SECONDS) {
+            rightEncoderSign = -rightEncoderSign;
+            rightVelocity = -rightVelocity;
+            rightBackwardsSeconds = 0;
+            integral = 0;
+        }
+        if (leftBackwardsSeconds >= BACKWARDS_SECONDS) {
+            leftEncoderSign = -leftEncoderSign;
+            leftVelocity = -leftVelocity;
+            leftBackwardsSeconds = 0;
+            integral = 0;
+        }
+
+        // No reading from either wheel while both are being driven: unplugged encoder cables
+        // (or both wheels jammed solid). With a speed of 0 the current cap would never let
+        // the power rise, so from here the wheels are run without it.
+        boolean driven = Math.abs(sentRight) > DRIVEN_POWER && Math.abs(sentLeft) > DRIVEN_POWER;
+        boolean nothing = Math.abs(rightVelocity) < DEAD_ENCODER_BELOW && Math.abs(leftVelocity) < DEAD_ENCODER_BELOW;
+        noReadingSeconds = driven && nothing ? noReadingSeconds + dt : 0;
+        if (noReadingSeconds >= NO_READING_SECONDS) blind = true;
+        // A reading came back (cable pushed in again): trust the encoders again.
+        if (Math.abs(rightVelocity) > 4 * DEAD_ENCODER_BELOW || Math.abs(leftVelocity) > 4 * DEAD_ENCODER_BELOW) blind = false;
+    }
+
+    /** NaN (nothing sent yet) compares false everywhere, so that counts as "not driven". */
+    private static boolean readsBackwards(double velocity, double sentPower) {
+        return Math.abs(sentPower) > DRIVEN_POWER && Math.abs(velocity) > BACKWARDS_ABOVE && velocity * sentPower < 0;
     }
 
     /**
@@ -233,6 +308,14 @@ public final class FlywheelControl {
 
     private double nextPower(double measured, double dt) {
         double direction = Math.signum(target);
+        if (blind) {
+            // No speed to correct with or to cap the current with. Feedforward alone gets
+            // close to the target, and easing the power in does the current cap's job.
+            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
+            double step = BLIND_POWER_RISE_PER_SECOND * dt;
+            integral = 0;
+            return power + Math.max(-step, Math.min(step, open - power));
+        }
         double error = target - measured;
 
         // Only integrate near the target. Integrating during the whole spin-up would wind the
@@ -265,9 +348,12 @@ public final class FlywheelControl {
     /** How many volts above the wheel's own back-EMF we allow, given the battery voltage. */
     public static double spinUpVolts(double supply) {
         if (!Double.isFinite(supply)) return SPIN_UP_VOLTS;
+        if (supply >= FULL_SPIN_UP_ABOVE_VOLTS) {
+            double extra = (supply - FULL_SPIN_UP_ABOVE_VOLTS) / (STRONG_BATTERY_ABOVE_VOLTS - FULL_SPIN_UP_ABOVE_VOLTS);
+            return SPIN_UP_VOLTS + (STRONG_BATTERY_SPIN_UP_VOLTS - SPIN_UP_VOLTS) * Math.min(1, extra);
+        }
         double fraction = (supply - GENTLE_SPIN_UP_BELOW_VOLTS) / (FULL_SPIN_UP_ABOVE_VOLTS - GENTLE_SPIN_UP_BELOW_VOLTS);
-        fraction = Math.max(0, Math.min(1, fraction));
-        return LOW_BATTERY_SPIN_UP_VOLTS + (SPIN_UP_VOLTS - LOW_BATTERY_SPIN_UP_VOLTS) * fraction;
+        return LOW_BATTERY_SPIN_UP_VOLTS + (SPIN_UP_VOLTS - LOW_BATTERY_SPIN_UP_VOLTS) * Math.max(0, fraction);
     }
 
     /**
@@ -337,6 +423,7 @@ public final class FlywheelControl {
     /** Steady at the target, or levelled off as fast as it will go. Safe to start feeding. */
     public boolean isReady() {
         long now = System.nanoTime();
+        if (blind) return target > 0 && now - spinStartNanos >= BLIND_READY_MS * 1e6;
         return (atSpeed && now - atSpeedSinceNanos >= READY_HOLD_MS * 1e6) || hasLevelledOff(speed(), now);
     }
 
@@ -352,6 +439,8 @@ public final class FlywheelControl {
     public double feedScale() {
         if (target <= 0) return 1.0;
         long now = System.nanoTime();
+        // Nothing to measure a dip with: feed once the wheels have had time to spin up.
+        if (blind) return now - spinStartNanos >= BLIND_READY_MS * 1e6 ? 1.0 : 0.0;
         if (Double.isNaN(feedReference)) {
             return now - spinStartNanos > SPIN_UP_TIMEOUT_MS * 1e6 ? 1.0 : 0.0;
         }
@@ -379,6 +468,21 @@ public final class FlywheelControl {
 
     public double power() {
         return power;
+    }
+
+    /**
+     * What the encoder checks found, for the Driver Station, or null when both encoders are
+     * fine. The wheels keep working in every case; this is so somebody fixes the wiring.
+     */
+    public String encoderNote() {
+        if (blind) {
+            return "NO FLYWHEEL ENCODERS: running on power alone, so the speed is not held."
+                    + " Check both encoder cables.";
+        }
+        if (rightEncoderSign < 0 && leftEncoderSign < 0) return "Both flywheel encoders count backwards (handled in code).";
+        if (rightEncoderSign < 0) return "The RIGHT flywheel encoder counts backwards (handled in code).";
+        if (leftEncoderSign < 0) return "The LEFT flywheel encoder counts backwards (handled in code).";
+        return null;
     }
 
     /** True when one wheel reads (almost) nothing while we are clearly driving it. */
