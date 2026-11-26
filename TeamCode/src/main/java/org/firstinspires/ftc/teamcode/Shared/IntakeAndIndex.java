@@ -23,10 +23,11 @@ public final class IntakeAndIndex {
     public static final double INTAKE_POWER = 0.95;
     public static final double INDEX_FEED_POWER = 0.95;
     /**
-     * The belt runs backwards much slower than forwards when spitting pollen out. At speed it
-     * threw pollen across the field; slow, it just hands them back to the intake roller.
+     * Spitting pollen back out: the belt runs backwards at the same power as the intake
+     * roller, so the two move pollen at the same rate and nothing bunches up between them.
+     * It was 0.25 for a while, and that was not enough to turn the belt at all.
      */
-    public static final double INDEX_OUTTAKE_POWER = 0.25;
+    public static final double INDEX_OUTTAKE_POWER = INTAKE_POWER;
 
     // On this robot a NEGATIVE index motor power carries pollen toward the shooter.
     private static final double INDEX_TOWARD_SHOOTER = -1.0;

@@ -26,8 +26,8 @@ public class IndexIntake {
     }
 
     /**
-     * @param feedScale 0 to 1 from the shooter: how hard it is OK to feed right now. While the
-     *                  flywheels are catching up after a pollen this drops, and the belt waits.
+     * @param feedScale 1 from the shooter normally. 0 only while the flywheels are still
+     *                  turning backwards after an outtake.
      */
     public void loop(Gamepad gamepad, Telemetry telemetry, double feedScale) {
         boolean outtake = gamepad.left_trigger > TRIGGER_PRESSED;
@@ -42,7 +42,7 @@ public class IndexIntake {
         motors.update();
 
         telemetry.addData("Intake / index power", "%.2f / %.2f", motors.intakePower(), motors.indexPower());
-        if (shoot && !outtake && feedScale < 1.0) telemetry.addLine("Index is waiting for the flywheels");
+        if (shoot && !outtake && feedScale < 1.0) telemetry.addLine("Index is waiting: flywheels still turning backwards");
     }
 
     public void stop() {

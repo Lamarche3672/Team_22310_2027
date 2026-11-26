@@ -13,7 +13,7 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 | RIGHT TRIGGER | Intake |
 | LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
 | RIGHT BUMPER (hold) | Spin up the shooter to the right speed |
-| LEFT BUMPER (hold) | Shoot. The index waits for the flywheels by itself |
+| LEFT BUMPER (hold) | Shoot: runs the index straight away |
 | Y | Backup speed high / low, only used when the camera can't see the hive |
 | BACK | Open / close shot setup |
 
@@ -27,7 +27,7 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 
 Before START, on either gamepad: **X = blue alliance, B = red alliance**. After an auto it already knows.
 
-**To shoot:** hold RIGHT BUMPER and LEFT BUMPER. The robot does the timing: the index only feeds when the flywheels are at speed, so you can hold both from the start. Gamepad 1 buzzes when the wheels are ready, gamepad 2 buzzes when the aim is locked.
+**To shoot:** hold RIGHT BUMPER, wait for gamepad 1 to buzz (wheels ready), then hold LEFT BUMPER. LEFT BUMPER runs the index the moment you press it, so pressing it before the buzz sends pollen into slow wheels. Gamepad 2 buzzes when the aim is locked.
 
 ## How scoring works (and why the aim does what it does)
 
@@ -55,7 +55,7 @@ The shooter picks its speed from how far away the hive is. It has to be taught f
 - Saved shots live on the Control Hub and survive new code installs.
 - X deletes the saved shot nearest to where you are.
 - Between two saved distances it uses a speed in between.
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (2400 high / 1500 low). LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then A with the camera NOT seeing the hive. It is kept across restarts. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
 - If the camera is moved or re-angled, save the shots again.
@@ -181,7 +181,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 2. **Flywheels smooth?** Under a second to speed, then steady. If they hunt, lower `DEFAULT_P` in `FlywheelControl.java` (try 0.6).
 3. **Auto aim.** LEFT TRIGGER with the hive in view. Table above if it is wrong.
 4. **Shot setup.** Save 2 or 3 shots.
-5. **Outtake.** LEFT TRIGGER: the index should hand pollen back gently. Speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java` (0.25).
+5. **Outtake.** LEFT TRIGGER: intake and index both run backwards at the same power. The index speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java`.
 6. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
    - Red Strong: x 56, y 8, heading 270
    - Blue Strong: x 88, y 136, heading 90
@@ -205,7 +205,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | AIM: ... WOBBLING | The aim swung past the hive and calmed itself down. Lower `KP` and `KD` in `Shared/HiveAim.java` |
 | ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
 | Pinpoint restarted - face forward, tap START | Pinpoint cable blipped. Point the robot away from you and tap START |
-| Index is waiting for the flywheels | Normal while shooting: the next pollen goes when the wheels are back at speed |
+| Index is waiting: flywheels still turning backwards | Only just after an outtake. It goes as soon as the wheels have slowed |
 | A FLYWHEEL READS 0 | Flywheel encoder cable or a jam |
 | Drive power limit under 100% | Battery low; power eased off so the robot doesn't brown out |
 | HUBS DIFFER | The two hubs see different voltages: check the XT30 cable between them |
@@ -252,7 +252,12 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 - "EXPANSION HUB NOT FOUND" replaces the confusing "unable to find right_flywheel" when the Expansion Hub is not connected.
 - Flywheels no longer run slow when an encoder is wrong. An encoder that counted backwards used to hold the wheels at about half the asked speed whatever the setting, and two dead encoders capped them at 56% power. Backwards readings are now flipped, a dead one is covered by the other wheel, and with no encoders at all the wheels run on power alone. The Driver Station says which.
 - Quicker flywheel spin-up on a fresh battery (12.5 V and up).
-- Shooter presets: HIGH is now 2400 (was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
+- Shooter presets: HIGH is now 2300 (was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
+- Outtake: the index runs backwards at the same power as the intake (0.95). At 0.25 it did not turn.
+- LEFT BUMPER always runs the index at once in teleop. It no longer waits for the flywheels (that wait left the index standing still on the real robot). Wait for the buzz / READY, then press it.
+- In autonomous the index is held only at the start of a volley until the wheels are ready (0.6 s at most), then runs without pausing.
+- Even speed through a volley now comes from the flywheels: power kept in hand at HIGH, plus the feed boost.
+- The Y presets can be set from the gamepad in shot setup and are remembered.
 - The flywheels no longer slow down when the index starts: HIGH keeps a tenth of the power in hand, and the wheels get a little extra power the moment feeding begins instead of after they have already slowed.
 - The flywheel line shows the power being sent, next to the two speeds.
 

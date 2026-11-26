@@ -80,17 +80,19 @@ public final class FlywheelControl {
     public static final double LEVEL_MS = 300;
     /** If the wheels never get ready, feed anyway after this long rather than hold the pollen forever. */
     public static final double SPIN_UP_TIMEOUT_MS = 2500;
-    /** After a pollen slows the wheels, the feed waits at most this long for them to recover. */
-    public static final double MAX_FEED_WAIT_MS = 700;
+    /** In autonomous the index is held for the wheels at the start of a volley, at most this long. */
+    public static final double MAX_FEED_WAIT_MS = 600;
 
     /**
      * Extra power while the index is feeding. A pollen going through takes speed out of the
      * wheels, and the index motor starting pulls the battery down a little, and both happen
      * at the same moment. Waiting for the speed to drop before reacting is too late, so the
-     * power goes up as soon as we know a pollen is coming. If no pollen arrives the wheels
-     * run a touch fast for a moment and the normal correction takes it back off.
+     * power goes up as soon as the wheels are even slightly down while feeding, well before
+     * the normal correction would have reacted that hard. It is never added at or above the
+     * target, so it cannot make a pollen leave faster than it should.
      */
     public static final double FEED_BOOST_POWER = 0.08;
+    private static final double FEED_BOOST_BELOW_TICKS = 20;
     private static final double INTEGRATE_WITHIN = 200;
     private static final double MAX_INTEGRAL_POWER = 0.1;
     // Matching the two wheels. The hub reports speed in steps of about 20 ticks/s, so the raw
@@ -160,6 +162,8 @@ public final class FlywheelControl {
     private long spinStartNanos;
     private double feedReference = Double.NaN;
     private long feedWaitSinceNanos;
+    /** True once feedScale() has let the index go; it then stays on for the rest of the volley. */
+    private boolean feedStarted;
 
     public FlywheelControl(HardwareMap hardwareMap, Battery battery) {
         this(hardwareMap.get(DcMotorEx.class, "right_flywheel"),
@@ -207,6 +211,7 @@ public final class FlywheelControl {
             atSpeed = false;
             feedReference = Double.NaN;
             feedWaitSinceNanos = 0;
+            feedStarted = false;
             // "Steady for a while" has to start again too. Otherwise wheels sitting at the old
             // speed would count as levelled off for the new one the instant it is set.
             levelSinceNanos = spinStartNanos;
@@ -225,6 +230,7 @@ public final class FlywheelControl {
     /** Call when nobody is feeding, so time spent idle does not count as "waited long enough". */
     public void cancelFeedWait() {
         feedWaitSinceNanos = 0;
+        feedStarted = false;
     }
 
     /** Lets the wheels coast to a stop. */
@@ -233,6 +239,7 @@ public final class FlywheelControl {
         integral = 0;
         power = 0;
         feeding = false;
+        feedStarted = false;
         rightPower = 0;
         leftPower = 0;
         atSpeed = false;
@@ -326,8 +333,7 @@ public final class FlywheelControl {
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
             // close to the target, and easing the power in does the current cap's job.
-            double open = f * target / MAX_TICKS_PER_SECOND * battery.compensation() + feedBoost();
-            open = Math.max(-1.0, Math.min(1.0, open));
+            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
             double step = BLIND_POWER_RISE_PER_SECOND * dt;
             integral = 0;
             return power + Math.max(-step, Math.min(step, open - power));
@@ -344,7 +350,7 @@ public final class FlywheelControl {
         }
 
         double wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
-                + p / 1000.0 * error + integralPower + feedBoost();
+                + p / 1000.0 * error + integralPower + feedBoost(error);
         // Never push against the direction we want to spin; over speed we just ease off.
         wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
 
@@ -361,8 +367,8 @@ public final class FlywheelControl {
         return Math.max(-1.0, Math.min(1.0, wanted));
     }
 
-    private double feedBoost() {
-        return feeding && target > 0 ? FEED_BOOST_POWER : 0;
+    private double feedBoost(double error) {
+        return feeding && target > 0 && error > FEED_BOOST_BELOW_TICKS ? FEED_BOOST_POWER : 0;
     }
 
     /** How many volts above the wheel's own back-EMF we allow, given the battery voltage. */
@@ -448,30 +454,21 @@ public final class FlywheelControl {
     }
 
     /**
-     * How hard the index should feed right now, 0 to 1. This is what makes shots consistent:
-     * every pollen slows the wheels a little, and the next one should not arrive until they
-     * are back. 1 = wheels are ready, feed normally. 0 = wait. In between it eases, so the
-     * belt slows down and speeds up instead of banging on and off.
+     * For autonomous: 1 = feed, 0 = hold the index a moment longer. It only ever holds at the
+     * START of a volley, until the wheels are ready, and never longer than MAX_FEED_WAIT_MS.
+     * Once it has said "feed" it keeps saying it until the wheels are stopped or re-aimed.
      *
-     * It never blocks for long: if the wheels cannot get ready (dead encoder, flat battery)
-     * it gives up waiting and lets the pollen through anyway.
+     * It used to pause between pollen as well, waiting for the wheels to come back. On the
+     * real robot that left the index standing still, so it is gone: holding the speed through
+     * a volley is now the wheels' job (power kept in hand, plus the feed boost), not the
+     * index's. Teleop does not use this at all: there LEFT BUMPER always runs the index.
      */
     public double feedScale() {
-        if (target <= 0) return 1.0;
+        if (target <= 0 || feedStarted) return 1.0;
         long now = System.nanoTime();
-        // Nothing to measure a dip with: feed once the wheels have had time to spin up.
-        if (blind) return now - spinStartNanos >= BLIND_READY_MS * 1e6 ? 1.0 : 0.0;
-        if (Double.isNaN(feedReference)) {
-            return now - spinStartNanos > SPIN_UP_TIMEOUT_MS * 1e6 ? 1.0 : 0.0;
-        }
-        double shortfall = feedReference - speed();
-        double scale = Math.max(0.0, Math.min(1.0, 1.0 - (shortfall - READY_TOLERANCE) / READY_TOLERANCE));
-        if (scale >= 1.0) {
-            feedWaitSinceNanos = 0;
-            return 1.0;
-        }
         if (feedWaitSinceNanos == 0) feedWaitSinceNanos = now;
-        return now - feedWaitSinceNanos > MAX_FEED_WAIT_MS * 1e6 ? 1.0 : scale;
+        if (isReady() || now - feedWaitSinceNanos >= MAX_FEED_WAIT_MS * 1e6) feedStarted = true;
+        return feedStarted ? 1.0 : 0.0;
     }
 
     public double target() {

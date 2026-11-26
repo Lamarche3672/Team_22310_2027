@@ -21,6 +21,7 @@ import java.util.Locale;
  */
 public final class ShotTable {
     private static final String FILE_NAME = "shot_speeds.txt";
+    private static final String PRESET_FILE_NAME = "shot_presets.txt";
     /** Saving within this distance of an existing shot replaces it instead of adding another. */
     public static final double SAME_SPOT_INCHES = 6;
     public static final double DELETE_WITHIN_INCHES = 12;
@@ -114,6 +115,35 @@ public final class ShotTable {
             return parse(ReadWriteFile.readFile(file));
         } catch (Throwable problem) {
             return new ArrayList<>();
+        }
+    }
+
+    /**
+     * The two Y presets {high, low} as last saved from shot setup, or null if none were ever
+     * saved. They live in their own small file next to the shot list, for the same reason:
+     * a speed found on the practice field should still be there after a restart.
+     */
+    public static double[] loadPresets() {
+        try {
+            File file = AppUtil.getInstance().getSettingsFile(PRESET_FILE_NAME);
+            if (!file.exists()) return null;
+            String[] parts = ReadWriteFile.readFile(file).trim().split("\\s+");
+            double high = Double.parseDouble(parts[0]);
+            double low = Double.parseDouble(parts[1]);
+            return Double.isFinite(high) && Double.isFinite(low) && high > 0 && low > 0 ? new double[] {high, low} : null;
+        } catch (Throwable problem) {
+            return null;
+        }
+    }
+
+    public static boolean savePresets(double high, double low) {
+        try {
+            File file = AppUtil.getInstance().getSettingsFile(PRESET_FILE_NAME);
+            ReadWriteFile.writeFile(file, String.format(Locale.US, "%.0f %.0f\n", high, low));
+            double[] back = loadPresets();
+            return back != null && Math.abs(back[0] - high) < 1 && Math.abs(back[1] - low) < 1;
+        } catch (Throwable problem) {
+            return false;
         }
     }
 

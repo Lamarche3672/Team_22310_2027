@@ -67,7 +67,7 @@
 <text x="944" y="602" font-size="18" fill="#14181F">Shot setup only: delete</text>
 <path d="M 932 582 L 765 582 L 765 456" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="765" cy="456" r="4" fill="#14181F"/>
-<text x="640" y="726" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">To shoot: hold both bumpers. The index waits for the flywheels by itself.</text>
+<text x="640" y="726" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">To shoot: hold RIGHT BUMPER, wait for the buzz, then hold LEFT BUMPER.</text>
 <rect x="32" y="790" width="1216" height="620" rx="22" fill="#F5F6F8"/>
 <text x="56" y="836" font-size="27" font-weight="700" fill="#14181F">GAMEPAD 2 &#8211; driving</text>
 <text x="56" y="864" font-size="18" fill="#5B6472">Pair with START + B.</text>
