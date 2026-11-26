@@ -55,7 +55,7 @@ The shooter picks its speed from how far away the hive is. It has to be taught f
 - Saved shots live on the Control Hub and survive new code installs.
 - X deletes the saved shot nearest to where you are.
 - Between two saved distances it uses a speed in between.
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then A with the camera NOT seeing the hive. It is kept across restarts. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (2400 high / 1500 low). LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
 - If the camera is moved or re-angled, save the shots again.
@@ -181,7 +181,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 2. **Flywheels smooth?** Under a second to speed, then steady. If they hunt, lower `DEFAULT_P` in `FlywheelControl.java` (try 0.6).
 3. **Auto aim.** LEFT TRIGGER with the hive in view. Table above if it is wrong.
 4. **Shot setup.** Save 2 or 3 shots.
-5. **Outtake.** LEFT TRIGGER: intake and index both run backwards at the same power. The index speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java`.
+5. **Outtake.** LEFT TRIGGER: the index should hand pollen back gently. Speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java` (0.25).
 6. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
    - Red Strong: x 56, y 8, heading 270
    - Blue Strong: x 88, y 136, heading 90
@@ -252,11 +252,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 - "EXPANSION HUB NOT FOUND" replaces the confusing "unable to find right_flywheel" when the Expansion Hub is not connected.
 - Flywheels no longer run slow when an encoder is wrong. An encoder that counted backwards used to hold the wheels at about half the asked speed whatever the setting, and two dead encoders capped them at 56% power. Backwards readings are now flipped, a dead one is covered by the other wheel, and with no encoders at all the wheels run on power alone. The Driver Station says which.
 - Quicker flywheel spin-up on a fresh battery (12.5 V and up).
-- Shooter presets: HIGH is now 2300 (was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
-- Outtake: the index runs backwards at the same power as the intake (0.95). At 0.25 it did not turn.
-- While feeding, the index is either on at full feed power or waiting. It no longer gets a part power that is too low to turn the belt.
-- One pollen at a time at one speed: the index only lets a pollen through while the wheels are within 70 of the speed the first one got (slower or faster), and waits until they are back within 40. This is what stops the first pollen going long and the next ones falling short.
-- The Y presets can be set from the gamepad in shot setup and are remembered.
+- Shooter presets: HIGH is now 2400 (was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
 - The flywheels no longer slow down when the index starts: HIGH keeps a tenth of the power in hand, and the wheels get a little extra power the moment feeding begins instead of after they have already slowed.
 - The flywheel line shows the power being sent, next to the two speeds.
 
