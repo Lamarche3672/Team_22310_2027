@@ -69,6 +69,7 @@ public final class Volley {
                     lastNanos[0] = System.nanoTime();
                     fedMs[0] = 0;
                     totalMs[0] = 0;
+                    flywheel.setFeeding(true);
                 })
                 .setExecute(() -> {
                     long now = System.nanoTime();
@@ -81,6 +82,9 @@ public final class Volley {
                 })
                 .setDone(() -> fedMs[0] >= FEED_MS || totalMs[0] >= FEED_MS + MAX_EXTRA_FEED_MS)
                 // Also runs when the park deadline cuts a volley short, so the feed never stays on.
-                .setEnd(reason -> intake.stop());
+                .setEnd(reason -> {
+                    intake.stop();
+                    flywheel.setFeeding(false);
+                });
     }
 }

@@ -28,11 +28,14 @@ import java.util.List;
  * The wheels themselves are run by Shared/FlywheelControl, the same code autonomous uses.
  */
 public class Shooter {
-    // The Y presets, used when there is no saved shot for the distance. HIGH is as good as
-    // flat out: the wheels top out at 2800 with nothing touching them, so at 2600 the motors
-    // sit at or near full power and still have a sliver left to hold the speed on a fresh
-    // battery. LOW is for shots from right next to the hive.
-    public double highVelocity = 2600;
+    // The Y presets, used when there is no saved shot for the distance.
+    // HIGH is the fastest speed the wheels can HOLD while pollen go through, not the fastest
+    // they can spin. At 2600 the motors were already at full power just to stay there, so the
+    // moment the index started (the battery dips a little) or a pollen went through, the
+    // wheels slowed and there was nothing left to push back with. At 2400 about a tenth of
+    // the power is kept in hand, and that is what keeps the 2nd, 3rd and 4th pollen at the
+    // same speed as the 1st. LOW is for shots from right next to the hive.
+    public double highVelocity = 2400;
     public double lowVelocity = 1500;
     /**
      * LEFT TRIGGER runs the wheels backwards to clear a jam. Slower than shooting on purpose:
@@ -144,6 +147,8 @@ public class Shooter {
         } else {
             flywheels.setTarget(wantedVelocity);
         }
+        // Feeding for real: bumper held, wheels going forwards, and the index allowed to move.
+        flywheels.setFeeding(feeding && wantSpin && !coasting);
         flywheels.update();
 
         boolean ready = wantSpin && !coasting && flywheels.isReady();

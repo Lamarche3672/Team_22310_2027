@@ -55,7 +55,7 @@ The shooter picks its speed from how far away the hive is. It has to be taught f
 - Saved shots live on the Control Hub and survive new code installs.
 - X deletes the saved shot nearest to where you are.
 - Between two saved distances it uses a speed in between.
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (2600 high, which is flat out / 1500 low). LEFT TRIGGER runs the wheels backwards at 1600.
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (2400 high / 1500 low). LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
 - If the camera is moved or re-angled, save the shots again.
@@ -252,7 +252,8 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 - "EXPANSION HUB NOT FOUND" replaces the confusing "unable to find right_flywheel" when the Expansion Hub is not connected.
 - Flywheels no longer run slow when an encoder is wrong. An encoder that counted backwards used to hold the wheels at about half the asked speed whatever the setting, and two dead encoders capped them at 56% power. Backwards readings are now flipped, a dead one is covered by the other wheel, and with no encoders at all the wheels run on power alone. The Driver Station says which.
 - Quicker flywheel spin-up on a fresh battery (12.5 V and up).
-- Shooter presets: HIGH is now 2600 (flat out, was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
+- Shooter presets: HIGH is now 2400 (was 1500), LOW is 1500 (was 900), and backwards is 1600 (was 900). Change them at the top of `Shooter.java`.
+- The flywheels no longer slow down when the index starts: HIGH keeps a tenth of the power in hand, and the wheels get a little extra power the moment feeding begins instead of after they have already slowed.
 - The flywheel line shows the power being sent, next to the two speeds.
 
 **Nov 25 (revamp)**

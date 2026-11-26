@@ -45,6 +45,11 @@ public class FlywheelAuto {
         if (control != null) control.stop();
     }
 
+    /** True while the index is pushing pollen in, so the wheels get their feed boost. */
+    public void setFeeding(boolean feeding) {
+        if (control != null) control.setFeeding(feeding);
+    }
+
     /** AutoBase calls this every loop. */
     public void update() {
         if (control != null) control.update();

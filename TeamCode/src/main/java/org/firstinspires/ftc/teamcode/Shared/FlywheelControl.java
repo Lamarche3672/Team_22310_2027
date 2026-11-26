@@ -83,6 +83,14 @@ public final class FlywheelControl {
     /** After a pollen slows the wheels, the feed waits at most this long for them to recover. */
     public static final double MAX_FEED_WAIT_MS = 700;
 
+    /**
+     * Extra power while the index is feeding. A pollen going through takes speed out of the
+     * wheels, and the index motor starting pulls the battery down a little, and both happen
+     * at the same moment. Waiting for the speed to drop before reacting is too late, so the
+     * power goes up as soon as we know a pollen is coming. If no pollen arrives the wheels
+     * run a touch fast for a moment and the normal correction takes it back off.
+     */
+    public static final double FEED_BOOST_POWER = 0.08;
     private static final double INTEGRATE_WITHIN = 200;
     private static final double MAX_INTEGRAL_POWER = 0.1;
     // Matching the two wheels. The hub reports speed in steps of about 20 ticks/s, so the raw
@@ -137,6 +145,7 @@ public final class FlywheelControl {
     private double leftBackwardsSeconds;
     private double noReadingSeconds;
     private boolean blind;
+    private boolean feeding;
     private long lastUpdateNanos;
     private long lastWriteNanos;
     private long lastReadNanos;
@@ -208,6 +217,11 @@ public final class FlywheelControl {
         target = ticksPerSecond;
     }
 
+    /** Tell the wheels the index is pushing pollen at them right now (see FEED_BOOST_POWER). Set every loop. */
+    public void setFeeding(boolean feeding) {
+        this.feeding = feeding;
+    }
+
     /** Call when nobody is feeding, so time spent idle does not count as "waited long enough". */
     public void cancelFeedWait() {
         feedWaitSinceNanos = 0;
@@ -218,6 +232,7 @@ public final class FlywheelControl {
         target = 0;
         integral = 0;
         power = 0;
+        feeding = false;
         rightPower = 0;
         leftPower = 0;
         atSpeed = false;
@@ -311,7 +326,8 @@ public final class FlywheelControl {
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
             // close to the target, and easing the power in does the current cap's job.
-            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
+            double open = f * target / MAX_TICKS_PER_SECOND * battery.compensation() + feedBoost();
+            open = Math.max(-1.0, Math.min(1.0, open));
             double step = BLIND_POWER_RISE_PER_SECOND * dt;
             integral = 0;
             return power + Math.max(-step, Math.min(step, open - power));
@@ -328,7 +344,7 @@ public final class FlywheelControl {
         }
 
         double wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
-                + p / 1000.0 * error + integralPower;
+                + p / 1000.0 * error + integralPower + feedBoost();
         // Never push against the direction we want to spin; over speed we just ease off.
         wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
 
@@ -343,6 +359,10 @@ public final class FlywheelControl {
         if (Math.abs(wanted) > Math.abs(backEmf) + headroom) battery.noteFlywheelSpinUp();
         wanted = Math.max(backEmf - headroom, Math.min(backEmf + headroom, wanted));
         return Math.max(-1.0, Math.min(1.0, wanted));
+    }
+
+    private double feedBoost() {
+        return feeding && target > 0 ? FEED_BOOST_POWER : 0;
     }
 
     /** How many volts above the wheel's own back-EMF we allow, given the battery voltage. */
