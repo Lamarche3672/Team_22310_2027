@@ -19,6 +19,7 @@ import java.util.List;
  *   Y                    backup speed high / low, used when the camera cannot see the hive
  *   BACK                 open / close shot setup
  *     in shot setup:  D-PAD up/down = speed,  A = save for this distance,  X = delete nearest
+ *                     (with no hive in view, A saves the speed as the selected Y preset)
  *
  * Where the speed comes from, best first:
  *   1. the saved shots (ShotTable) and the hive distance from the camera
@@ -32,10 +33,12 @@ public class Shooter {
     // HIGH is the fastest speed the wheels can HOLD while pollen go through, not the fastest
     // they can spin. At 2600 the motors were already at full power just to stay there, so the
     // moment the index started (the battery dips a little) or a pollen went through, the
-    // wheels slowed and there was nothing left to push back with. At 2400 about a tenth of
-    // the power is kept in hand, and that is what keeps the 2nd, 3rd and 4th pollen at the
+    // wheels slowed and there was nothing left to push back with. Up to about 2400 a tenth
+    // of the power is kept in hand, and that is what keeps the 2nd, 3rd and 4th pollen at the
     // same speed as the 1st. LOW is for shots from right next to the hive.
-    public double highVelocity = 2400;
+    // These are only the starting numbers. The drive team can change either one from the
+    // gamepad in shot setup (BACK), and what they save there is what gets used from then on.
+    public double highVelocity = 2300;
     public double lowVelocity = 1500;
     /**
      * LEFT TRIGGER runs the wheels backwards to clear a jam. Slower than shooting on purpose:
@@ -55,7 +58,7 @@ public class Shooter {
 
     private FlywheelControl flywheels;
     private List<double[]> shotPoints = new ArrayList<>();
-    private double presetVelocity = highVelocity;
+    private boolean highSelected = true;
     private double hiveDistance = Double.NaN;
     private double shotSpeed = highVelocity;
     private boolean usingDistance;
@@ -73,6 +76,12 @@ public class Shooter {
     public void init(HardwareMap hardwareMap, Battery battery) {
         flywheels = new FlywheelControl(hardwareMap, battery);
         shotPoints = ShotTable.load();
+        double[] savedPresets = ShotTable.loadPresets();
+        if (savedPresets != null) {
+            highVelocity = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, savedPresets[0]));
+            lowVelocity = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, savedPresets[1]));
+        }
+        shotSpeed = highVelocity;
         stop();
     }
 
@@ -107,7 +116,7 @@ public class Shooter {
         long now = System.nanoTime();
 
         if (gamepad1.yWasPressed()) {
-            presetVelocity = presetVelocity == highVelocity ? lowVelocity : highVelocity;
+            highSelected = !highSelected;
         }
         if (gamepad1.backWasPressed()) {
             setupOpen = !setupOpen;
@@ -185,6 +194,7 @@ public class Shooter {
             telemetry.addData("Hive distance", Double.isFinite(hiveDistance)
                     ? String.format("%.0f in", hiveDistance) : "camera can't see the hive");
             telemetry.addLine("D-PAD up/down = speed.  A = save for this distance.  X = delete nearest.");
+            telemetry.addLine("Camera can't see the hive? A saves it as the Y preset instead.");
             if (now - saveMessageNanos < 3_000_000_000L && !saveMessage.isEmpty()) telemetry.addLine(saveMessage);
             telemetry.addData("Saved shots", ShotTable.describe(shotPoints));
         }
@@ -199,7 +209,12 @@ public class Shooter {
 
         if (save) {
             if (!Double.isFinite(hiveDistance)) {
-                saveMessage = "NOT saved: the camera has to see the hive";
+                // No distance to save it against, so it becomes the Y preset that is selected.
+                if (highSelected) highVelocity = shotSpeed;
+                else lowVelocity = shotSpeed;
+                saveMessage = ShotTable.savePresets(highVelocity, lowVelocity)
+                        ? String.format("SAVED %.0f as the %s preset (camera can't see the hive)", shotSpeed, highSelected ? "HIGH" : "LOW")
+                        : "could not save";
             } else if (!ShotTable.add(shotPoints, hiveDistance, shotSpeed)) {
                 saveMessage = "NOT saved: too many shots saved, delete one with X";
             } else {
@@ -232,7 +247,7 @@ public class Shooter {
             // The tag blinks out now and then. Only fall back to the preset once it has been
             // gone for a while, so the wheels do not jump speed mid-shot.
             usingDistance = false;
-            shotSpeed = presetVelocity;
+            shotSpeed = highSelected ? highVelocity : lowVelocity;
         }
     }
 
@@ -242,7 +257,7 @@ public class Shooter {
             return Double.isFinite(hiveDistance)
                     ? String.format("AUTO, hive %.0f in", hiveDistance) : "AUTO, last distance";
         }
-        String preset = presetVelocity == highVelocity ? "HIGH" : "LOW";
+        String preset = highSelected ? "HIGH" : "LOW";
         if (shotPoints.isEmpty()) return preset + " (Y switches)";
         return preset + " (Y switches) - no hive in view";
     }
