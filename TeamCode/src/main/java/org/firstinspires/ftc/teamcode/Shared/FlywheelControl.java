@@ -486,6 +486,11 @@ public final class FlywheelControl {
                 && now - levelSinceNanos >= LEVEL_MS * 1e6;
     }
 
+    /** How long the wheels have been spinning toward the present target, in seconds. 0 when stopped. */
+    public double secondsSpinning() {
+        return target == 0 ? 0 : (System.nanoTime() - spinStartNanos) / 1e9;
+    }
+
     /** True right now, this loop. Use isReady() to decide when to shoot. */
     public boolean isAtSpeed() {
         return atSpeed;

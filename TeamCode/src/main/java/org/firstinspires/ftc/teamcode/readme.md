@@ -247,6 +247,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (later)**
+- Autos: the flywheels always get at least 2.5 s to spin up before the first pollen, and the index feeds for 4.5 s (was 2.5 s). The first auto shot was going nowhere because the wheels were not up and the belt stopped before the pollen reached them.
 - Speed 2800 or more is now plain full power to both flywheels: no correction, no current cap, no wheel matching, nothing that depends on an encoder. If a shot is weak like that, the software is not what is holding it back.
 - The index feeds at full power (was 0.95) and gets up to speed four times quicker.
 - One set flywheel speed. The camera no longer changes it, and saved shots, shot setup and the Y presets are gone.

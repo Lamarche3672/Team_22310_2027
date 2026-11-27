@@ -86,6 +86,16 @@ public class FlywheelAuto {
         return waitUntil(this::isReady).raceWith(waitMs(timeoutMs));
     }
 
+    /**
+     * Waits until the wheels have been spinning for at least this long (never longer than
+     * that again, in case they were never started). Wheels that were started earlier, on the
+     * drive over, have usually had their time already and this returns at once.
+     */
+    public Command waitUntilSpunFor(double milliseconds) {
+        return waitUntil(() -> control == null || control.secondsSpinning() * 1000 >= milliseconds)
+                .raceWith(waitMs(milliseconds));
+    }
+
     public Command stopCommand() {
         return instant(this::stop);
     }

@@ -12,8 +12,8 @@ import org.firstinspires.ftc.teamcode.Shared.HiveAim;
  *
  *   1. start the flywheels (so they spin up while the robot aims)
  *   2. turn to face the hive using the camera, if it can see it
- *   3. wait until the wheels are ready
- *   4. feed the pollen through
+ *   3. wait until the wheels are ready, and have had MIN_SPIN_UP_MS to get there
+ *   4. feed the pollen through for FEED_MS
  *   5. everything off
  *
  * Nothing in here can hang: every wait has a time limit, so a dead camera, a dead flywheel or
@@ -25,8 +25,19 @@ public final class Volley {
     public static final double AIM_TIMEOUT_MS = 1200;
     /** Longest wait for the flywheels before shooting anyway. */
     public static final double SPIN_UP_TIMEOUT_MS = 2500;
-    /** How long the index has to actually run to push 4 pollen through. */
-    public static final double FEED_MS = 2500;
+    /**
+     * The wheels always get at least this long to spin up before the first pollen, whatever
+     * "ready" says. On this robot the flywheel encoders read nothing, so "ready" is only a
+     * guess by the clock, and at 1.5 s the wheels were not up yet: the first auto shot went
+     * nowhere. A driver waits about this long in teleop without thinking about it.
+     */
+    public static final double MIN_SPIN_UP_MS = 2500;
+    /**
+     * How long the index runs to push 4 pollen through. 2.5 s was not enough on the real
+     * robot: the pollen had not reached the wheels when the belt stopped. In teleop the
+     * driver just holds the bumper until they are gone; this is the auto's version of that.
+     */
+    public static final double FEED_MS = 4500;
     /** Waiting for the wheels between pollen may stretch a volley by at most this much. */
     public static final double MAX_EXTRA_FEED_MS = 1500;
 
@@ -40,6 +51,7 @@ public final class Volley {
                 flywheel.spinUpCommand(velocity),
                 drive.aimAtHive(aim, AIM_TIMEOUT_MS),
                 flywheel.waitUntilReady(SPIN_UP_TIMEOUT_MS),
+                flywheel.waitUntilSpunFor(MIN_SPIN_UP_MS),
                 feed(flywheel, intake),
                 flywheel.stopCommand());
     }
