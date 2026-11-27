@@ -34,9 +34,15 @@ public final class Battery {
 
     // Power limit: full power at or above FULL_POWER_VOLTS, easing down to MIN_POWER_LIMIT at
     // LOW_VOLTS. REV's hubs are rated down to 8 V and flag "battery low" at 7 V.
-    public static final double FULL_POWER_VOLTS = 10.5;
-    public static final double LOW_VOLTS = 7.5;
-    public static final double MIN_POWER_LIMIT = 0.35;
+    //
+    // These are emergency numbers on purpose. They used to start at 10.5 V (and the ramp
+    // limit below at 11 V), which is fine on a robot whose battery stays above 12 V. On ours
+    // the shooter alone holds the flywheel hub at 10 to 11 V, so the guard was holding the
+    // DRIVE back every time the other driver spun the shooter up: the two gamepads got in
+    // each other's way. Now it only steps in when the voltage is genuinely about to collapse.
+    public static final double FULL_POWER_VOLTS = 9.0;
+    public static final double LOW_VOLTS = 7.0;
+    public static final double MIN_POWER_LIMIT = 0.5;
 
     // The limit drops fast (a sag has to be caught now) and comes back slowly (so the robot
     // does not surge the moment the voltage recovers, sag again, and start oscillating).
@@ -45,9 +51,9 @@ public final class Battery {
 
     // Acceleration limit: adding power is what causes the big current spikes, so when the
     // battery is already under ACCEL_FULL_VOLTS we ramp up more gently.
-    public static final double ACCEL_FULL_VOLTS = 11.0;
-    public static final double ACCEL_SLOW_VOLTS = 9.0;
-    public static final double MIN_ACCEL_LIMIT = 0.4;
+    public static final double ACCEL_FULL_VOLTS = 9.5;
+    public static final double ACCEL_SLOW_VOLTS = 8.0;
+    public static final double MIN_ACCEL_LIMIT = 0.5;
     /**
      * While the flywheels are spinning up they are already pulling about 10 A. Anything else
      * that wants to accelerate in that half second does it at this fraction of its usual rate,

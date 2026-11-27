@@ -44,11 +44,17 @@ public final class FlywheelControl {
     // full power, with no speed correction and no wheel matching (both could only take power
     // away). So a weak shot at flat out is never the speed control holding the wheels back.
     //
-    // What flat out does NOT skip is the soft start. For a day it did: full power went to both
-    // motors a third of a second after the button, each pulled its full stall current, and
-    // with the drive moving at the same moment the battery fell to 5.3 V and both hubs
-    // restarted in the middle of a run. The spin-up current cap below costs a few tenths of
-    // a second on the way up and nothing once the wheels are turning.
+    // The power rises to full over half a second rather than in one step, so the two motors
+    // do not both hit their stall current in the same instant. After that half second it is
+    // full power and stays there whatever the battery does. (For one build flat out went
+    // through the voltage-based current cap further down instead. On this robot the wheels
+    // drag so much that the cap was still holding them back at full speed whenever the
+    // voltage sagged, so the shooter was strong one moment and weak the next.)
+    private static final double FLAT_OUT_RISE_PER_SECOND = 2.0;
+    // The current cap for speeds below flat out only applies while the wheels are getting
+    // going. It was written for wheels that spin freely once they are up; ours need most of
+    // the battery just to keep turning, so past this point it would only starve them.
+    private static final long SOFT_START_NANOS = 800_000_000L;
 
     /**
      * Which way "forwards" (shooting) is. Defined once here so teleop and autonomous can never
@@ -127,7 +133,7 @@ public final class FlywheelControl {
     /** Both wheels driven and both reading nothing for this long: no encoders, run without them. */
     private static final double NO_READING_SECONDS = 0.5;
     /** Without a speed reading the current cannot be capped, so the power is eased in instead (per second). */
-    private static final double BLIND_POWER_RISE_PER_SECOND = 1.2;
+    private static final double BLIND_POWER_RISE_PER_SECOND = 2.0;
     /** Without a speed reading "ready" can only go by the clock. */
     public static final double BLIND_READY_MS = 1500;
     /** Skip motor writes that change the power by less than this; each write costs loop time. */
@@ -361,43 +367,38 @@ public final class FlywheelControl {
 
     private double nextPower(double measured, double dt) {
         double direction = Math.signum(target);
-        boolean flatOut = isFlatOut();
+        if (isFlatOut()) {
+            // Everything the motors have: up to full over half a second, then full, always.
+            integral = 0;
+            double step = FLAT_OUT_RISE_PER_SECOND * dt;
+            return power + Math.max(-step, Math.min(step, direction - power));
+        }
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
-            // close to the target (flat out: simply full power), and easing the power in
-            // slowly does the current cap's job.
-            double open = flatOut ? direction
-                    : Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
+            // close to the target, and easing the power in does the current cap's job.
+            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
             double step = BLIND_POWER_RISE_PER_SECOND * dt;
             integral = 0;
-            // Still on the way up: the drive and intake should go easy until we are there.
-            if (Math.abs(open - power) > step) battery.noteFlywheelSpinUp();
             return power + Math.max(-step, Math.min(step, open - power));
         }
 
-        double wanted;
-        if (flatOut) {
-            // Everything the motors have. Nothing to work out, but it still goes through the
-            // current cap below on the way up.
-            integral = 0;
-            wanted = direction;
-        } else {
-            double error = target - measured;
+        double error = target - measured;
 
-            // Only integrate near the target. Integrating during the whole spin-up would wind
-            // the term up and overshoot.
-            if (Math.abs(error) < INTEGRATE_WITHIN) integral += error * dt;
-            double integralPower = i / 1000.0 * integral;
-            if (Math.abs(integralPower) > MAX_INTEGRAL_POWER) {
-                integralPower = Math.signum(integralPower) * MAX_INTEGRAL_POWER;
-                integral = integralPower * 1000.0 / Math.max(i, 1e-9);
-            }
-
-            wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
-                    + p / 1000.0 * error + integralPower + feedBoost(error);
-            // Never push against the direction we want to spin; over speed we just ease off.
-            wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
+        // Only integrate near the target. Integrating during the whole spin-up would wind the
+        // term up and overshoot.
+        if (Math.abs(error) < INTEGRATE_WITHIN) integral += error * dt;
+        double integralPower = i / 1000.0 * integral;
+        if (Math.abs(integralPower) > MAX_INTEGRAL_POWER) {
+            integralPower = Math.signum(integralPower) * MAX_INTEGRAL_POWER;
+            integral = integralPower * 1000.0 / Math.max(i, 1e-9);
         }
+
+        double wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
+                + p / 1000.0 * error + integralPower + feedBoost(error);
+        // Never push against the direction we want to spin; over speed we just ease off.
+        wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
+        // Past the first moments there is no cap: see SOFT_START_NANOS.
+        if (System.nanoTime() - spinStartNanos > SOFT_START_NANOS) return Math.max(-1.0, Math.min(1.0, wanted));
 
         // Current limit. A spinning motor generates its own voltage ("back-EMF"); the current
         // is set by how far the voltage we apply is from that. Staying within `headroom` of it
