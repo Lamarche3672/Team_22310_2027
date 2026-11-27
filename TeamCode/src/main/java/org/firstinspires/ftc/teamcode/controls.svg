@@ -40,7 +40,7 @@
 <path d="M 348 366 L 370 366 L 394 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="394" cy="352" r="4" fill="#14181F"/>
 <text x="336" y="444" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">D-PAD</text>
-<text x="336" y="468" font-size="18" text-anchor="end" fill="#14181F">Left/right pick, up/down change</text>
+<text x="336" y="468" font-size="18" text-anchor="end" fill="#14181F">After BACK: pick a number, change it</text>
 <path d="M 348 448 L 370 448 L 444 440" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="444" cy="440" r="4" fill="#14181F"/>
 <text x="944" y="290" font-size="18" font-weight="700" fill="#14181F">RIGHT TRIGGER</text>
@@ -115,5 +115,5 @@
 <circle cx="751" cy="1178" r="4" fill="#14181F"/>
 <text x="640" y="1376" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">Buzz on this gamepad = aimed. Long buzz = field-centric lost, two short = back.</text>
 <text x="56" y="1482" font-size="18" fill="#5B6472">Before START, on either gamepad: X = blue alliance, B = red alliance. It remembers the alliance from auto.</text>
-<text x="56" y="1510" font-size="18" fill="#5B6472">Shooter speed and P, I, F: D-PAD left/right picks the line on the screen, up/down changes it. Saved by itself.</text>
+<text x="56" y="1510" font-size="18" fill="#5B6472">Shooter numbers: press BACK, then D-PAD left/right picks the line and up/down changes it. BACK again when done.</text>
 </svg>

@@ -14,9 +14,12 @@ import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
  *
  *   RIGHT BUMPER (hold)   spin the wheels up to the set speed
  *   LEFT TRIGGER          run the wheels backwards, slower than a shot (part of "spit everything out")
+ *   BACK                  open / close the tuning menu. While it is closed the D-PAD and X do
+ *                         nothing, so the numbers cannot be changed by accident in a match.
+ *   with the menu open:
  *   D-PAD left / right    pick a line on the screen: Speed, P, I, F, Feed on, Feed off
  *   D-PAD up / down       change the picked number (hold it down to keep going)
- *   X (hold 1 second)     put all four numbers back to their defaults
+ *   X (hold 1 second)     put every number back to its default
  *
  * There is one speed. The camera does not change it: what the screen says is what the wheels
  * are asked for, and only the D-PAD changes it. The four numbers are saved on the Control Hub
@@ -56,7 +59,9 @@ public class Shooter {
     private final FeedPulser pulser = new FeedPulser();
     private boolean beltMayRun;
 
-    // The little menu on the screen.
+    // The little menu on the screen. It only listens to the D-PAD while it is open (BACK).
+    private boolean menuOpen;
+    private boolean backWasDown;
     private int selectedLine;
     private boolean leftWasDown;
     private boolean rightWasDown;
@@ -170,20 +175,29 @@ public class Shooter {
         if (encoderNote != null) telemetry.addLine(encoderNote);
         else if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
 
-        // The menu. The arrow marks the number the D-PAD is changing.
-        double[] values = {settings.speed, settings.p, settings.i, settings.f, settings.feedOnMs, settings.feedOffMs};
-        for (int line = 0; line < LINE_NAMES.length; line++) {
-            boolean wholeNumber = line == 0 || line >= 4;
-            String value = wholeNumber ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
-            telemetry.addLine((line == selectedLine ? ">> " : "    ") + LINE_NAMES[line] + ":  " + value);
+        // Say plainly whether the wheels are getting everything. A shot that falls short at
+        // FULL POWER is the battery or the robot; one that falls short below it is this number.
+        boolean fullPower = settings.speed >= FlywheelControl.MAX_TICKS_PER_SECOND;
+        telemetry.addLine(fullPower ? String.format("FLYWHEELS: FULL POWER (Speed %.0f)", settings.speed)
+                : String.format("FLYWHEELS: held at %.0f - NOT full power (%.0f or more is full)",
+                        settings.speed, FlywheelControl.MAX_TICKS_PER_SECOND));
+
+        if (menuOpen) {
+            // The arrow marks the number the D-PAD is changing.
+            telemetry.addLine("---- TUNING (BACK = done) ----");
+            double[] values = {settings.speed, settings.p, settings.i, settings.f, settings.feedOnMs, settings.feedOffMs};
+            for (int line = 0; line < LINE_NAMES.length; line++) {
+                boolean wholeNumber = line == 0 || line >= 4;
+                String value = wholeNumber ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
+                telemetry.addLine((line == selectedLine ? ">> " : "    ") + LINE_NAMES[line] + ":  " + value);
+            }
+            telemetry.addLine(settings.feedOffMs <= 0 ? "Feed off 0 = the belt runs for as long as LEFT BUMPER is held."
+                    : "Feed off above 0 = one pollen at a time while LEFT BUMPER is held.");
+            telemetry.addLine("D-PAD left/right = pick a line, up/down = change it. Hold X = defaults.");
+        } else {
+            telemetry.addLine("Shooter numbers: " + settings.describe());
+            telemetry.addLine("BACK = change them (the D-PAD does nothing until then).");
         }
-        if (settings.speed >= FlywheelControl.MAX_TICKS_PER_SECOND) {
-            telemetry.addLine("Speed " + String.format("%.0f", FlywheelControl.MAX_TICKS_PER_SECOND)
-                    + " or more = FULL POWER to both wheels. P, I, F and wheel matching are not used.");
-        }
-        telemetry.addLine(settings.feedOffMs <= 0 ? "Feed off 0 = the belt runs for as long as LEFT BUMPER is held."
-                : "Feed off above 0 = one pollen at a time while LEFT BUMPER is held.");
-        telemetry.addLine("D-PAD left/right = pick a line, up/down = change it. Hold X = defaults.");
         if (now - noteNanos < 3_000_000_000L && !note.isEmpty()) telemetry.addLine(note);
 
         // The power is here so "slow" can be told apart: a low number with the speed on target
@@ -196,8 +210,26 @@ public class Shooter {
                 flywheels.power() * 100);
     }
 
-    /** The D-PAD menu: left / right picks a number, up / down changes it, holding X resets all four. */
+    /** The tuning menu: BACK opens and closes it; open, left / right picks a number, up / down changes it, holding X resets them. */
     private void runMenu(Gamepad gamepad1, long now) {
+        boolean back = gamepad1.back;
+        if (back && !backWasDown) menuOpen = !menuOpen;
+        backWasDown = back;
+        if (!menuOpen) {
+            // Closed: the D-PAD and X are dead, so a thumb resting on them changes nothing.
+            // Anything changed just before closing still gets saved.
+            heldDirection = 0;
+            leftWasDown = false;
+            rightWasDown = false;
+            xDownSinceNanos = 0;
+            resetDone = false;
+            if (unsaved) {
+                unsaved = false;
+                say(settings.save() ? "saved: " + settings.describe() : "COULD NOT SAVE - these numbers are lost on restart", now);
+            }
+            return;
+        }
+
         boolean left = gamepad1.dpad_left;
         boolean right = gamepad1.dpad_right;
         if (left && !leftWasDown) selectedLine = (selectedLine + LINE_NAMES.length - 1) % LINE_NAMES.length;

@@ -14,9 +14,10 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 | LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
 | RIGHT BUMPER (hold) | Spin up the shooter to the set speed |
 | LEFT BUMPER (hold) | Shoot: the index runs for as long as it is held |
-| D-PAD left / right | Pick a shooter number on the screen: Speed, P, I, F, Feed on, Feed off |
-| D-PAD up / down | Change that number (hold to keep going). Saved by itself |
-| X (hold 1 second) | Shooter numbers back to default |
+| BACK | Open / close the shooter tuning menu. Closed, the D-PAD and X do nothing |
+| D-PAD left / right | Menu open: pick a shooter number on the screen: Speed, P, I, F, Feed on, Feed off |
+| D-PAD up / down | Menu open: change that number (hold to keep going). Saved by itself |
+| X (hold 1 second) | Menu open: shooter numbers back to default |
 
 | Gamepad 2 (driving) | Does |
 |---|---|
@@ -46,7 +47,7 @@ The camera works out which cell is up by itself: when it can see both of our sti
 
 There is one flywheel speed. The camera does not change it. What the screen shows is what the wheels are asked for.
 
-On gamepad 1 the screen shows six lines, with `>>` marking the one the D-PAD changes:
+The screen always says whether the flywheels are at FULL POWER or held at a lower speed. To change anything, press BACK on gamepad 1 to open the tuning menu (press it again to close). Open, it shows six lines, with `>>` marking the one the D-PAD changes. Closed, the D-PAD and X do nothing, so nothing can be changed by accident in a match:
 
 | Line | Default | One press | What it does |
 |---|---|---|---|
@@ -64,7 +65,7 @@ On gamepad 1 the screen shows six lines, with `>>` marking the one the D-PAD cha
 - LEFT TRIGGER runs the wheels backwards at 1600.
 - Below 2800 the two wheels are held within 50 of each other. The flywheel line shows how far apart they are and names the slow wheel if they are not. At full power they are not matched: the only way to match there is to slow the faster wheel, which throws speed away. A wheel that is slow at full power has a mechanical problem (drag, a slipping hub, a tired motor).
 - **Hold LEFT BUMPER and the belt runs.** That is the default. If several pollen come out weakly together (they arrive nose to tail, and the second hits wheels that have not recovered from the first), try one at a time: raise Feed off to about 400. The belt then goes on, off, on, off while the bumper is held. For a single good shot you can also just tap the bumper.
-- **Where the encoders are.** The flywheel encoder cables are in the Expansion Hub's encoder ports 0 and 1 (beside the intake and index motor ports), not beside the flywheel motors on 2 and 3. The code finds them there by itself: the first time the wheels start it leads with the right wheel for a fifth of a second and sees which port moves. The screen then says "Flywheel speed is read from encoder ports 0 and 1 (port N = right wheel)".
+- **Where the encoders are.** The flywheel encoder cables go in the Expansion Hub's encoder ports 2 and 3, right beside the flywheel motor wires. If the flywheel line reads 0 / 0 while the wheels spin, they are not being read: check both cables are pushed in.
 - With encoders working, a Speed below 2800 is held properly (P, I, F and wheel matching all work). 3000 is still plain full power with no control; for the most even volleys try about 2500.
 - At full power (anything near 2800 or above) the wheels have nothing in hand, so they slow a little while pollen go through. If the first pollen flies further than the rest, lower Speed until they match (around 2300 to 2400).
 
@@ -211,7 +212,6 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | EXPANSION HUB NOT FOUND | The Control Hub could not find the Expansion Hub when the robot started, so the intake, index and flywheels do not exist (driving still works: those motors are on the Control Hub). The names are not the problem. Check the Expansion Hub's power and the cable between the hubs, then restart the robot |
 | INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
 | A flywheel encoder counts backwards (handled in code) | That motor's encoder and power wires are opposite ways round. The code flips the reading, so nothing to do before a match |
-| Flywheel speed is read from encoder ports 0 and 1 | Normal on this robot: that is where the flywheel encoder cables are plugged in. Nothing to do |
 | NO FLYWHEEL ENCODERS | Neither flywheel encoder reads anything. The wheels still spin, on power alone, but the speed is not held and shots drift with the battery. Check both encoder cables |
 | AIM: ... WOBBLING | The aim swung past the hive and calmed itself down. Lower `KP` and `KD` in `Shared/HiveAim.java` |
 | ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
@@ -255,7 +255,9 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (evening)**
-- The flywheel encoders were never dead: their cables are in encoder ports 0 and 1 while the motors are on 2 and 3. The code now reads them there and works out which wheel is which, so real speed control and wheel matching work for the first time.
+- The shooter tuning menu has to be opened with BACK. It used to listen to the D-PAD all the time, and shots went short without anybody meaning to lower the speed. The saved numbers from before are not read, so Speed is back to 3000 (full power).
+- The screen says FULL POWER, or "held at N - NOT full power", so a low speed setting is obvious.
+- The search for flywheel encoders on ports 0 and 1 is gone again: they are on ports 2 and 3, where the code always looked.
 - Feeding one pollen at a time is on the D-PAD menu (Feed off above 0). It is off by default: holding LEFT BUMPER runs the belt the whole time. Autonomous feeds the same way teleop is set.
 
 **Nov 27 (later)**

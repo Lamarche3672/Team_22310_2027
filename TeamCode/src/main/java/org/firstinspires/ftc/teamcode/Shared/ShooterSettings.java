@@ -32,15 +32,15 @@ public final class ShooterSettings {
     // Feeding (see FeedPulser). By default the belt simply runs for as long as LEFT BUMPER is
     // held: OFF is 0, which means no pauses. Raising OFF on the menu turns on "one pollen at
     // a time": belt on for ON ms, then off for OFF ms, and so on while the bumper is held.
-    // (Pauses were the default for one build. With the bumper held the belt only twitched,
-    // which is not what holding a button should do, so they are opt-in now.)
     public static final double DEFAULT_FEED_ON_MS = 250;
     public static final double DEFAULT_FEED_OFF_MS = 0;
-    /** Marks a saved line whose feed times were chosen under the present defaults. */
-    private static final String FEED_TIMES_MARK = "v2";
     public static final double MAX_FEED_MS = 1500;
 
-    private static final String FILE_NAME = "shooter_settings.txt";
+    // "_v2": the first file could be changed by brushing the D-PAD at any moment, and shots
+    // went short without anybody having meant to lower the speed. That file is not read any
+    // more, so every number starts again from its default (speed 3000 = full power). The
+    // menu now has to be opened with BACK before the D-PAD changes anything.
+    private static final String FILE_NAME = "shooter_settings_v2.txt";
 
     public double speed = DEFAULT_SPEED;
     public double p = FlywheelControl.DEFAULT_P;
@@ -79,9 +79,9 @@ public final class ShooterSettings {
         return String.format(Locale.US, "speed %.0f, P %.2f, I %.2f, F %.2f, %s", speed, p, i, f, feed);
     }
 
-    /** One line: "speed p i f feedOn feedOff v2". */
+    /** One line: "speed p i f feedOn feedOff". */
     public String format() {
-        return String.format(Locale.US, "%.0f %.3f %.3f %.3f %.0f %.0f %s\n", speed, p, i, f, feedOnMs, feedOffMs, FEED_TIMES_MARK);
+        return String.format(Locale.US, "%.0f %.3f %.3f %.3f %.0f %.0f\n", speed, p, i, f, feedOnMs, feedOffMs);
     }
 
     /** Reads a line written by format(). Anything missing or unreadable keeps its default. */
@@ -94,12 +94,8 @@ public final class ShooterSettings {
             if (parts.length > 1) settings.p = Double.parseDouble(parts[1]);
             if (parts.length > 2) settings.i = Double.parseDouble(parts[2]);
             if (parts.length > 3) settings.f = Double.parseDouble(parts[3]);
-            // Feed times saved before the mark existed were the old pausing defaults, not a
-            // choice anybody made, so they are dropped and the belt runs while held.
-            if (parts.length > 6 && FEED_TIMES_MARK.equals(parts[6])) {
-                settings.feedOnMs = Double.parseDouble(parts[4]);
-                settings.feedOffMs = Double.parseDouble(parts[5]);
-            }
+            if (parts.length > 4) settings.feedOnMs = Double.parseDouble(parts[4]);
+            if (parts.length > 5) settings.feedOffMs = Double.parseDouble(parts[5]);
         } catch (NumberFormatException damaged) {
             settings.resetToDefaults();
         }
