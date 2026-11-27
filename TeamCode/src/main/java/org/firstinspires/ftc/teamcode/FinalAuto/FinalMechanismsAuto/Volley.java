@@ -51,7 +51,7 @@ public final class Volley {
     /** The saved speed for the distance the camera measures, or the fallback when there is none. */
     static double speedFor(HiveAim aim, List<double[]> shotPoints, double fallbackVelocity) {
         if (aim == null || shotPoints == null) return fallbackVelocity;
-        double saved = ShotTable.speedFor(shotPoints, aim.distanceInches());
+        double saved = ShotTable.speedFor(shotPoints, aim.distanceInches(), fallbackVelocity);
         return Double.isFinite(saved) ? saved : fallbackVelocity;
     }
 

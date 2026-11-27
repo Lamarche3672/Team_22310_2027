@@ -22,7 +22,8 @@ import java.util.List;
  *                     (with no hive in view, A saves the speed as the selected Y preset)
  *
  * Where the speed comes from, best first:
- *   1. the saved shots (ShotTable) and the hive distance from the camera
+ *   1. the saved shots (ShotTable) and the hive distance from the camera. With nothing
+ *      saved the camera does not change the speed at all.
  *   2. the last distance speed, for a few seconds after the camera loses the hive
  *   3. the Y preset
  *
@@ -238,7 +239,7 @@ public class Shooter {
 
     /** Normal play: pick the speed from the hive distance if we can, the Y preset if we cannot. */
     private void chooseSpeed(boolean feeding, long now) {
-        double fromDistance = ShotTable.speedFor(shotPoints, hiveDistance);
+        double fromDistance = ShotTable.speedFor(shotPoints, hiveDistance, highVelocity);
         if (Double.isFinite(fromDistance)) {
             fromDistance = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, fromDistance));
             // While pollen are going through, hold the speed. The distance reading jitters a
@@ -260,7 +261,7 @@ public class Shooter {
         if (setupOpen) return "(shot setup)";
         if (usingDistance) {
             return Double.isFinite(hiveDistance)
-                    ? String.format("AUTO, hive %.0f in", hiveDistance) : "AUTO, last distance";
+                    ? String.format("from SAVED SHOTS, hive %.0f in", hiveDistance) : "from SAVED SHOTS, last distance";
         }
         String preset = highSelected ? "HIGH" : "LOW";
         if (shotPoints.isEmpty()) return preset + " (Y switches)";

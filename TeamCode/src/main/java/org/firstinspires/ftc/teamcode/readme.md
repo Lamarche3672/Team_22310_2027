@@ -43,18 +43,19 @@ The camera works out which cell is up by itself: when it can see both of our sti
 
 ## Shot setup (once, about 5 minutes)
 
-The shooter picks its speed from how far away the hive is. It has to be taught first.
+With nothing saved, the shooter uses the Y preset at every distance and the camera does not change the speed. To make it use less speed up close, save shots:
 
 1. Put the robot where you normally shoot. The camera has to see our hive.
 2. Gamepad 1: press BACK. The Driver Station shows SHOT SETUP and the hive distance.
-3. Hold both bumpers and shoot. D-PAD up / down changes the speed by 25 until it scores.
+3. Shoot (RIGHT BUMPER, then LEFT BUMPER). D-PAD up / down changes the speed by 25 until it scores.
 4. Press A. That speed is saved for that distance.
-5. Repeat at one or two other distances (one close, one far).
+5. Repeat at one or two other distances. Do the back wall and one close spot at least.
 6. Press BACK.
 
 - Saved shots live on the Control Hub and survive new code installs.
 - X deletes the saved shot nearest to where you are.
-- Between two saved distances it uses a speed in between.
+- Between two saved distances it uses a speed in between. Closer than the closest saved shot it uses that shot's speed. Further than the furthest it climbs to the HIGH preset over 3 feet, so one shot saved up close can never make a long shot weak.
+- A saved shot beats the preset whenever the camera sees the hive. If shots are suddenly weak with the camera plugged in, look at the "Shot speed" line: "from SAVED SHOTS" means a saved shot is setting the speed. Fix it in shot setup (save the right speed there, or X to delete).
 - Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then A with the camera NOT seeing the hive. It is kept across restarts. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
@@ -242,6 +243,11 @@ No robot was available, so everything was checked on a laptop:
 That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
 ## What changed
+
+**Nov 27**
+- Shots were far too weak with the Limelight plugged in and fine with it unplugged. It was not power: with the camera seeing the hive, the speed came from saved shots, and the saved speeds were too low. The old saved-shot file is no longer read (new file name), so the list starts empty and the preset is used until shots are saved again.
+- A saved shot no longer applies to shots further away than it: past the furthest saved shot the speed climbs to the HIGH preset.
+- The "Shot speed" line says "from SAVED SHOTS" when a saved shot is setting the speed.
 
 **Nov 26**
 - Auto aim is faster. The old one crawled the last few degrees on a robot that is hard to turn. In the simulation a sticky robot now locks in about 0.6 s instead of 1.1 s, and an easy-turning one in about 0.4 s (that one was already quick).

@@ -16,11 +16,19 @@ import java.util.Locale;
  * is kept sorted by distance. Asking for a distance between two saved shots gives a speed in
  * between; closer than the closest or further than the furthest gives that end's speed.
  *
- * It is stored as a small text file on the Control Hub (FIRST/settings/shot_speeds.txt), one
- * "distance speed" per line, so it survives power cycles and new code installs.
+ * It is stored as a small text file on the Control Hub (FIRST/settings/shot_speeds_v2.txt),
+ * one "distance speed" per line, so it survives power cycles and new code installs.
+ *
+ * Why "_v2": the first file ended up holding speeds that were far too low, and because a
+ * saved shot beats the Y preset whenever the camera sees the hive, every shot with the
+ * Limelight plugged in fell short (unplug it and the same shot went in 8 times out of 8).
+ * A new file name means that old list is simply never read again. To start over another
+ * time, bump the number.
  */
 public final class ShotTable {
-    private static final String FILE_NAME = "shot_speeds.txt";
+    private static final String FILE_NAME = "shot_speeds_v2.txt";
+    /** Past the furthest saved shot, the speed climbs to the far speed over this many inches. */
+    public static final double FAR_RAMP_INCHES = 36;
     private static final String PRESET_FILE_NAME = "shot_presets.txt";
     /** Saving within this distance of an existing shot replaces it instead of adding another. */
     public static final double SAME_SPOT_INCHES = 6;
@@ -43,6 +51,22 @@ public final class ShotTable {
             }
         }
         return points.get(points.size() - 1)[1];
+    }
+
+    /**
+     * The speed to use, given a "far speed" (the HIGH preset in teleop, the auto's own speed
+     * in autonomous). Inside the saved range it is the same as speedFor(points, distance).
+     * Further out than the furthest saved shot it climbs toward farSpeed instead of staying
+     * put: a shot saved from close up must never make a long shot weak. It never goes below
+     * the furthest saved speed, so a far shot that was saved on purpose is left alone.
+     */
+    public static double speedFor(List<double[]> points, double distance, double farSpeed) {
+        double speed = speedFor(points, distance);
+        if (!Double.isFinite(speed) || !Double.isFinite(farSpeed)) return speed;
+        double[] furthest = points.get(points.size() - 1);
+        if (distance <= furthest[0] || farSpeed <= furthest[1]) return speed;
+        double part = Math.min(1.0, (distance - furthest[0]) / FAR_RAMP_INCHES);
+        return furthest[1] + (farSpeed - furthest[1]) * part;
     }
 
     /** Adds a shot, keeping the list sorted. Returns false if it was nonsense or the list is full. */
