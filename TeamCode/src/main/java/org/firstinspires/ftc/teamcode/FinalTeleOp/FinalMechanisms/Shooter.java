@@ -168,6 +168,10 @@ public class Shooter {
             String value = line == 0 ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
             telemetry.addLine((line == selectedLine ? ">> " : "    ") + LINE_NAMES[line] + ":  " + value);
         }
+        if (settings.speed >= FlywheelControl.MAX_TICKS_PER_SECOND) {
+            telemetry.addLine("Speed " + String.format("%.0f", FlywheelControl.MAX_TICKS_PER_SECOND)
+                    + " or more = FULL POWER to both wheels. P, I, F and wheel matching are not used.");
+        }
         telemetry.addLine("D-PAD left/right = pick a line, up/down = change it. Hold X = defaults.");
         if (now - noteNanos < 3_000_000_000L && !note.isEmpty()) telemetry.addLine(note);
 
@@ -176,7 +180,8 @@ public class Shooter {
         double apart = flywheels.wheelsApart();
         telemetry.addData("Flywheel right / left", "%.0f / %.0f  (%.0f apart%s, power %.0f%%)",
                 flywheels.rightVelocity(), flywheels.leftVelocity(), apart,
-                wantSpin && ready && apart > FlywheelControl.MATCHED_WITHIN ? " - TOO FAR APART" : "",
+                wantSpin && ready && apart > FlywheelControl.MATCHED_WITHIN
+                        ? (flywheels.rightVelocity() < flywheels.leftVelocity() ? " - RIGHT WHEEL IS SLOW" : " - LEFT WHEEL IS SLOW") : "",
                 flywheels.power() * 100);
     }
 

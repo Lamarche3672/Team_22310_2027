@@ -50,7 +50,7 @@ On gamepad 1 the screen shows four lines, with `>>` marking the one the D-PAD ch
 
 | Line | Default | One press | What it does |
 |---|---|---|---|
-| Speed | 3000 | 50 | How fast the wheels spin. They read about 2800 flat out, so 3000 means full power |
+| Speed | 3000 | 50 | How fast the wheels spin. 2800 or more means FULL POWER straight to both motors, with no speed control at all |
 | P | 0.70 | 0.05 | How hard it pushes back when the speed is off. Wheels hunting up and down: lower it |
 | I | 0.50 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
 | F | 1.00 | 0.01 | The base power for a speed. Speed sits well under the target everywhere: raise it |
@@ -60,7 +60,7 @@ On gamepad 1 the screen shows four lines, with `>>` marking the one the D-PAD ch
 - Autonomous uses the same four numbers. The auto INIT screen shows them.
 - Hold X for a second to go back to the defaults.
 - LEFT TRIGGER runs the wheels backwards at 1600.
-- The two wheels are held within 50 of each other. The flywheel line shows how far apart they are, and says TOO FAR APART if they are not.
+- Below 2800 the two wheels are held within 50 of each other. The flywheel line shows how far apart they are and names the slow wheel if they are not. At full power they are not matched: the only way to match there is to slow the faster wheel, which throws speed away. A wheel that is slow at full power has a mechanical problem (drag, a slipping hub, a tired motor).
 - At full power (anything near 2800 or above) the wheels have nothing in hand, so they slow a little while pollen go through. If the first pollen flies further than the rest, lower Speed until they match (around 2300 to 2400).
 
 ## Auto aim
@@ -247,6 +247,8 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (later)**
+- Speed 2800 or more is now plain full power to both flywheels: no correction, no current cap, no wheel matching, nothing that depends on an encoder. If a shot is weak like that, the software is not what is holding it back.
+- The index feeds at full power (was 0.95) and gets up to speed four times quicker.
 - One set flywheel speed. The camera no longer changes it, and saved shots, shot setup and the Y presets are gone.
 - Speed, P, I and F are changed with the D-PAD on gamepad 1 and saved by themselves. Default speed 3000.
 - Autonomous uses the same speed and PID as teleop.

@@ -21,7 +21,8 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  */
 public final class IntakeAndIndex {
     public static final double INTAKE_POWER = 0.95;
-    public static final double INDEX_FEED_POWER = 0.95;
+    /** Feeding the shooter is the one job where the belt cannot be too quick: full power. */
+    public static final double INDEX_FEED_POWER = 1.0;
     /**
      * Spitting pollen back out: the belt runs backwards at the same power as the intake
      * roller, so the two move pollen at the same rate and nothing bunches up between them.
@@ -34,6 +35,7 @@ public final class IntakeAndIndex {
 
     /** Full power is reached in 1/8 of a second (slower on a tired battery). */
     private static final double POWER_RISE_PER_SECOND = 8.0;
+    private static final double INDEX_RISE_PER_SECOND = 32.0;
 
     private final DcMotor intakeMotor;
     private final DcMotor indexMotor;
@@ -98,7 +100,10 @@ public final class IntakeAndIndex {
         lastUpdateNanos = now;
         double maxRise = POWER_RISE_PER_SECOND * battery.accelLimit() * dt;
         intakePower = ramp(intakePower, wantedIntake, maxRise);
-        indexPower = ramp(indexPower, wantedIndex, maxRise);
+        // The belt is a small motor, and a pollen that arrives slowly sits against the
+        // flywheels and drags them. So it gets up to speed four times quicker than the
+        // intake, and the battery guard does not slow it down.
+        indexPower = ramp(indexPower, wantedIndex, INDEX_RISE_PER_SECOND * dt);
         write();
     }
 

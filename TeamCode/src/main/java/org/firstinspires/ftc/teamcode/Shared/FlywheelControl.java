@@ -40,6 +40,17 @@ public final class FlywheelControl {
     // motor spins 6000 rpm at 12 V, so every HD Hex tops out at 2800 ticks/s whatever gearbox
     // is on it. A target above that is allowed: it just means full power.
     public static final double MAX_TICKS_PER_SECOND = 2800;
+    /**
+     * A target at or above the top speed means "flat out", and flat out is done the simple
+     * way: full power straight to both motors. No correction, no current cap, no wheel
+     * matching, and nothing that depends on an encoder. All of those can only ever take
+     * power away, and when the answer is always "everything" there is nothing for them to
+     * decide. It also makes one thing certain: if a shot is weak at flat out, the software
+     * is not holding the wheels back, so the cause is on the robot.
+     * The power still rises over a third of a second rather than in one step, so two motors
+     * starting from rest do not pull the battery down hard enough to restart a hub.
+     */
+    private static final double FLAT_OUT_RISE_PER_SECOND = 3.0;
 
     /**
      * Which way "forwards" (shooting) is. Defined once here so teleop and autonomous can never
@@ -276,8 +287,11 @@ public final class FlywheelControl {
         power = target == 0 ? 0 : nextPower(measured, dt);
         updateMismatch(dt);
         // mismatch is "how far the right wheel is ahead of the left".
-        rightPower = matched(power, mismatch, matchBuilt);
-        leftPower = matched(power, -mismatch, -matchBuilt);
+        // Flat out both wheels get the same full power. Matching them there could only mean
+        // slowing the faster one down, which throws away exactly the speed that was asked for.
+        boolean flatOut = isFlatOut();
+        rightPower = flatOut ? power : matched(power, mismatch, matchBuilt);
+        leftPower = flatOut ? power : matched(power, -mismatch, -matchBuilt);
         boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
                 || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
                 || (power == 0 && (sentRight != 0 || sentLeft != 0));
@@ -337,8 +351,18 @@ public final class FlywheelControl {
         return 0.5 * (r + l);
     }
 
+    /** True when the target is at or above the top speed: full power, no speed control. */
+    public boolean isFlatOut() {
+        return Math.abs(target) >= MAX_TICKS_PER_SECOND;
+    }
+
     private double nextPower(double measured, double dt) {
         double direction = Math.signum(target);
+        if (isFlatOut()) {
+            integral = 0;
+            double step = FLAT_OUT_RISE_PER_SECOND * dt;
+            return power + Math.max(-step, Math.min(step, direction - power));
+        }
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
             // close to the target, and easing the power in does the current cap's job.
