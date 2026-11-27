@@ -56,7 +56,7 @@ With nothing saved, the shooter uses the Y preset at every distance and the came
 - X deletes the saved shot nearest to where you are.
 - Between two saved distances it uses a speed in between. Closer than the closest saved shot it uses that shot's speed. Further than the furthest it climbs to the HIGH preset over 3 feet, so one shot saved up close can never make a long shot weak.
 - A saved shot beats the preset whenever the camera sees the hive. If shots are suddenly weak with the camera plugged in, look at the "Shot speed" line: "from SAVED SHOTS" means a saved shot is setting the speed. Fix it in shot setup (save the right speed there, or X to delete).
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then A with the camera NOT seeing the hive. It is kept across restarts. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
+- Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then B. It is kept across restarts. The INIT screen shows HIGH, LOW and the saved shots, so a wrong number is seen before the match. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
 - Autonomous uses the same saved shots when its camera can see the hive.
 - The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
 - If the camera is moved or re-angled, save the shots again.
@@ -245,6 +245,8 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27**
+- Shots were still weak with no tag in view. For one day, A in shot setup overwrote the HIGH preset whenever the camera had no distance, so a speed tuned for a close shot could become the speed for everything (the autos too). A now only saves against a distance; B is the button that changes a preset. The saved presets from that day are no longer read, so HIGH is back to 2300.
+- The teleop INIT screen shows the HIGH and LOW speeds and the saved shots.
 - Autonomous shoots at the teleop HIGH preset (was its own 2100). Change HIGH from the gamepad and the autos follow.
 - Shots were far too weak with the Limelight plugged in and fine with it unplugged. It was not power: with the camera seeing the hive, the speed came from saved shots, and the saved speeds were too low. The old saved-shot file is no longer read (new file name), so the list starts empty and the preset is used until shots are saved again.
 - A saved shot no longer applies to shots further away than it: past the furthest saved shot the speed climbs to the HIGH preset.

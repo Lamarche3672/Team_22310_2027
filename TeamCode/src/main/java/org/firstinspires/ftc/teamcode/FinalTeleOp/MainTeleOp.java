@@ -121,6 +121,7 @@ public class MainTeleOp extends OpMode {
         chooseAlliance(gamepad2, 1);
         telemetry.addLine("ALLIANCE: " + HiveAim.allianceName() + "   (X = blue, B = red)");
         telemetry.addLine("Keep robot STILL during calibration; wait for Pinpoint READY.");
+        if (shooterOk) telemetry.addLine(shooter.describeSpeeds());
         addDriveTelemetry();
         telemetry.update();
     }

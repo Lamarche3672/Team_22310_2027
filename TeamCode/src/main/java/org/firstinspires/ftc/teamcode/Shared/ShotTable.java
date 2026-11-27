@@ -29,7 +29,10 @@ public final class ShotTable {
     private static final String FILE_NAME = "shot_speeds_v2.txt";
     /** Past the furthest saved shot, the speed climbs to the far speed over this many inches. */
     public static final double FAR_RAMP_INCHES = 36;
-    private static final String PRESET_FILE_NAME = "shot_presets.txt";
+    // "_v2" for the same reason as the shot list: for one day the A button in shot setup
+    // overwrote the HIGH preset whenever the camera had no distance, so a speed meant for a
+    // close shot could end up as the speed for everything. That file is never read again.
+    private static final String PRESET_FILE_NAME = "shot_presets_v2.txt";
     /**
      * The Y presets before anybody has saved their own. One place, so teleop and autonomous
      * start from the same number. HIGH is the back-wall shot.

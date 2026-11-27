@@ -18,8 +18,8 @@ import java.util.List;
  *   LEFT TRIGGER         run the wheels backwards, slower than a shot (part of "spit everything out")
  *   Y                    backup speed high / low, used when the camera cannot see the hive
  *   BACK                 open / close shot setup
- *     in shot setup:  D-PAD up/down = speed,  A = save for this distance,  X = delete nearest
- *                     (with no hive in view, A saves the speed as the selected Y preset)
+ *     in shot setup:  D-PAD up/down = speed,  A = save for this distance,  X = delete nearest,
+ *                     B = make this speed the Y preset that is selected (HIGH or LOW)
  *
  * Where the speed comes from, best first:
  *   1. the saved shots (ShotTable) and the hive distance from the camera. With nothing
@@ -101,6 +101,11 @@ public class Shooter {
         return shotSpeed;
     }
 
+    /** The speeds this robot will shoot at, for the INIT screen: wrong numbers show before a match, not during. */
+    public String describeSpeeds() {
+        return String.format("Shooter: HIGH %.0f, LOW %.0f. Saved shots: %s", highVelocity, lowVelocity, ShotTable.describe(shotPoints));
+    }
+
     /**
      * 1 = the index may run, 0 = not yet. In teleop the driver is in charge: LEFT BUMPER
      * always runs the index, at once. (It used to wait for the flywheels, and on the real
@@ -132,10 +137,12 @@ public class Shooter {
         // START + A is how gamepad 1 is paired. That must not count as "save".
         boolean savePressed = gamepad1.aWasPressed() && !gamepad1.start;
         boolean deletePressed = gamepad1.xWasPressed();
+        // START + B is how gamepad 2 is paired. That must not count either.
+        boolean presetPressed = gamepad1.bWasPressed() && !gamepad1.start;
         feeding = gamepad1.left_bumper;
 
         if (setupOpen) {
-            runShotSetup(upPressed, downPressed, savePressed, deletePressed, now);
+            runShotSetup(upPressed, downPressed, savePressed, deletePressed, presetPressed, now);
         } else {
             chooseSpeed(feeding, now);
         }
@@ -200,14 +207,14 @@ public class Shooter {
             telemetry.addData("Hive distance", Double.isFinite(hiveDistance)
                     ? String.format("%.0f in", hiveDistance) : "camera can't see the hive");
             telemetry.addLine("D-PAD up/down = speed.  A = save for this distance.  X = delete nearest.");
-            telemetry.addLine("Camera can't see the hive? A saves it as the Y preset instead.");
+            telemetry.addLine("B = make this speed the " + (highSelected ? "HIGH" : "LOW") + " preset (the speed used when nothing is saved).");
             if (now - saveMessageNanos < 3_000_000_000L && !saveMessage.isEmpty()) telemetry.addLine(saveMessage);
             telemetry.addData("Saved shots", ShotTable.describe(shotPoints));
         }
     }
 
     /** Shot setup: the driver sets the speed by hand and saves it against the current distance. */
-    private void runShotSetup(boolean up, boolean down, boolean save, boolean delete, long now) {
+    private void runShotSetup(boolean up, boolean down, boolean save, boolean delete, boolean preset, long now) {
         usingDistance = false;
         if (up) shotSpeed += SPEED_STEP;
         if (down) shotSpeed -= SPEED_STEP;
@@ -215,18 +222,26 @@ public class Shooter {
 
         if (save) {
             if (!Double.isFinite(hiveDistance)) {
-                // No distance to save it against, so it becomes the Y preset that is selected.
-                if (highSelected) highVelocity = shotSpeed;
-                else lowVelocity = shotSpeed;
-                saveMessage = ShotTable.savePresets(highVelocity, lowVelocity)
-                        ? String.format("SAVED %.0f as the %s preset (camera can't see the hive)", shotSpeed, highSelected ? "HIGH" : "LOW")
-                        : "could not save";
+                // A only ever saves against a distance. It used to fall back to overwriting
+                // the preset here, and a speed tuned for a close shot then became the speed
+                // for every shot. Changing a preset is its own button now (B).
+                saveMessage = "NOT saved: the camera has no distance to the hive. (B changes the "
+                        + (highSelected ? "HIGH" : "LOW") + " preset instead.)";
             } else if (!ShotTable.add(shotPoints, hiveDistance, shotSpeed)) {
                 saveMessage = "NOT saved: too many shots saved, delete one with X";
             } else {
                 saveMessage = ShotTable.save(shotPoints)
                         ? String.format("SAVED %.0f at %.0f in", shotSpeed, hiveDistance) : "could not save";
             }
+            saveMessageNanos = now;
+        }
+        if (preset) {
+            double before = highSelected ? highVelocity : lowVelocity;
+            if (highSelected) highVelocity = shotSpeed;
+            else lowVelocity = shotSpeed;
+            saveMessage = ShotTable.savePresets(highVelocity, lowVelocity)
+                    ? String.format("%s preset is now %.0f (was %.0f)", highSelected ? "HIGH" : "LOW", shotSpeed, before)
+                    : "could not save the preset";
             saveMessageNanos = now;
         }
         if (delete) {
