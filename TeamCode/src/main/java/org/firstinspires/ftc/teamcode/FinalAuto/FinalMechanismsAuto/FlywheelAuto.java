@@ -8,7 +8,6 @@ import com.pedropathing.ivy.Command;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
-import org.firstinspires.ftc.teamcode.Shared.FeedPulser;
 import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
 import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
 
@@ -30,13 +29,11 @@ public class FlywheelAuto {
 
     private FlywheelControl control;
     private ShooterSettings settings = new ShooterSettings();
-    private final FeedPulser pulser = new FeedPulser();
 
     public void init(HardwareMap hardwareMap, Battery battery) {
         settings = ShooterSettings.load();
         control = new FlywheelControl(hardwareMap, battery);
         control.setGains(settings.p, settings.f, settings.i);
-        pulser.setTimes(settings.feedOnMs, settings.feedOffMs);
         stop();
     }
 
@@ -75,26 +72,8 @@ public class FlywheelAuto {
         return control != null && control.isReady();
     }
 
-    /**
-     * Call every loop while a volley is feeding (wantFeed true), and once with false when it
-     * ends. Returns true while the belt should run: one pollen at a time, the same as teleop.
-     */
-    public boolean beltShouldRun(boolean wantFeed) {
-        return pulser.update(wantFeed, control, System.nanoTime());
-    }
-
-    /** 0 to 1: how hard the index may feed right now. 1 if there are no flywheels to wait for. */
-    public double feedScale() {
-        return control == null ? 1.0 : control.feedScale();
-    }
-
     public Command spinUpCommand(double velocity) {
         return instant(() -> spinUp(resolve(velocity)));
-    }
-
-    /** Waits for the wheels to be ready, but never longer than timeoutMs. */
-    public Command waitUntilReady(double timeoutMs) {
-        return waitUntil(this::isReady).raceWith(waitMs(timeoutMs));
     }
 
     /**

@@ -10,36 +10,35 @@ import org.firstinspires.ftc.teamcode.Shared.HiveAim;
  * One volley in autonomous. Every auto shoots through here, so they all shoot the same way
  * and a fix here fixes all of them.
  *
- *   1. start the flywheels (so they spin up while the robot aims)
- *   2. turn to face the hive using the camera, if it can see it
- *   3. wait until the wheels are ready, and have had MIN_SPIN_UP_MS to get there
- *   4. feed the pollen through for FEED_MS
+ * The timing is fixed and simple on purpose:
+ *
+ *   1. start the flywheels
+ *   2. turn to face the hive using the camera, if it can see it (while the wheels spin up)
+ *   3. wait until the wheels have been spinning for SPIN_UP_MS
+ *   4. feed in pulses: belt on for FEED_ON_MS, off for FEED_PAUSE_MS, and so on, until the
+ *      belt has run for FEED_TOTAL_ON_MS in all. The pauses let each pollen leave on its own
+ *      and give the wheels a moment to get their speed back before the next one.
  *   5. everything off
  *
- * Nothing in here can hang: every wait has a time limit, so a dead camera, a dead flywheel or
- * a jam only costs a second or two and the auto carries on.
+ * It goes by the clock and not by "the wheels say they are ready": on this robot that signal
+ * could not be trusted, and a volley that waits on it either fires early or not at all.
+ * Nothing in here can hang: every step has a fixed length.
  */
 public final class Volley {
 
     /** Longest the robot spends turning to the hive before it shoots as it is. */
     public static final double AIM_TIMEOUT_MS = 1200;
-    /** Longest wait for the flywheels before shooting anyway. */
-    public static final double SPIN_UP_TIMEOUT_MS = 2500;
     /**
-     * The wheels always get at least this long to spin up before the first pollen, whatever
-     * "ready" says. On this robot the flywheel encoders read nothing, so "ready" is only a
-     * guess by the clock, and at 1.5 s the wheels were not up yet: the first auto shot went
-     * nowhere. A driver waits about this long in teleop without thinking about it.
+     * The wheels spin for at least this long before the first pollen. Wheels that were
+     * started earlier (on the drive to the shooting spot) have usually had it already.
      */
-    public static final double MIN_SPIN_UP_MS = 2500;
-    /**
-     * How long a volley feeds for, pauses between pollen included. 2.5 s was not enough on
-     * the real robot: the pollen had not reached the wheels when the belt stopped. In teleop
-     * the driver just holds the bumper until they are gone; this is the auto's version of that.
-     */
-    public static final double FEED_MS = 4500;
-    /** Holding the belt for the wheels before the first pollen may stretch a volley by at most this much. */
-    public static final double MAX_EXTRA_FEED_MS = 1500;
+    public static final double SPIN_UP_MS = 2500;
+    /** The belt runs for this long in all during one volley. */
+    public static final double FEED_TOTAL_ON_MS = 4000;
+    /** One pulse: about one pollen's worth of belt. */
+    public static final double FEED_ON_MS = 1000;
+    /** The gap after each pulse. Four pulses and three gaps make a volley 5.5 s long. */
+    public static final double FEED_PAUSE_MS = 500;
 
     private Volley() { }
 
@@ -50,46 +49,44 @@ public final class Volley {
         return sequential(
                 flywheel.spinUpCommand(velocity),
                 drive.aimAtHive(aim, AIM_TIMEOUT_MS),
-                flywheel.waitUntilReady(SPIN_UP_TIMEOUT_MS),
-                flywheel.waitUntilSpunFor(MIN_SPIN_UP_MS),
+                flywheel.waitUntilSpunFor(SPIN_UP_MS),
                 feed(flywheel, intake),
                 flywheel.stopCommand());
     }
 
-    /**
-     * Feeds for FEED_MS the same way teleop does with LEFT BUMPER held (FeedPulser): the belt
-     * just runs, or goes on / off / on if the team has switched pauses on, and those pauses
-     * count as part of the feed. Before the first
-     * pollen it may hold the belt a moment for the wheels (FlywheelControl.feedScale()); that
-     * wait does not count, up to MAX_EXTRA_FEED_MS.
-     */
+    /** Step 4 above: belt on, pause, belt on, pause, until it has run for FEED_TOTAL_ON_MS. */
     public static Command feed(FlywheelAuto flywheel, IndexIntakeAuto intake) {
         long[] lastNanos = new long[1];
-        double[] feedingMs = new double[1];
-        double[] totalMs = new double[1];
+        long[] phaseStartNanos = new long[1];
+        boolean[] beltOn = new boolean[1];
+        double[] onMs = new double[1];
         return new CommandBuilder()
                 .setStart(() -> {
                     lastNanos[0] = System.nanoTime();
-                    feedingMs[0] = 0;
-                    totalMs[0] = 0;
+                    phaseStartNanos[0] = lastNanos[0];
+                    beltOn[0] = true;
+                    onMs[0] = 0;
                     flywheel.setFeeding(true);
                 })
                 .setExecute(() -> {
                     long now = System.nanoTime();
-                    double elapsedMs = (now - lastNanos[0]) / 1e6;
+                    if (beltOn[0]) onMs[0] += (now - lastNanos[0]) / 1e6;
                     lastNanos[0] = now;
-                    boolean started = flywheel.feedScale() >= 1.0;
-                    boolean beltOn = flywheel.beltShouldRun(started);
-                    intake.feedShooter(beltOn ? 1.0 : 0.0);
-                    if (started) feedingMs[0] += elapsedMs;
-                    totalMs[0] += elapsedMs;
+                    double inPhaseMs = (now - phaseStartNanos[0]) / 1e6;
+                    if (beltOn[0] && inPhaseMs >= FEED_ON_MS) {
+                        beltOn[0] = false;
+                        phaseStartNanos[0] = now;
+                    } else if (!beltOn[0] && inPhaseMs >= FEED_PAUSE_MS) {
+                        beltOn[0] = true;
+                        phaseStartNanos[0] = now;
+                    }
+                    intake.feedShooter(beltOn[0] ? 1.0 : 0.0);
                 })
-                .setDone(() -> feedingMs[0] >= FEED_MS || totalMs[0] >= FEED_MS + MAX_EXTRA_FEED_MS)
+                .setDone(() -> onMs[0] >= FEED_TOTAL_ON_MS)
                 // Also runs when the park deadline cuts a volley short, so the feed never stays on.
                 .setEnd(reason -> {
                     intake.stop();
                     flywheel.setFeeding(false);
-                    flywheel.beltShouldRun(false);
                 });
     }
 }

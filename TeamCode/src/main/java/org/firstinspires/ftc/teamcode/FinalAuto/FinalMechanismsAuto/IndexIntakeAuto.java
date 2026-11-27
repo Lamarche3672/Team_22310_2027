@@ -30,7 +30,7 @@ public class IndexIntakeAuto {
     }
 
     /**
-     * Push pollen into the flywheels. scale 0 to 1, see FlywheelControl.feedScale().
+     * Push pollen into the flywheels: 1 = belt on, 0 = belt off (the pauses in a volley).
      *
      * Only the index runs, the same as LEFT BUMPER in teleop. The intake used to run here too,
      * but measured on the robot the flywheels pull about 10 A and the index 6 A, all through

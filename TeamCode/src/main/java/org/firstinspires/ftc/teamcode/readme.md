@@ -126,7 +126,8 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
 - Shot speed in auto: the same set speed, P, I and F as teleop (the numbers changed with the D-PAD on gamepad 1). The INIT screen shows them as "Shooter".
 - The strong auto shoots both volleys from the start side, at the cell that is up when the match starts, so it scores whether or not the hive tips. To go back to shooting the second volley from across the field, set `SECOND_SHOT_FROM_START_SIDE` to false in `RedAllianceStrong.java`.
-- Each volley: the wheels get at least 2.5 s to spin up, then the index feeds for 4.5 s.
+- Each volley: the wheels spin for 2.5 s, then the index feeds in pulses: on 1 s, off 0.5 s, four times, so the belt runs 4 s in all and each pollen leaves on its own. Only the index runs during the feed.
+- Garden run: the robot finishes turning toward the garden early, drives the last stretch in a straight line, lets go of its wheels when it arrives, then backs straight out before turning toward the hive.
 - Every auto stops scoring at 24 s no matter what and parks, using whatever time is left up to 29 s. It selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
@@ -236,7 +237,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | Auto aim | top of `Shared/HiveAim.java` |
 | Battery limits | top of `Shared/Battery.java` |
 | Stick feel, slow mode speed | top of `MecanumDriveFinal.java` |
-| How long auto feeds a volley | `FEED_MS` in `Volley.java` |
+| Auto volley timing (spin-up, pulse, pause, total feed) | top of `Volley.java` |
 | Pedro tuning | `FinalAuto/pedro/PedroTuning/Constants.java` |
 
 Change the number instead of reverting a whole file.
@@ -253,6 +254,10 @@ No robot was available, so everything was checked on a laptop:
 That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
 ## What changed
+
+**Nov 27 (night)**
+- Auto volleys run on fixed timing: 2.5 s spin-up, then four 1 s pulses of the index with 0.5 s pauses. The autos no longer wait on a "ready" signal.
+- Garden run no longer spins among the pollen. The end point was touching both walls, so the robot kept pushing and pivoting; it is now 1.5 inches further out, the robot releases its wheels on arrival, and it backs out straight before turning.
 
 **Nov 27 (evening)**
 - What "TEST: Robot check" found on the robot: each flywheel is slow even on its own and draws 5 to 6 A doing it (right 1100, left 1500; healthy is 2500+ at under 1 A), the index draws 6.4 A empty, and the hub with the flywheels gets about 0.9 V less than the other one. The wheels are not fighting each other and reversing one changes nothing. So the weak shots are friction and power wiring, not a setting.
