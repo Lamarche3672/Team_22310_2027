@@ -51,8 +51,13 @@ public class RedAllianceStrong extends AutoBase {
     private static final double GARDEN_SPEED_INCHES_PER_SECOND = 30;
     /** The turn toward the garden is finished 40% of the way along, so the intake arrives facing it. */
     private static final double GARDEN_TURN_DONE_AT = 0.4;
-    /** The index creeps while intaking so each pollen makes room for the next. */
-    private static final double GARDEN_INDEX_SPEED = 0.3;
+    /**
+     * How hard the index runs while intaking (0 to 1). It is 0: the belt on this robot is
+     * stiff enough to need most of the motor's strength just to turn, so the 0.3 it used to
+     * get here never moved it. It only sat stalled, pulling amps, through the whole drive.
+     * Teleop intakes with the belt off too.
+     */
+    private static final double GARDEN_INDEX_SPEED = 0.0;
     /** A short pause at the end of the garden for the last pollen to come in. */
     private static final double GARDEN_DWELL_MS = 400;
 

@@ -35,7 +35,7 @@ public final class IntakeAndIndex {
 
     /** Full power is reached in 1/8 of a second (slower on a tired battery). */
     private static final double POWER_RISE_PER_SECOND = 8.0;
-    private static final double INDEX_RISE_PER_SECOND = 32.0;
+    private static final double INDEX_RISE_PER_SECOND = 12.0;
 
     private final DcMotor intakeMotor;
     private final DcMotor indexMotor;
@@ -100,9 +100,10 @@ public final class IntakeAndIndex {
         lastUpdateNanos = now;
         double maxRise = POWER_RISE_PER_SECOND * battery.accelLimit() * dt;
         intakePower = ramp(intakePower, wantedIntake, maxRise);
-        // The belt is a small motor, and a pollen that arrives slowly sits against the
-        // flywheels and drags them. So it gets up to speed four times quicker than the
-        // intake, and the battery guard does not slow it down.
+        // A pollen that arrives slowly sits against the flywheels and drags them, so the belt
+        // gets up to speed quicker than the intake and the battery guard does not slow it.
+        // Not instantly, though: the belt is stiff enough to pull 6 A, and a step from 0 to
+        // full on top of the flywheels is one more shove at a battery that has browned out.
         indexPower = ramp(indexPower, wantedIndex, INDEX_RISE_PER_SECOND * dt);
         write();
     }

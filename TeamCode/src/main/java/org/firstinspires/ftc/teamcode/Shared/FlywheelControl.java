@@ -40,17 +40,15 @@ public final class FlywheelControl {
     // motor spins 6000 rpm at 12 V, so every HD Hex tops out at 2800 ticks/s whatever gearbox
     // is on it. A target above that is allowed: it just means full power.
     public static final double MAX_TICKS_PER_SECOND = 2800;
-    /**
-     * A target at or above the top speed means "flat out", and flat out is done the simple
-     * way: full power straight to both motors. No correction, no current cap, no wheel
-     * matching, and nothing that depends on an encoder. All of those can only ever take
-     * power away, and when the answer is always "everything" there is nothing for them to
-     * decide. It also makes one thing certain: if a shot is weak at flat out, the software
-     * is not holding the wheels back, so the cause is on the robot.
-     * The power still rises over a third of a second rather than in one step, so two motors
-     * starting from rest do not pull the battery down hard enough to restart a hub.
-     */
-    private static final double FLAT_OUT_RISE_PER_SECOND = 3.0;
+    // A target at or above the top speed means "flat out": the motors are simply asked for
+    // full power, with no speed correction and no wheel matching (both could only take power
+    // away). So a weak shot at flat out is never the speed control holding the wheels back.
+    //
+    // What flat out does NOT skip is the soft start. For a day it did: full power went to both
+    // motors a third of a second after the button, each pulled its full stall current, and
+    // with the drive moving at the same moment the battery fell to 5.3 V and both hubs
+    // restarted in the middle of a run. The spin-up current cap below costs a few tenths of
+    // a second on the way up and nothing once the wheels are turning.
 
     /**
      * Which way "forwards" (shooting) is. Defined once here so teleop and autonomous can never
@@ -129,7 +127,7 @@ public final class FlywheelControl {
     /** Both wheels driven and both reading nothing for this long: no encoders, run without them. */
     private static final double NO_READING_SECONDS = 0.5;
     /** Without a speed reading the current cannot be capped, so the power is eased in instead (per second). */
-    private static final double BLIND_POWER_RISE_PER_SECOND = 2.0;
+    private static final double BLIND_POWER_RISE_PER_SECOND = 1.2;
     /** Without a speed reading "ready" can only go by the clock. */
     public static final double BLIND_READY_MS = 1500;
     /** Skip motor writes that change the power by less than this; each write costs loop time. */
@@ -363,34 +361,43 @@ public final class FlywheelControl {
 
     private double nextPower(double measured, double dt) {
         double direction = Math.signum(target);
-        if (isFlatOut()) {
-            integral = 0;
-            double step = FLAT_OUT_RISE_PER_SECOND * dt;
-            return power + Math.max(-step, Math.min(step, direction - power));
-        }
+        boolean flatOut = isFlatOut();
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
-            // close to the target, and easing the power in does the current cap's job.
-            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
+            // close to the target (flat out: simply full power), and easing the power in
+            // slowly does the current cap's job.
+            double open = flatOut ? direction
+                    : Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
             double step = BLIND_POWER_RISE_PER_SECOND * dt;
             integral = 0;
+            // Still on the way up: the drive and intake should go easy until we are there.
+            if (Math.abs(open - power) > step) battery.noteFlywheelSpinUp();
             return power + Math.max(-step, Math.min(step, open - power));
         }
-        double error = target - measured;
 
-        // Only integrate near the target. Integrating during the whole spin-up would wind the
-        // term up and overshoot.
-        if (Math.abs(error) < INTEGRATE_WITHIN) integral += error * dt;
-        double integralPower = i / 1000.0 * integral;
-        if (Math.abs(integralPower) > MAX_INTEGRAL_POWER) {
-            integralPower = Math.signum(integralPower) * MAX_INTEGRAL_POWER;
-            integral = integralPower * 1000.0 / Math.max(i, 1e-9);
+        double wanted;
+        if (flatOut) {
+            // Everything the motors have. Nothing to work out, but it still goes through the
+            // current cap below on the way up.
+            integral = 0;
+            wanted = direction;
+        } else {
+            double error = target - measured;
+
+            // Only integrate near the target. Integrating during the whole spin-up would wind
+            // the term up and overshoot.
+            if (Math.abs(error) < INTEGRATE_WITHIN) integral += error * dt;
+            double integralPower = i / 1000.0 * integral;
+            if (Math.abs(integralPower) > MAX_INTEGRAL_POWER) {
+                integralPower = Math.signum(integralPower) * MAX_INTEGRAL_POWER;
+                integral = integralPower * 1000.0 / Math.max(i, 1e-9);
+            }
+
+            wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
+                    + p / 1000.0 * error + integralPower + feedBoost(error);
+            // Never push against the direction we want to spin; over speed we just ease off.
+            wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
         }
-
-        double wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
-                + p / 1000.0 * error + integralPower + feedBoost(error);
-        // Never push against the direction we want to spin; over speed we just ease off.
-        wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
 
         // Current limit. A spinning motor generates its own voltage ("back-EMF"); the current
         // is set by how far the voltage we apply is from that. Staying within `headroom` of it

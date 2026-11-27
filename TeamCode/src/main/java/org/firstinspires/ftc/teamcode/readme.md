@@ -256,6 +256,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (night)**
+- Brownout fix. The battery fell to 5.3 V in a run and both hubs restarted. Full-power flywheels were starting with no soft start (each motor pulling its full stall current at once) while the drive was moving. The spin-up current cap is back for full power too, the drive is told to go easy while the wheels spin up, the index no longer starts in one step, and the index no longer sits stalled during the garden run. In the autos the drive is capped at 75% of top speed, which also caps the power it takes off the line (Pedro otherwise starts every path at 100%).
 - Auto volleys run on fixed timing: 2.5 s spin-up, then four 1 s pulses of the index with 0.5 s pauses. The autos no longer wait on a "ready" signal.
 - Garden run no longer spins among the pollen. The end point was touching both walls, so the robot kept pushing and pivoting; it is now 1.5 inches further out, the robot releases its wheels on arrival, and it backs out straight before turning.
 
