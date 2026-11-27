@@ -13,8 +13,8 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 | RIGHT TRIGGER | Intake |
 | LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
 | RIGHT BUMPER (hold) | Spin up the shooter to the set speed |
-| LEFT BUMPER (hold) | Shoot: runs the index straight away |
-| D-PAD left / right | Pick a shooter number on the screen: Speed, P, I or F |
+| LEFT BUMPER (hold) | Shoot: feeds one pollen at a time for as long as it is held |
+| D-PAD left / right | Pick a shooter number on the screen: Speed, P, I, F, Feed on, Feed off |
 | D-PAD up / down | Change that number (hold to keep going). Saved by itself |
 | X (hold 1 second) | Shooter numbers back to default |
 
@@ -46,7 +46,7 @@ The camera works out which cell is up by itself: when it can see both of our sti
 
 There is one flywheel speed. The camera does not change it. What the screen shows is what the wheels are asked for.
 
-On gamepad 1 the screen shows four lines, with `>>` marking the one the D-PAD changes:
+On gamepad 1 the screen shows six lines, with `>>` marking the one the D-PAD changes:
 
 | Line | Default | One press | What it does |
 |---|---|---|---|
@@ -54,13 +54,18 @@ On gamepad 1 the screen shows four lines, with `>>` marking the one the D-PAD ch
 | P | 0.70 | 0.05 | How hard it pushes back when the speed is off. Wheels hunting up and down: lower it |
 | I | 0.50 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
 | F | 1.00 | 0.01 | The base power for a speed. Speed sits well under the target everywhere: raise it |
+| Feed on (ms) | 150 | 25 | How long the belt runs to hand over ONE pollen. Two go at once: lower it. A pulse moves nothing: raise it |
+| Feed off (ms) | 450 | 50 | How long the belt then waits for the wheels to get their speed back. Later pollen fall short: raise it. 0 = no pauses |
 
 - D-PAD left / right picks the line, up / down changes it. Hold it down to keep stepping.
 - The numbers are saved on the Control Hub when you let go, and are still there after a restart or a new install.
-- Autonomous uses the same four numbers. The auto INIT screen shows them.
+- Autonomous uses the same numbers. The auto INIT screen shows them.
 - Hold X for a second to go back to the defaults.
 - LEFT TRIGGER runs the wheels backwards at 1600.
 - Below 2800 the two wheels are held within 50 of each other. The flywheel line shows how far apart they are and names the slow wheel if they are not. At full power they are not matched: the only way to match there is to slow the faster wheel, which throws speed away. A wheel that is slow at full power has a mechanical problem (drag, a slipping hub, a tired motor).
+- **One pollen at a time.** While LEFT BUMPER is held the belt goes on, off, on, off. With the belt simply running the pollen arrive nose to tail and the second hits wheels that have not recovered from the first, which is why several came out weakly together. With a working encoder the pause also waits for the wheels to be back up to speed (half a second longer at most).
+- **Where the encoders are.** The flywheel encoder cables are in the Expansion Hub's encoder ports 0 and 1 (beside the intake and index motor ports), not beside the flywheel motors on 2 and 3. The code finds them there by itself: the first time the wheels start it leads with the right wheel for a fifth of a second and sees which port moves. The screen then says "Flywheel speed is read from encoder ports 0 and 1 (port N = right wheel)".
+- With encoders working, a Speed below 2800 is held properly (P, I, F and wheel matching all work). 3000 is still plain full power with no control; for the most even volleys try about 2500.
 - At full power (anything near 2800 or above) the wheels have nothing in hand, so they slow a little while pollen go through. If the first pollen flies further than the rest, lower Speed until they match (around 2300 to 2400).
 
 ## Auto aim
@@ -206,6 +211,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 | EXPANSION HUB NOT FOUND | The Control Hub could not find the Expansion Hub when the robot started, so the intake, index and flywheels do not exist (driving still works: those motors are on the Control Hub). The names are not the problem. Check the Expansion Hub's power and the cable between the hubs, then restart the robot |
 | INTAKE OFF / FLYWHEEL OFF / AUTO AIM OFF | That device is missing from the robot config. Everything else still works |
 | A flywheel encoder counts backwards (handled in code) | That motor's encoder and power wires are opposite ways round. The code flips the reading, so nothing to do before a match |
+| Flywheel speed is read from encoder ports 0 and 1 | Normal on this robot: that is where the flywheel encoder cables are plugged in. Nothing to do |
 | NO FLYWHEEL ENCODERS | Neither flywheel encoder reads anything. The wheels still spin, on power alone, but the speed is not held and shots drift with the battery. Check both encoder cables |
 | AIM: ... WOBBLING | The aim swung past the hive and calmed itself down. Lower `KP` and `KD` in `Shared/HiveAim.java` |
 | ROBOT-CENTRIC | No Pinpoint heading. Driving works, auto aim does not |
@@ -247,6 +253,10 @@ No robot was available, so everything was checked on a laptop:
 That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
 ## What changed
+
+**Nov 27 (evening)**
+- The flywheel encoders were never dead: their cables are in encoder ports 0 and 1 while the motors are on 2 and 3. The code now reads them there and works out which wheel is which, so real speed control and wheel matching work for the first time.
+- LEFT BUMPER feeds one pollen at a time (belt on 150 ms, off 450 ms, both on the D-PAD menu). Autonomous feeds the same way.
 
 **Nov 27 (later)**
 - Strong autos: the garden pollen are now shot from beside the start position, into the same cell as the preloads, instead of from across the field. The far shot only scored if the hive had tipped.

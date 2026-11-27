@@ -33,12 +33,13 @@ public final class Volley {
      */
     public static final double MIN_SPIN_UP_MS = 2500;
     /**
-     * How long the index runs to push 4 pollen through. 2.5 s was not enough on the real
-     * robot: the pollen had not reached the wheels when the belt stopped. In teleop the
-     * driver just holds the bumper until they are gone; this is the auto's version of that.
+     * How long a volley feeds for, pauses between pollen included. 2.5 s was not enough on
+     * the real robot: the pollen had not reached the wheels when the belt stopped. In teleop
+     * the driver just holds the bumper until they are gone; this is the auto's version of that.
+     * At the default 150 ms on / 450 ms off it is seven or eight pollen's worth for four.
      */
     public static final double FEED_MS = 4500;
-    /** Waiting for the wheels between pollen may stretch a volley by at most this much. */
+    /** Holding the belt for the wheels before the first pollen may stretch a volley by at most this much. */
     public static final double MAX_EXTRA_FEED_MS = 1500;
 
     private Volley() { }
@@ -57,18 +58,19 @@ public final class Volley {
     }
 
     /**
-     * Runs the index into the flywheels until it has fed for FEED_MS. How hard it feeds comes
-     * from the flywheels every loop: full when they are at speed, easing off while they catch
-     * up after a pollen. Time spent waiting does not count as feeding, up to a limit.
+     * Feeds for FEED_MS, one pollen at a time: the belt goes on / off / on the same way it
+     * does in teleop (FeedPulser), and the pauses count as part of the feed. Before the first
+     * pollen it may hold the belt a moment for the wheels (FlywheelControl.feedScale()); that
+     * wait does not count, up to MAX_EXTRA_FEED_MS.
      */
     public static Command feed(FlywheelAuto flywheel, IndexIntakeAuto intake) {
         long[] lastNanos = new long[1];
-        double[] fedMs = new double[1];
+        double[] feedingMs = new double[1];
         double[] totalMs = new double[1];
         return new CommandBuilder()
                 .setStart(() -> {
                     lastNanos[0] = System.nanoTime();
-                    fedMs[0] = 0;
+                    feedingMs[0] = 0;
                     totalMs[0] = 0;
                     flywheel.setFeeding(true);
                 })
@@ -76,16 +78,18 @@ public final class Volley {
                     long now = System.nanoTime();
                     double elapsedMs = (now - lastNanos[0]) / 1e6;
                     lastNanos[0] = now;
-                    double scale = flywheel.feedScale();
-                    intake.feedShooter(scale);
-                    fedMs[0] += elapsedMs * scale;
+                    boolean started = flywheel.feedScale() >= 1.0;
+                    boolean beltOn = flywheel.beltShouldRun(started);
+                    intake.feedShooter(beltOn ? 1.0 : 0.0);
+                    if (started) feedingMs[0] += elapsedMs;
                     totalMs[0] += elapsedMs;
                 })
-                .setDone(() -> fedMs[0] >= FEED_MS || totalMs[0] >= FEED_MS + MAX_EXTRA_FEED_MS)
+                .setDone(() -> feedingMs[0] >= FEED_MS || totalMs[0] >= FEED_MS + MAX_EXTRA_FEED_MS)
                 // Also runs when the park deadline cuts a volley short, so the feed never stays on.
                 .setEnd(reason -> {
                     intake.stop();
                     flywheel.setFeeding(false);
+                    flywheel.beltShouldRun(false);
                 });
     }
 }

@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
+import org.firstinspires.ftc.teamcode.Shared.FeedPulser;
 import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
 import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
 
@@ -13,7 +14,7 @@ import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
  *
  *   RIGHT BUMPER (hold)   spin the wheels up to the set speed
  *   LEFT TRIGGER          run the wheels backwards, slower than a shot (part of "spit everything out")
- *   D-PAD left / right    pick a line on the screen: Speed, P, I or F
+ *   D-PAD left / right    pick a line on the screen: Speed, P, I, F, Feed on, Feed off
  *   D-PAD up / down       change the picked number (hold it down to keep going)
  *   X (hold 1 second)     put all four numbers back to their defaults
  *
@@ -35,6 +36,8 @@ public class Shooter {
     private static final double P_STEP = 0.05;
     private static final double I_STEP = 0.05;
     private static final double F_STEP = 0.01;
+    private static final double FEED_ON_STEP = 25;
+    private static final double FEED_OFF_STEP = 50;
     // Holding the D-PAD: after this long it starts stepping by itself, this often.
     private static final long REPEAT_AFTER_NANOS = 400_000_000L;
     private static final long REPEAT_EVERY_NANOS = 100_000_000L;
@@ -45,10 +48,13 @@ public class Shooter {
     private static final double COAST_BELOW = 200;
     private static final double TRIGGER_PRESSED = 0.1;
 
-    private static final String[] LINE_NAMES = {"Speed", "P", "I", "F"};
+    private static final String[] LINE_NAMES = {"Speed", "P", "I", "F", "Feed on (ms)", "Feed off (ms)"};
 
     private FlywheelControl flywheels;
     private ShooterSettings settings = new ShooterSettings();
+    /** Turns a held LEFT BUMPER into one pollen at a time. */
+    private final FeedPulser pulser = new FeedPulser();
+    private boolean beltMayRun;
 
     // The little menu on the screen.
     private int selectedLine;
@@ -92,19 +98,20 @@ public class Shooter {
 
     private void applyGains() {
         flywheels.setGains(settings.p, settings.f, settings.i);
+        pulser.setTimes(settings.feedOnMs, settings.feedOffMs);
     }
 
     /**
-     * 1 = the index may run, 0 = not yet. In teleop the driver is in charge: LEFT BUMPER
-     * always runs the index, at once. (It used to wait for the flywheels, and on the real
-     * robot that wait left the index standing still.) The gamepad buzzes and the screen says
+     * 1 = the index should run right now, 0 = not. While LEFT BUMPER is held the belt starts
+     * at once and then goes on / off / on, one pollen at a time (see FeedPulser). It never
+     * waits for the flywheels before the first pollen: the gamepad buzzes and the screen says
      * READY when the wheels are up, and that is the cue to press it.
      *
-     * The one exception is the half second after an outtake while the wheels are still
-     * turning backwards: a pollen fed into that would be thrown back down the robot.
+     * It is also 0 for the half second after an outtake while the wheels are still turning
+     * backwards: a pollen fed into that would be thrown back down the robot.
      */
     public double feedScale() {
-        return coasting ? 0.0 : 1.0;
+        return beltMayRun ? 1.0 : 0.0;
     }
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
@@ -137,6 +144,7 @@ public class Shooter {
         // Feeding for real: bumper held, wheels going forwards, and the index allowed to move.
         flywheels.setFeeding(feeding && wantSpin && !coasting);
         flywheels.update();
+        beltMayRun = pulser.update(feeding && !coasting, flywheels, now);
 
         boolean ready = wantSpin && !coasting && flywheels.isReady();
         if (ready && !wasReady && now - lastRumbleNanos > 500_000_000L) {
@@ -163,9 +171,10 @@ public class Shooter {
         else if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
 
         // The menu. The arrow marks the number the D-PAD is changing.
-        double[] values = {settings.speed, settings.p, settings.i, settings.f};
+        double[] values = {settings.speed, settings.p, settings.i, settings.f, settings.feedOnMs, settings.feedOffMs};
         for (int line = 0; line < LINE_NAMES.length; line++) {
-            String value = line == 0 ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
+            boolean wholeNumber = line == 0 || line >= 4;
+            String value = wholeNumber ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
             telemetry.addLine((line == selectedLine ? ">> " : "    ") + LINE_NAMES[line] + ":  " + value);
         }
         if (settings.speed >= FlywheelControl.MAX_TICKS_PER_SECOND) {
@@ -199,7 +208,9 @@ public class Shooter {
             if (selectedLine == 0) settings.speed += steps * SPEED_STEP;
             else if (selectedLine == 1) settings.p += steps * P_STEP;
             else if (selectedLine == 2) settings.i += steps * I_STEP;
-            else settings.f += steps * F_STEP;
+            else if (selectedLine == 3) settings.f += steps * F_STEP;
+            else if (selectedLine == 4) settings.feedOnMs += steps * FEED_ON_STEP;
+            else settings.feedOffMs += steps * FEED_OFF_STEP;
             settings.clamp();
             applyGains();
             unsaved = true;

@@ -28,6 +28,12 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  *   - neither reads anything: the wheels run on feedforward alone, eased in over time
  * Before this check a bad reading quietly held the wheels at a fraction of their speed.
  *
+ * One more thing it sorts out by itself: WHERE the flywheel encoders are plugged in. On this
+ * robot the two encoder cables sit in the Expansion Hub's encoder ports 0 and 1 (the ones
+ * that belong to the intake and index motors) while the flywheel motors are on 2 and 3. A
+ * hub does not care which motor an encoder cable came from, so the speed is simply read from
+ * those ports instead. See sortEncoders().
+ *
  * We drive the motors with plain power (RUN_WITHOUT_ENCODER) instead of the hub's built-in
  * velocity mode. The hub's own loop braked hard every time a wheel went slightly over speed,
  * and that brake-push-brake was the stutter we used to have.
@@ -128,6 +134,13 @@ public final class FlywheelControl {
     private static final double BACKWARDS_SECONDS = 0.4;
     /** Both wheels driven and both reading nothing for this long: no encoders, run without them. */
     private static final double NO_READING_SECONDS = 0.5;
+    // Finding the encoders (see sortEncoders): the first time the wheels start from rest, the
+    // right wheel is started this much earlier than the left. Whichever encoder moves first
+    // is the right wheel's. A fifth of a second, once per OpMode.
+    private static final long PROBE_NANOS = 200_000_000L;
+    private static final double PROBE_MOVING = 100;
+    private static final int PROBE_TRIES = 3;
+    private static final double BORROWED_SEEN_SECONDS = 0.3;
     /** Without a speed reading the current cannot be capped, so the power is eased in instead (per second). */
     private static final double BLIND_POWER_RISE_PER_SECOND = 2.0;
     /** Without a speed reading "ready" can only go by the clock. */
@@ -166,6 +179,20 @@ public final class FlywheelControl {
     private double leftBackwardsSeconds;
     private double noReadingSeconds;
     private boolean blind;
+    // Where the flywheel speeds are read from. portZero / portOne are the motors that own
+    // encoder ports 0 and 1 (intake and index); null on a robot without them.
+    private final DcMotorEx portZero;
+    private final DcMotorEx portOne;
+    private boolean encodersSorted;
+    private boolean usingBorrowedPorts;
+    private boolean rightIsPortZero = true;
+    private boolean borrowedMappingKnown;
+    private boolean probing;
+    private long probeStartNanos;
+    private int probesLeft = PROBE_TRIES;
+    private double borrowedSeenSeconds;
+    private double lastPortZero;
+    private double lastPortOne;
     private boolean feeding;
     private long lastUpdateNanos;
     private long lastWriteNanos;
@@ -186,17 +213,33 @@ public final class FlywheelControl {
 
     public FlywheelControl(HardwareMap hardwareMap, Battery battery) {
         this(hardwareMap.get(DcMotorEx.class, "right_flywheel"),
-                hardwareMap.get(DcMotorEx.class, "left_flywheel"), battery);
+                hardwareMap.get(DcMotorEx.class, "left_flywheel"),
+                optionalMotor(hardwareMap, "intake_motor"), optionalMotor(hardwareMap, "index_motor"), battery);
     }
 
     FlywheelControl(DcMotorEx right, DcMotorEx left, Battery battery) {
+        this(right, left, null, null, battery);
+    }
+
+    /** portZero / portOne: the motors on Expansion Hub ports 0 and 1, whose encoder ports may hold the flywheel cables. */
+    FlywheelControl(DcMotorEx right, DcMotorEx left, DcMotorEx portZero, DcMotorEx portOne, Battery battery) {
         this.right = right;
         this.left = left;
+        this.portZero = portZero;
+        this.portOne = portOne;
         this.battery = battery;
         right.setDirection(DIRECTION);
         left.setDirection(DIRECTION);
         configure();
         stop();
+    }
+
+    private static DcMotorEx optionalMotor(HardwareMap hardwareMap, String name) {
+        try {
+            return hardwareMap.get(DcMotorEx.class, name);
+        } catch (RuntimeException notThere) {
+            return null;
+        }
     }
 
     private void configure() {
@@ -227,6 +270,15 @@ public final class FlywheelControl {
             if (feedReference == target) feedReference = ticksPerSecond;
         } else {
             spinStartNanos = System.nanoTime();
+            // First start from rest and we do not yet know where the encoders are: lead with
+            // the right wheel for a moment so the two can be told apart.
+            if (target == 0 && ticksPerSecond != 0 && !encodersSorted && portZero != null && portOne != null
+                    && probesLeft > 0 && Math.abs(lastPortZero) < DEAD_ENCODER_BELOW && Math.abs(lastPortOne) < DEAD_ENCODER_BELOW
+                    && Math.abs(rightVelocity) < DEAD_ENCODER_BELOW && Math.abs(leftVelocity) < DEAD_ENCODER_BELOW) {
+                probing = true;
+                probeStartNanos = spinStartNanos;
+                probesLeft--;
+            }
             atSpeed = false;
             feedReference = Double.NaN;
             feedWaitSinceNanos = 0;
@@ -277,8 +329,17 @@ public final class FlywheelControl {
         // While stopped the speed only matters for telemetry and for "are they still spinning
         // the other way?", so a few reads a second is plenty.
         if (target != 0 || now - lastReadNanos >= IDLE_READ_NANOS) {
-            rightVelocity = rightEncoderSign * right.getVelocity();
-            leftVelocity = leftEncoderSign * left.getVelocity();
+            double ownRight = right.getVelocity();
+            double ownLeft = left.getVelocity();
+            // All four are on the same hub, so with bulk caching the extra two cost nothing.
+            boolean readBorrowed = portZero != null && portOne != null && (usingBorrowedPorts || !encodersSorted);
+            lastPortZero = readBorrowed ? portZero.getVelocity() : 0;
+            lastPortOne = readBorrowed ? portOne.getVelocity() : 0;
+            sortEncoders(ownRight, ownLeft, now, dt);
+            double rawRight = usingBorrowedPorts ? (rightIsPortZero ? lastPortZero : lastPortOne) : ownRight;
+            double rawLeft = usingBorrowedPorts ? (rightIsPortZero ? lastPortOne : lastPortZero) : ownLeft;
+            rightVelocity = rightEncoderSign * rawRight;
+            leftVelocity = leftEncoderSign * rawLeft;
             lastReadNanos = now;
         }
         checkEncoders(dt);
@@ -292,12 +353,73 @@ public final class FlywheelControl {
         boolean flatOut = isFlatOut();
         rightPower = flatOut ? power : matched(power, mismatch, matchBuilt);
         leftPower = flatOut ? power : matched(power, -mismatch, -matchBuilt);
+        if (probing) leftPower = 0;
         boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
                 || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
                 || (power == 0 && (sentRight != 0 || sentLeft != 0));
         write(rightPower, leftPower, changed || now - lastWriteNanos >= RESEND_NANOS);
 
         trackReadiness(measured, now);
+    }
+
+    /**
+     * Works out which encoder ports carry the flywheel speeds. Runs until it has an answer,
+     * then never again in this OpMode.
+     *
+     *  - The flywheel motors' own ports read a speed: nothing to do.
+     *  - Their own ports stay at 0 but ports 0 and 1 come alive when the flywheels are driven:
+     *    the cables are in those ports, so read them there.
+     *  - Which of the two is the right wheel comes from the probe: the right wheel was
+     *    started first, so the port that moved first is the right wheel's.
+     */
+    private void sortEncoders(double ownRight, double ownLeft, long now, double dt) {
+        if (encodersSorted || portZero == null || portOne == null) {
+            probing = false;
+            return;
+        }
+        if (Math.abs(ownRight) > BACKWARDS_ABOVE || Math.abs(ownLeft) > BACKWARDS_ABOVE) {
+            encodersSorted = true;      // an encoder on the flywheels' own ports works
+            probing = false;
+            return;
+        }
+        double zero = Math.abs(lastPortZero);
+        double one = Math.abs(lastPortOne);
+        if (probing) {
+            if (now - probeStartNanos < PROBE_NANOS) return;
+            probing = false;
+            if (Math.max(zero, one) > PROBE_MOVING && Math.min(zero, one) < 0.5 * Math.max(zero, one)) {
+                usingBorrowedPorts = true;
+                borrowedMappingKnown = true;
+                rightIsPortZero = zero > one;
+                // The right wheel is being driven forwards right now, so that fixes its sign.
+                double moved = rightIsPortZero ? lastPortZero : lastPortOne;
+                rightEncoderSign = moved * sentRight < 0 ? -1 : 1;
+                leftEncoderSign = 1;
+                encodersSorted = true;
+                blind = false;
+                noReadingSeconds = 0;
+            }
+            return;
+        }
+        // No answer from a probe (the wheels were already turning, or they are light enough
+        // that both moved at once). Fall back to the plain fact: own ports silent, 0 and 1 alive.
+        boolean driven = Math.abs(sentRight) > DRIVEN_POWER && Math.abs(sentLeft) > DRIVEN_POWER;
+        boolean ownSilent = Math.abs(ownRight) < DEAD_ENCODER_BELOW && Math.abs(ownLeft) < DEAD_ENCODER_BELOW;
+        boolean borrowedAlive = zero > BACKWARDS_ABOVE && one > BACKWARDS_ABOVE;
+        borrowedSeenSeconds = driven && ownSilent && borrowedAlive ? borrowedSeenSeconds + dt : 0;
+        if (borrowedSeenSeconds >= BORROWED_SEEN_SECONDS) {
+            usingBorrowedPorts = true;
+            borrowedMappingKnown = false;
+            rightIsPortZero = true;
+            encodersSorted = true;
+            blind = false;
+            noReadingSeconds = 0;
+        }
+    }
+
+    /** True when there is a real speed to go by: an encoder is answering and the wheels are turning. */
+    public boolean hasSpeedReading() {
+        return !blind && target != 0 && Math.abs(speed()) > 4 * DEAD_ENCODER_BELOW;
     }
 
     /**
@@ -423,7 +545,10 @@ public final class FlywheelControl {
      */
     private void updateMismatch(double dt) {
         boolean bothAlive = Math.abs(rightVelocity) >= DEAD_ENCODER_BELOW && Math.abs(leftVelocity) >= DEAD_ENCODER_BELOW;
-        if (target == 0 || !bothAlive) {
+        // Readings from ports 0 and 1 are only any use for matching if we know which wheel
+        // each one is. Guessing wrong would push the wheels apart instead of together.
+        boolean knowWhichIsWhich = !usingBorrowedPorts || borrowedMappingKnown;
+        if (target == 0 || !bothAlive || !knowWhichIsWhich || probing) {
             mismatch = 0;
             matchBuilt = 0;
             return;
@@ -545,6 +670,11 @@ public final class FlywheelControl {
         if (blind) {
             return "NO FLYWHEEL ENCODERS: running on power alone, so the speed is not held."
                     + " Check both encoder cables.";
+        }
+        if (usingBorrowedPorts) {
+            return borrowedMappingKnown
+                    ? "Flywheel speed is read from encoder ports 0 and 1 (port " + (rightIsPortZero ? 0 : 1) + " = right wheel)."
+                    : "Flywheel speed is read from encoder ports 0 and 1. Which wheel is which is not known yet, so they are not matched.";
         }
         if (rightEncoderSign < 0 && leftEncoderSign < 0) return "Both flywheel encoders count backwards (handled in code).";
         if (rightEncoderSign < 0) return "The RIGHT flywheel encoder counts backwards (handled in code).";

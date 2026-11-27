@@ -36,7 +36,7 @@
 <path d="M 348 294 L 370 294 L 416 304" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="416" cy="304" r="4" fill="#14181F"/>
 <text x="336" y="362" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT BUMPER (hold)</text>
-<text x="336" y="386" font-size="18" text-anchor="end" fill="#C2410C">SHOOT (runs the index)</text>
+<text x="336" y="386" font-size="18" text-anchor="end" fill="#C2410C">SHOOT, one pollen at a time</text>
 <path d="M 348 366 L 370 366 L 394 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="394" cy="352" r="4" fill="#14181F"/>
 <text x="336" y="444" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">D-PAD</text>
