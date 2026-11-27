@@ -255,6 +255,9 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (evening)**
+- What "TEST: Robot check" found on the robot: each flywheel is slow even on its own and draws 5 to 6 A doing it (right 1100, left 1500; healthy is 2500+ at under 1 A), the index draws 6.4 A empty, and the hub with the flywheels gets about 0.9 V less than the other one. The wheels are not fighting each other and reversing one changes nothing. So the weak shots are friction and power wiring, not a setting.
+- Autos: only the index runs while feeding (the intake ran too), to leave more for the flywheels.
+- The robot check now shows both hubs' voltage for each flywheel run and flags a high index current.
 - New test OpMode, "TEST: Robot check" (in the Test group). Press START and it tests the hubs, battery, Pinpoint, camera, flywheels (each alone and both together), intake and index by itself in about 45 seconds, and leaves a report on the screen to photograph. The drive wheels never turn in this test. For the flywheels it says in words what is slowing them. Photos of the Driver Hub showed the wheels reading 840 and 1400 at full power (healthy is 2500+) with the battery falling 2 V, so the shooter is being held back mechanically or the two wheels are fighting.
 - READY now comes up at full power once the wheels have levelled off (it never did, because they were being compared with a target of 3000).
 - The shooter tuning menu has to be opened with BACK. It used to listen to the D-PAD all the time, and shots went short without anybody meaning to lower the speed. The saved numbers from before are not read, so Speed is back to 3000 (full power).

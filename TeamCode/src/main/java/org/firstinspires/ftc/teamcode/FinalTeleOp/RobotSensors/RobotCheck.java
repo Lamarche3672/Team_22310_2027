@@ -62,9 +62,11 @@ public class RobotCheck extends LinearOpMode {
 
     /** The report so far, one short line each, in the order things were tested. */
     private final List<String> report = new ArrayList<>();
-    // What each flywheel run measured: right speed, left speed, right amps, left amps, volts.
+    // What each flywheel run measured: right speed, left speed, right amps, left amps,
+    // lowest hub volts, highest hub volts.
     private final double[][] flywheel = new double[FLYWHEEL_RUNS.length][];
     private double restVolts = Double.NaN;
+    private double indexAmps = Double.NaN;
 
     @Override
     public void runOpMode() {
@@ -163,12 +165,12 @@ public class RobotCheck extends LinearOpMode {
             wheel.setDirection(FlywheelControl.DIRECTION);
             wheel.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         }
-        report.add("FLYWHEELS  speed R/L | amps R/L | volts");
+        report.add("FLYWHEELS  speed R/L | amps R/L | hub volts low/high");
         for (int run = 0; run < FLYWHEEL_RUNS.length && opModeIsActive(); run++) {
             double[] r = runFlywheels(run);
             flywheel[run] = r;
             report.add(r == null ? " " + FLYWHEEL_NAMES[run] + ": stopped early"
-                    : String.format(" %s: %.0f/%.0f | %.1f/%.1f | %.1f", FLYWHEEL_NAMES[run], r[0], r[1], r[2], r[3], r[4]));
+                    : String.format(" %s: %.0f/%.0f | %.1f/%.1f | %.1f/%.1f", FLYWHEEL_NAMES[run], r[0], r[1], r[2], r[3], r[4], r[5]));
             stopFlywheels();
             // Let the wheels stop, so every run starts from rest.
             long until = System.nanoTime() + (long) (COAST_SECONDS * 1e9);
@@ -181,7 +183,7 @@ public class RobotCheck extends LinearOpMode {
 
     /** One flywheel case at full power: the settled speeds, currents and voltage. */
     private double[] runFlywheels(int run) {
-        double[] sum = new double[5];
+        double[] sum = new double[6];
         int samples = 0;
         long start = System.nanoTime();
         while (opModeIsActive()) {
@@ -197,6 +199,7 @@ public class RobotCheck extends LinearOpMode {
                 sum[2] += right.getCurrent(CurrentUnit.AMPS);
                 sum[3] += left.getCurrent(CurrentUnit.AMPS);
                 sum[4] += lowestVolts();
+                sum[5] += highestVolts();
                 samples++;
             }
             show("flywheels: " + FLYWHEEL_NAMES[run]);
@@ -221,6 +224,7 @@ public class RobotCheck extends LinearOpMode {
             return;
         }
         double[] r = runOne(device, power, MECHANISM_RUN_SECONDS, label);
+        if (r != null && label.equals("INDEX")) indexAmps = r[1];
         report.add(r == null ? label + ": stopped early"
                 : String.format("%s: encoder %.0f | %.1f A | %.1f V", label, r[0], r[1], r[2]));
     }
@@ -292,6 +296,15 @@ public class RobotCheck extends LinearOpMode {
         return lowest;
     }
 
+    private double highestVolts() {
+        double highest = Double.NaN;
+        for (VoltageSensor sensor : hardwareMap.voltageSensor) {
+            double volts = sensor.getVoltage();
+            if (volts > 1 && (Double.isNaN(highest) || volts > highest)) highest = volts;
+        }
+        return highest;
+    }
+
     private void show(String status) {
         telemetry.addLine(status);
         for (String line : report) telemetry.addLine(line);
@@ -317,11 +330,17 @@ public class RobotCheck extends LinearOpMode {
             text.append("\nNeither flywheel encoder reads anything: check both encoder cables.");
             return text.toString();
         }
+        // A motor that is slow AND drawing amps is being held back by something mechanical.
+        // (Slow with hardly any amps would be a wiring problem instead.)
+        double rightAmps = Math.max(flywheel[0][2], flywheel[1][2]);
+        double leftAmps = Math.max(flywheel[2][3], flywheel[3][3]);
         if (rightAlone < HEALTHY_FLYWHEEL_SPEED) {
-            text.append(String.format("\nRIGHT wheel is slow on its own (%.0f, healthy is %.0f+): it is dragging.", rightAlone, HEALTHY_FLYWHEEL_SPEED));
+            text.append(String.format("\nRIGHT wheel alone: %.0f at %.1f A (healthy: %.0f+ at under 1 A). %s", rightAlone, rightAmps,
+                    HEALTHY_FLYWHEEL_SPEED, rightAmps > 2 ? "Something is loading it: friction, rubbing, a tight belt." : "Low amps: check its power wires."));
         }
         if (leftAlone < HEALTHY_FLYWHEEL_SPEED) {
-            text.append(String.format("\nLEFT wheel is slow on its own (%.0f, healthy is %.0f+): it is dragging.", leftAlone, HEALTHY_FLYWHEEL_SPEED));
+            text.append(String.format("\nLEFT wheel alone: %.0f at %.1f A (healthy: %.0f+ at under 1 A). %s", leftAlone, leftAmps,
+                    HEALTHY_FLYWHEEL_SPEED, leftAmps > 2 ? "Something is loading it: friction, rubbing, a tight belt." : "Low amps: check its power wires."));
         }
         if (rightReversed > 1.3 * together) {
             text.append("\nMUCH FASTER with the right wheel reversed: the two are fighting in teleop.");
@@ -334,6 +353,15 @@ public class RobotCheck extends LinearOpMode {
         double sag = restVolts - flywheel[4][4];
         if (sag > 1.2) {
             text.append(String.format("\nBattery falls %.1f V with both flywheels on: too much drag, or a weak battery.", sag));
+        }
+        // Both hubs hang off the same battery, so under load they should read nearly the same.
+        // A gap is voltage lost in the power cable between them, before it reaches the motors.
+        double betweenHubs = flywheel[4][5] - flywheel[4][4];
+        if (betweenHubs > 0.4) {
+            text.append(String.format("\nOne hub gets %.1f V less than the other with the flywheels on: the power cable between the hubs is losing it.", betweenHubs));
+        }
+        if (indexAmps > 3.5) {
+            text.append(String.format("\nINDEX draws %.1f A with nothing in it (healthy: under 2 A): the belt is too tight or binding.", indexAmps));
         }
         return text.toString();
     }

@@ -29,9 +29,16 @@ public class IndexIntakeAuto {
         if (motors != null) motors.intake(indexSpeed);
     }
 
-    /** Push pollen into the flywheels. scale 0 to 1, see FlywheelControl.feedScale(). */
+    /**
+     * Push pollen into the flywheels. scale 0 to 1, see FlywheelControl.feedScale().
+     *
+     * Only the index runs, the same as LEFT BUMPER in teleop. The intake used to run here too,
+     * but measured on the robot the flywheels pull about 10 A and the index 6 A, all through
+     * the one hub, and every extra amp there costs flywheel speed at the exact moment a
+     * pollen arrives. The intake's 3 A was load for nothing: the belt feeds on its own.
+     */
     public void feedShooter(double scale) {
-        if (motors != null) motors.feed(scale);
+        if (motors != null) motors.command(0.0, scale);
     }
 
     public void outtake() {
