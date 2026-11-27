@@ -487,7 +487,12 @@ public final class FlywheelControl {
 
     /** Steady, at least half way there, and not above the target (that would be coasting down). */
     private boolean hasLevelledOff(double measured, long now) {
-        return target > 0 && measured >= 0.5 * target && measured <= target + READY_TOLERANCE
+        // "At least half way there" is measured against what the wheels could ever reach, not
+        // against a flat-out target of 3000 that nothing reaches: on the real robot the wheels
+        // top out near 1100 at full power, and READY never came up at all.
+        double halfWay = 0.5 * Math.min(target, MAX_TICKS_PER_SECOND);
+        if (isFlatOut()) halfWay = 4 * DEAD_ENCODER_BELOW;
+        return target > 0 && measured >= halfWay && measured <= target + READY_TOLERANCE
                 && now - levelSinceNanos >= LEVEL_MS * 1e6;
     }
 
