@@ -255,7 +255,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (evening)**
-- New test OpMode, "TEST: Flywheel check" (in the Test group). It runs each flywheel on its own and both together for 35 seconds and says in words what is slowing them. Photos of the Driver Hub showed the wheels reading 840 and 1400 at full power (healthy is 2500+) with the battery falling 2 V, so the shooter is being held back mechanically or the two wheels are fighting.
+- New test OpMode, "TEST: Robot check" (in the Test group). Press START and it tests the hubs, battery, Pinpoint, camera, flywheels (each alone and both together), intake and index by itself in about 45 seconds, and leaves a report on the screen to photograph. The drive wheels never turn in this test. For the flywheels it says in words what is slowing them. Photos of the Driver Hub showed the wheels reading 840 and 1400 at full power (healthy is 2500+) with the battery falling 2 V, so the shooter is being held back mechanically or the two wheels are fighting.
 - READY now comes up at full power once the wheels have levelled off (it never did, because they were being compared with a target of 3000).
 - The shooter tuning menu has to be opened with BACK. It used to listen to the D-PAD all the time, and shots went short without anybody meaning to lower the speed. The saved numbers from before are not read, so Speed is back to 3000 (full power).
 - The screen says FULL POWER, or "held at N - NOT full power", so a low speed setting is obvious.
