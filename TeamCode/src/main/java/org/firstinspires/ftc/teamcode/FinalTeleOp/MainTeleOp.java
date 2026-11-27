@@ -159,7 +159,6 @@ public class MainTeleOp extends OpMode {
         // flywheels are ready for the next pollen.
         double feedScale = 1.0;
         if (shooterOk) {
-            shooter.setHiveDistance(aimOk ? aim.distanceInches() : Double.NaN);
             shooter.loop(telemetry, gamepad1);
             feedScale = shooter.feedScale();
         }

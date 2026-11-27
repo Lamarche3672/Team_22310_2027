@@ -9,7 +9,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
-import org.firstinspires.ftc.teamcode.Shared.ShotTable;
+import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
 
 /**
  * The shooter flywheels for autonomous: the same controller teleop uses
@@ -17,46 +17,34 @@ import org.firstinspires.ftc.teamcode.Shared.ShotTable;
  */
 public class FlywheelAuto {
     /**
-     * "Shoot at the HIGH preset": the same speed the drivers get from RIGHT BUMPER in teleop
-     * when no shot is saved for the distance. An auto that passes this to spinUpCommand() or
-     * volley() gets whatever HIGH is on this robot right now, including a speed the drive
-     * team saved from the gamepad in shot setup. So a speed that scores in teleop from the
-     * back wall is the speed the autos shoot at, with nothing to copy across by hand.
-     *
-     * (Autonomous used its own 2100 for a while. Teleop at 2300 then scored 8 out of 8 from
-     * the back wall, and there was no reason for auto to shoot weaker than that.)
+     * "Shoot at the set speed": the one speed the drive team dials in on gamepad 1 with the
+     * D-PAD in teleop (see Shared/ShooterSettings). An auto that passes this to
+     * spinUpCommand() or volley() shoots at whatever that speed is on this robot right now,
+     * with the same P, I and F, so autonomous always shoots exactly like teleop does.
      *
      * A spot that needs its own speed can still pass any other number; only this exact
-     * value is swapped for the preset.
+     * value is swapped for the set speed.
      */
-    public static final double HIGH_VELOCITY = ShotTable.DEFAULT_HIGH_PRESET;
-    public static final double LOW_VELOCITY = 1800;
+    public static final double HIGH_VELOCITY = ShooterSettings.DEFAULT_SPEED;
 
     private FlywheelControl control;
-    private double highPreset = HIGH_VELOCITY;
-    private boolean highPresetWasSaved;
+    private ShooterSettings settings = new ShooterSettings();
 
     public void init(HardwareMap hardwareMap, Battery battery) {
-        loadHighPreset();
+        settings = ShooterSettings.load();
         control = new FlywheelControl(hardwareMap, battery);
+        control.setGains(settings.p, settings.f, settings.i);
         stop();
     }
 
-    /** Reads the HIGH preset the drive team saved, if they saved one. Safe without a robot. */
-    public void loadHighPreset() {
-        double[] saved = ShotTable.loadPresets();
-        highPresetWasSaved = saved != null && saved[0] >= 400 && saved[0] <= FlywheelControl.MAX_TICKS_PER_SECOND;
-        highPreset = highPresetWasSaved ? saved[0] : HIGH_VELOCITY;
-    }
-
-    /** Swaps HIGH_VELOCITY for the HIGH preset on this robot; any other speed is left as it is. */
+    /** Swaps HIGH_VELOCITY for the set speed on this robot; any other speed is left as it is. */
     public double resolve(double velocity) {
-        return velocity == HIGH_VELOCITY ? highPreset : velocity;
+        return velocity == HIGH_VELOCITY ? settings.speed : velocity;
     }
 
-    /** For the Driver Station at INIT, so the speed can be checked before the match. */
-    public String describeHighPreset() {
-        return String.format("%.0f (%s)", highPreset, highPresetWasSaved ? "HIGH preset saved in shot setup" : "default HIGH preset");
+    /** For the Driver Station at INIT, so the numbers can be checked before the match. */
+    public String describeSettings() {
+        return settings.describe() + "  (set in teleop with the D-PAD)";
     }
 
     // Every method is safe to call when init() failed (no flywheel motors in the config):
@@ -106,14 +94,10 @@ public class FlywheelAuto {
         if (control == null) return;
         double target = control.target();
         telemetry.addData("Flywheel target", "%.0f", target);
-        if (target > FlywheelControl.HOLDABLE_TICKS_PER_SECOND) {
-            telemetry.addLine(String.format("WARNING: flywheel target %.0f is above what the motors can hold (%.0f).",
-                    target, FlywheelControl.HOLDABLE_TICKS_PER_SECOND));
-        }
         String encoderNote = control.encoderNote();
         if (encoderNote != null) telemetry.addLine(encoderNote);
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (power %.0f%%)",
-                control.rightVelocity(), control.leftVelocity(), control.power() * 100);
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (%.0f apart, power %.0f%%)",
+                control.rightVelocity(), control.leftVelocity(), control.wheelsApart(), control.power() * 100);
         telemetry.addData("Flywheel", control.isReady() ? "READY" : target > 0 ? "spinning up" : "off");
     }
 }

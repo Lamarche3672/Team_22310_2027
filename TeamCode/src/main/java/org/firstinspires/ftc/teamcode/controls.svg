@@ -36,17 +36,13 @@
 <path d="M 348 294 L 370 294 L 416 304" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="416" cy="304" r="4" fill="#14181F"/>
 <text x="336" y="362" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">LEFT BUMPER (hold)</text>
-<text x="336" y="386" font-size="18" text-anchor="end" fill="#C2410C">SHOOT (waits for the wheels)</text>
+<text x="336" y="386" font-size="18" text-anchor="end" fill="#C2410C">SHOOT (runs the index)</text>
 <path d="M 348 366 L 370 366 L 394 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="394" cy="352" r="4" fill="#14181F"/>
-<text x="336" y="444" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">D-PAD up / down</text>
-<text x="336" y="468" font-size="18" text-anchor="end" fill="#14181F">Shot setup only: speed</text>
+<text x="336" y="444" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">D-PAD</text>
+<text x="336" y="468" font-size="18" text-anchor="end" fill="#14181F">Left/right pick, up/down change</text>
 <path d="M 348 448 L 370 448 L 444 440" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="444" cy="440" r="4" fill="#14181F"/>
-<text x="336" y="532" font-size="18" font-weight="700" text-anchor="end" fill="#14181F">BACK</text>
-<text x="336" y="556" font-size="18" text-anchor="end" fill="#14181F">Open / close shot setup</text>
-<path d="M 348 536 L 370 536 L 566 430" fill="none" stroke="#9AA3B2" stroke-width="2"/>
-<circle cx="566" cy="430" r="4" fill="#14181F"/>
 <text x="944" y="290" font-size="18" font-weight="700" fill="#14181F">RIGHT TRIGGER</text>
 <text x="944" y="314" font-size="18" fill="#14181F">Intake</text>
 <path d="M 932 294 L 910 294 L 864 304" fill="none" stroke="#9AA3B2" stroke-width="2"/>
@@ -55,16 +51,8 @@
 <text x="944" y="386" font-size="18" fill="#14181F">Spin up the shooter</text>
 <path d="M 932 366 L 910 366 L 886 352" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="886" cy="352" r="4" fill="#14181F"/>
-<text x="944" y="434" font-size="18" font-weight="700" fill="#14181F">Y</text>
-<text x="944" y="458" font-size="18" fill="#14181F">Backup speed high / low</text>
-<path d="M 932 438 L 910 438 L 815 404" fill="none" stroke="#9AA3B2" stroke-width="2"/>
-<circle cx="815" cy="404" r="4" fill="#14181F"/>
-<text x="944" y="506" font-size="18" font-weight="700" fill="#14181F">A</text>
-<text x="944" y="530" font-size="18" fill="#14181F">Shot setup only: save</text>
-<path d="M 932 510 L 910 510 L 815 476" fill="none" stroke="#9AA3B2" stroke-width="2"/>
-<circle cx="815" cy="476" r="4" fill="#14181F"/>
-<text x="944" y="578" font-size="18" font-weight="700" fill="#14181F">X</text>
-<text x="944" y="602" font-size="18" fill="#14181F">Shot setup only: delete</text>
+<text x="944" y="578" font-size="18" font-weight="700" fill="#14181F">X (hold 1 second)</text>
+<text x="944" y="602" font-size="18" fill="#14181F">Shooter numbers back to default</text>
 <path d="M 932 582 L 765 582 L 765 456" fill="none" stroke="#9AA3B2" stroke-width="2"/>
 <circle cx="765" cy="456" r="4" fill="#14181F"/>
 <text x="640" y="726" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">To shoot: hold RIGHT BUMPER, wait for the buzz, then hold LEFT BUMPER.</text>
@@ -127,5 +115,5 @@
 <circle cx="751" cy="1178" r="4" fill="#14181F"/>
 <text x="640" y="1376" font-size="19" font-weight="700" text-anchor="middle" fill="#14181F">Buzz on this gamepad = aimed. Long buzz = field-centric lost, two short = back.</text>
 <text x="56" y="1482" font-size="18" fill="#5B6472">Before START, on either gamepad: X = blue alliance, B = red alliance. It remembers the alliance from auto.</text>
-<text x="56" y="1510" font-size="18" fill="#5B6472">Shot setup: stand where you shoot, BACK, D-PAD until it scores, A to save. Do it at 2 or 3 distances.</text>
+<text x="56" y="1510" font-size="18" fill="#5B6472">Shooter speed and P, I, F: D-PAD left/right picks the line on the screen, up/down changes it. Saved by itself.</text>
 </svg>

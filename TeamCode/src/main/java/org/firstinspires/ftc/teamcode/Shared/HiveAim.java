@@ -537,7 +537,7 @@ public class HiveAim {
      * Roughly how far the up cell is, in inches, or NaN if unknown. It is worked out from how
      * far apart the tags look, so it needs at least two tags in view and it does NOT depend
      * on any Limelight 3D setting. It is not tape-measure exact (it reads long from the
-     * side), but it is repeatable, which is all the saved shots need.
+     * side). Nothing sets the shot speed from it any more; it is shown for information.
      */
     public double distanceInches() {
         return distanceInches(System.nanoTime());

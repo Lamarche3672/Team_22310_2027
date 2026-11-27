@@ -32,8 +32,8 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
 @Autonomous(name = "Red Alliance Strong", group = "Autonomous", preselectTeleOp = "MAIN TELEOP")
 public class RedAllianceStrong extends AutoBase {
 
-    // Flywheel speeds used when there is no saved shot for the distance (see readme.md:
-    // "Shot setup"). Separate numbers so each spot can be tuned on its own.
+    // HIGH_VELOCITY = the team's set speed, the one dialled in with the D-PAD in teleop.
+    // Separate names so a spot can be given its own number here if it ever needs one.
     private static final double FIRST_SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
     private static final double SECOND_SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
     private static final double FLOWER_SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;

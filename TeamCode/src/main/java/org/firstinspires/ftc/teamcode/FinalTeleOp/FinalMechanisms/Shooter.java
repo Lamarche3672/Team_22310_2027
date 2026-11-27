@@ -6,85 +6,74 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
-import org.firstinspires.ftc.teamcode.Shared.ShotTable;
-
-import java.util.ArrayList;
-import java.util.List;
+import org.firstinspires.ftc.teamcode.Shared.ShooterSettings;
 
 /**
  * Teleop buttons for the shooter flywheels (gamepad 1).
  *
- *   RIGHT BUMPER (hold)  spin up to the right speed for this distance
- *   LEFT TRIGGER         run the wheels backwards, slower than a shot (part of "spit everything out")
- *   Y                    backup speed high / low, used when the camera cannot see the hive
- *   BACK                 open / close shot setup
- *     in shot setup:  D-PAD up/down = speed,  A = save for this distance,  X = delete nearest,
- *                     B = make this speed the Y preset that is selected (HIGH or LOW)
+ *   RIGHT BUMPER (hold)   spin the wheels up to the set speed
+ *   LEFT TRIGGER          run the wheels backwards, slower than a shot (part of "spit everything out")
+ *   D-PAD left / right    pick a line on the screen: Speed, P, I or F
+ *   D-PAD up / down       change the picked number (hold it down to keep going)
+ *   X (hold 1 second)     put all four numbers back to their defaults
  *
- * Where the speed comes from, best first:
- *   1. the saved shots (ShotTable) and the hive distance from the camera. With nothing
- *      saved the camera does not change the speed at all.
- *   2. the last distance speed, for a few seconds after the camera loses the hive
- *   3. the Y preset
+ * There is one speed. The camera does not change it: what the screen says is what the wheels
+ * are asked for, and only the D-PAD changes it. The four numbers are saved on the Control Hub
+ * as soon as the D-PAD is let go, and autonomous uses the same ones (see ShooterSettings).
  *
  * The wheels themselves are run by Shared/FlywheelControl, the same code autonomous uses.
  */
 public class Shooter {
-    // The Y presets, used when there is no saved shot for the distance.
-    // HIGH is the fastest speed the wheels can HOLD while pollen go through, not the fastest
-    // they can spin. At 2600 the motors were already at full power just to stay there, so the
-    // moment the index started (the battery dips a little) or a pollen went through, the
-    // wheels slowed and there was nothing left to push back with. Up to about 2400 a tenth
-    // of the power is kept in hand, and that is what keeps the 2nd, 3rd and 4th pollen at the
-    // same speed as the 1st. LOW is for shots from right next to the hive.
-    // These are only the starting numbers. The drive team can change either one from the
-    // gamepad in shot setup (BACK), and what they save there is what gets used from then on.
-    public double highVelocity = ShotTable.DEFAULT_HIGH_PRESET;
-    public double lowVelocity = ShotTable.DEFAULT_LOW_PRESET;
     /**
      * LEFT TRIGGER runs the wheels backwards to clear a jam. Slower than shooting on purpose:
      * it only has to push a pollen back out, not throw it across the robot.
      */
     public static final double REVERSE_VELOCITY = 1600;
 
-    private static final double SPEED_STEP = 25;
-    private static final double SLOWEST_SHOT = 400;
-    private static final double FASTEST_SHOT = FlywheelControl.MAX_TICKS_PER_SECOND;
-    /** Ignore distance changes worth less than this, so the wheels are not always hunting. */
-    private static final double SPEED_CHANGE = 15;
-    private static final double KEEP_DISTANCE_SPEED_SECONDS = 4.0;
+    // How much one press of the D-PAD changes each number.
+    private static final double SPEED_STEP = 50;
+    private static final double P_STEP = 0.05;
+    private static final double I_STEP = 0.05;
+    private static final double F_STEP = 0.01;
+    // Holding the D-PAD: after this long it starts stepping by itself, this often.
+    private static final long REPEAT_AFTER_NANOS = 400_000_000L;
+    private static final long REPEAT_EVERY_NANOS = 100_000_000L;
+    /** X has to be HELD this long to reset the numbers, so brushing it in a match does nothing. */
+    private static final long RESET_HOLD_NANOS = 1_000_000_000L;
+
     /** Wheels still turning faster than this the other way are left to coast before reversing. */
     private static final double COAST_BELOW = 200;
     private static final double TRIGGER_PRESSED = 0.1;
 
-    private FlywheelControl flywheels;
-    private List<double[]> shotPoints = new ArrayList<>();
-    private boolean highSelected = true;
-    private double hiveDistance = Double.NaN;
-    private double shotSpeed = highVelocity;
-    private boolean usingDistance;
-    private long lastDistanceSpeedNanos;
+    private static final String[] LINE_NAMES = {"Speed", "P", "I", "F"};
 
-    private boolean setupOpen;
-    private boolean feeding;
+    private FlywheelControl flywheels;
+    private ShooterSettings settings = new ShooterSettings();
+
+    // The little menu on the screen.
+    private int selectedLine;
+    private boolean leftWasDown;
+    private boolean rightWasDown;
+    private int heldDirection;
+    private long heldSinceNanos;
+    private long lastStepNanos;
+    private boolean unsaved;
+    private long xDownSinceNanos;
+    private boolean resetDone;
+    private String note = "";
+    private long noteNanos;
+
     private boolean coasting;
     /** +1 or -1: the direction the wheels were last driven in. 0 = not driven yet. */
     private double lastDriveSign;
     private boolean wasReady;
     private long lastRumbleNanos;
-    private String saveMessage = "";
-    private long saveMessageNanos;
     private long drivenSinceNanos;
 
     public void init(HardwareMap hardwareMap, Battery battery) {
         flywheels = new FlywheelControl(hardwareMap, battery);
-        shotPoints = ShotTable.load();
-        double[] savedPresets = ShotTable.loadPresets();
-        if (savedPresets != null) {
-            highVelocity = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, savedPresets[0]));
-            lowVelocity = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, savedPresets[1]));
-        }
-        shotSpeed = highVelocity;
+        settings = ShooterSettings.load();
+        applyGains();
         stop();
     }
 
@@ -92,18 +81,17 @@ public class Shooter {
         if (flywheels != null) flywheels.stop();
     }
 
-    /** The camera's distance to the hive in inches, or NaN when it cannot see it. Set every loop. */
-    public void setHiveDistance(double inches) {
-        hiveDistance = inches;
-    }
-
     public double shotSpeed() {
-        return shotSpeed;
+        return settings.speed;
     }
 
-    /** The speeds this robot will shoot at, for the INIT screen: wrong numbers show before a match, not during. */
+    /** The numbers this robot will shoot with, for the INIT screen: a wrong one shows before the match. */
     public String describeSpeeds() {
-        return String.format("Shooter: HIGH %.0f, LOW %.0f. Saved shots: %s", highVelocity, lowVelocity, ShotTable.describe(shotPoints));
+        return "Shooter: " + settings.describe();
+    }
+
+    private void applyGains() {
+        flywheels.setGains(settings.p, settings.f, settings.i);
     }
 
     /**
@@ -121,37 +109,14 @@ public class Shooter {
 
     public void loop(Telemetry telemetry, Gamepad gamepad1) {
         long now = System.nanoTime();
+        runMenu(gamepad1, now);
 
-        if (gamepad1.yWasPressed()) {
-            highSelected = !highSelected;
-        }
-        if (gamepad1.backWasPressed()) {
-            setupOpen = !setupOpen;
-        }
-
-        // Read every "was pressed" each loop even when we ignore it. They remember a press
-        // until they are read, so a D-PAD tap during the match would otherwise fire the moment
-        // shot setup is opened.
-        boolean upPressed = gamepad1.dpadUpWasPressed();
-        boolean downPressed = gamepad1.dpadDownWasPressed();
-        // START + A is how gamepad 1 is paired. That must not count as "save".
-        boolean savePressed = gamepad1.aWasPressed() && !gamepad1.start;
-        boolean deletePressed = gamepad1.xWasPressed();
-        // START + B is how gamepad 2 is paired. That must not count either.
-        boolean presetPressed = gamepad1.bWasPressed() && !gamepad1.start;
-        feeding = gamepad1.left_bumper;
-
-        if (setupOpen) {
-            runShotSetup(upPressed, downPressed, savePressed, deletePressed, presetPressed, now);
-        } else {
-            chooseSpeed(feeding, now);
-        }
-
+        boolean feeding = gamepad1.left_bumper;
         // LEFT TRIGGER (spit everything out) beats RIGHT BUMPER, the same as it does for the
         // intake and the index.
         boolean wantReverse = gamepad1.left_trigger > TRIGGER_PRESSED;
         boolean wantSpin = gamepad1.right_bumper && !wantReverse;
-        double wantedVelocity = wantSpin ? shotSpeed : wantReverse ? -REVERSE_VELOCITY : 0;
+        double wantedVelocity = wantSpin ? settings.speed : wantReverse ? -REVERSE_VELOCITY : 0;
 
         // Going straight from forwards to backwards (or back) would make the motors fight the
         // spinning wheels: a big current spike for nothing. Let them coast down first.
@@ -196,90 +161,89 @@ public class Shooter {
         String encoderNote = flywheels.encoderNote();
         if (encoderNote != null) telemetry.addLine(encoderNote);
         else if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
-        telemetry.addData("Shot speed", "%.0f  %s", shotSpeed, speedSource());
+
+        // The menu. The arrow marks the number the D-PAD is changing.
+        double[] values = {settings.speed, settings.p, settings.i, settings.f};
+        for (int line = 0; line < LINE_NAMES.length; line++) {
+            String value = line == 0 ? String.format("%.0f", values[line]) : String.format("%.2f", values[line]);
+            telemetry.addLine((line == selectedLine ? ">> " : "    ") + LINE_NAMES[line] + ":  " + value);
+        }
+        telemetry.addLine("D-PAD left/right = pick a line, up/down = change it. Hold X = defaults.");
+        if (now - noteNanos < 3_000_000_000L && !note.isEmpty()) telemetry.addLine(note);
+
         // The power is here so "slow" can be told apart: a low number with the speed on target
-        // is just a low shot speed, a high number with a low speed is the wheels being held back.
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (power %.0f%%)",
-                flywheels.rightVelocity(), flywheels.leftVelocity(), flywheels.power() * 100);
-
-        if (setupOpen) {
-            telemetry.addLine("---- SHOT SETUP (BACK = done) ----");
-            telemetry.addData("Hive distance", Double.isFinite(hiveDistance)
-                    ? String.format("%.0f in", hiveDistance) : "camera can't see the hive");
-            telemetry.addLine("D-PAD up/down = speed.  A = save for this distance.  X = delete nearest.");
-            telemetry.addLine("B = make this speed the " + (highSelected ? "HIGH" : "LOW") + " preset (the speed used when nothing is saved).");
-            if (now - saveMessageNanos < 3_000_000_000L && !saveMessage.isEmpty()) telemetry.addLine(saveMessage);
-            telemetry.addData("Saved shots", ShotTable.describe(shotPoints));
-        }
+        // is just a low set speed, a high number with a low speed is the wheels being held back.
+        double apart = flywheels.wheelsApart();
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (%.0f apart%s, power %.0f%%)",
+                flywheels.rightVelocity(), flywheels.leftVelocity(), apart,
+                wantSpin && ready && apart > FlywheelControl.MATCHED_WITHIN ? " - TOO FAR APART" : "",
+                flywheels.power() * 100);
     }
 
-    /** Shot setup: the driver sets the speed by hand and saves it against the current distance. */
-    private void runShotSetup(boolean up, boolean down, boolean save, boolean delete, boolean preset, long now) {
-        usingDistance = false;
-        if (up) shotSpeed += SPEED_STEP;
-        if (down) shotSpeed -= SPEED_STEP;
-        shotSpeed = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, shotSpeed));
+    /** The D-PAD menu: left / right picks a number, up / down changes it, holding X resets all four. */
+    private void runMenu(Gamepad gamepad1, long now) {
+        boolean left = gamepad1.dpad_left;
+        boolean right = gamepad1.dpad_right;
+        if (left && !leftWasDown) selectedLine = (selectedLine + LINE_NAMES.length - 1) % LINE_NAMES.length;
+        if (right && !rightWasDown) selectedLine = (selectedLine + 1) % LINE_NAMES.length;
+        leftWasDown = left;
+        rightWasDown = right;
 
-        if (save) {
-            if (!Double.isFinite(hiveDistance)) {
-                // A only ever saves against a distance. It used to fall back to overwriting
-                // the preset here, and a speed tuned for a close shot then became the speed
-                // for every shot. Changing a preset is its own button now (B).
-                saveMessage = "NOT saved: the camera has no distance to the hive. (B changes the "
-                        + (highSelected ? "HIGH" : "LOW") + " preset instead.)";
-            } else if (!ShotTable.add(shotPoints, hiveDistance, shotSpeed)) {
-                saveMessage = "NOT saved: too many shots saved, delete one with X";
-            } else {
-                saveMessage = ShotTable.save(shotPoints)
-                        ? String.format("SAVED %.0f at %.0f in", shotSpeed, hiveDistance) : "could not save";
+        int steps = stepFromDpad(gamepad1.dpad_up, gamepad1.dpad_down, now);
+        if (steps != 0) {
+            if (selectedLine == 0) settings.speed += steps * SPEED_STEP;
+            else if (selectedLine == 1) settings.p += steps * P_STEP;
+            else if (selectedLine == 2) settings.i += steps * I_STEP;
+            else settings.f += steps * F_STEP;
+            settings.clamp();
+            applyGains();
+            unsaved = true;
+        }
+        // Save once the D-PAD is let go, not on every step: holding it would otherwise write
+        // the file ten times a second.
+        if (unsaved && heldDirection == 0) {
+            unsaved = false;
+            say(settings.save() ? "saved: " + settings.describe() : "COULD NOT SAVE - these numbers are lost on restart", now);
+        }
+
+        // START + X is not a pairing combo, but ignore it anyway so nothing odd happens while pairing.
+        boolean x = gamepad1.x && !gamepad1.start;
+        if (!x) {
+            xDownSinceNanos = 0;
+            resetDone = false;
+        } else {
+            if (xDownSinceNanos == 0) xDownSinceNanos = now;
+            if (!resetDone && now - xDownSinceNanos >= RESET_HOLD_NANOS) {
+                resetDone = true;
+                settings.resetToDefaults();
+                applyGains();
+                say(settings.save() ? "back to defaults: " + settings.describe() : "defaults set, but could not save", now);
             }
-            saveMessageNanos = now;
-        }
-        if (preset) {
-            double before = highSelected ? highVelocity : lowVelocity;
-            if (highSelected) highVelocity = shotSpeed;
-            else lowVelocity = shotSpeed;
-            saveMessage = ShotTable.savePresets(highVelocity, lowVelocity)
-                    ? String.format("%s preset is now %.0f (was %.0f)", highSelected ? "HIGH" : "LOW", shotSpeed, before)
-                    : "could not save the preset";
-            saveMessageNanos = now;
-        }
-        if (delete) {
-            boolean removed = ShotTable.removeNear(shotPoints, hiveDistance);
-            if (removed) ShotTable.save(shotPoints);
-            saveMessage = removed ? "deleted the saved shot nearest this distance" : "nothing saved near this distance";
-            saveMessageNanos = now;
         }
     }
 
-    /** Normal play: pick the speed from the hive distance if we can, the Y preset if we cannot. */
-    private void chooseSpeed(boolean feeding, long now) {
-        double fromDistance = ShotTable.speedFor(shotPoints, hiveDistance, highVelocity);
-        if (Double.isFinite(fromDistance)) {
-            fromDistance = Math.max(SLOWEST_SHOT, Math.min(FASTEST_SHOT, fromDistance));
-            // While pollen are going through, hold the speed. The distance reading jitters a
-            // little and a volley should all be shot at one speed.
-            if (!usingDistance || (!feeding && Math.abs(fromDistance - shotSpeed) >= SPEED_CHANGE)) {
-                shotSpeed = fromDistance;
-            }
-            usingDistance = true;
-            lastDistanceSpeedNanos = now;
-        } else if (!usingDistance || now - lastDistanceSpeedNanos > KEEP_DISTANCE_SPEED_SECONDS * 1e9) {
-            // The tag blinks out now and then. Only fall back to the preset once it has been
-            // gone for a while, so the wheels do not jump speed mid-shot.
-            usingDistance = false;
-            shotSpeed = highSelected ? highVelocity : lowVelocity;
+    /** +1, -1 or 0 for this loop: one step on a press, then repeating steps while it is held. */
+    private int stepFromDpad(boolean up, boolean down, long now) {
+        int direction = up == down ? 0 : (up ? 1 : -1);
+        if (direction == 0) {
+            heldDirection = 0;
+            return 0;
         }
+        if (direction != heldDirection) {
+            heldDirection = direction;
+            heldSinceNanos = now;
+            lastStepNanos = now;
+            return direction;
+        }
+        if (now - heldSinceNanos >= REPEAT_AFTER_NANOS && now - lastStepNanos >= REPEAT_EVERY_NANOS) {
+            lastStepNanos = now;
+            return direction;
+        }
+        return 0;
     }
 
-    private String speedSource() {
-        if (setupOpen) return "(shot setup)";
-        if (usingDistance) {
-            return Double.isFinite(hiveDistance)
-                    ? String.format("from SAVED SHOTS, hive %.0f in", hiveDistance) : "from SAVED SHOTS, last distance";
-        }
-        String preset = highSelected ? "HIGH" : "LOW";
-        if (shotPoints.isEmpty()) return preset + " (Y switches)";
-        return preset + " (Y switches) - no hive in view";
+    private void say(String text, long now) {
+        note = text;
+        noteNanos = now;
     }
 }

@@ -38,9 +38,8 @@ public final class FlywheelControl {
 
     // ---- the motor: REV HD Hex. The encoder is on the motor shaft (28 ticks/rev) and the bare
     // motor spins 6000 rpm at 12 V, so every HD Hex tops out at 2800 ticks/s whatever gearbox
-    // is on it. Under load it can only HOLD about 85% of that.
+    // is on it. A target above that is allowed: it just means full power.
     public static final double MAX_TICKS_PER_SECOND = 2800;
-    public static final double HOLDABLE_TICKS_PER_SECOND = 0.85 * MAX_TICKS_PER_SECOND;
 
     /**
      * Which way "forwards" (shooting) is. Defined once here so teleop and autonomous can never
@@ -95,11 +94,18 @@ public final class FlywheelControl {
     private static final double FEED_BOOST_BELOW_TICKS = 20;
     private static final double INTEGRATE_WITHIN = 200;
     private static final double MAX_INTEGRAL_POWER = 0.1;
-    // Matching the two wheels. The hub reports speed in steps of about 20 ticks/s, so the raw
-    // difference between the wheels flickers. The trim works on a smoothed difference: it is
-    // there to take out a steady mismatch, not to react to every reading.
+    // Matching the two wheels. Unequal wheels put spin on a pollen and it curves, so the two
+    // are held within MATCHED_WITHIN of each other. The hub reports speed in steps of about
+    // 20 ticks/s, so the raw difference flickers; the trim works on a smoothed difference.
+    // Two parts: a quick one in proportion to the difference, and a slow one that keeps
+    // building until the difference is gone. The slow part is what closes the last gap: a
+    // steady mismatch (one wheel with more friction) is otherwise only ever made smaller.
+    public static final double MATCHED_WITHIN = 50;
     private static final double MATCH_GAIN = 1.5;
-    private static final double MAX_MATCH_POWER = 0.05;
+    /** Power moved from the fast wheel to the slow one, per 1000 ticks/s apart, per second. */
+    private static final double MATCH_BUILD_GAIN = 3.0;
+    /** The most power the trim may move. At full power only the fast wheel can change (down). */
+    private static final double MAX_MATCH_POWER = 0.2;
     private static final double MATCH_SMOOTHING_SECONDS = 0.25;
     private static final double DEAD_ENCODER_BELOW = 50;
     // ---- checking the encoders against the motors
@@ -140,6 +146,8 @@ public final class FlywheelControl {
     private double leftVelocity;
     /** Smoothed (right - left) speed, used to trim the wheels toward each other. */
     private double mismatch;
+    /** The slow part of the trim: power taken off the right wheel and given to the left (signed). */
+    private double matchBuilt;
     // Encoder health. Kept for the whole OpMode: wiring does not fix itself between shots.
     private double rightEncoderSign = 1;
     private double leftEncoderSign = 1;
@@ -240,6 +248,7 @@ public final class FlywheelControl {
         power = 0;
         feeding = false;
         feedStarted = false;
+        matchBuilt = 0;
         rightPower = 0;
         leftPower = 0;
         atSpeed = false;
@@ -267,8 +276,8 @@ public final class FlywheelControl {
         power = target == 0 ? 0 : nextPower(measured, dt);
         updateMismatch(dt);
         // mismatch is "how far the right wheel is ahead of the left".
-        rightPower = matched(power, mismatch);
-        leftPower = matched(power, -mismatch);
+        rightPower = matched(power, mismatch, matchBuilt);
+        leftPower = matched(power, -mismatch, -matchBuilt);
         boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
                 || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
                 || (power == 0 && (sentRight != 0 || sentLeft != 0));
@@ -392,17 +401,29 @@ public final class FlywheelControl {
         boolean bothAlive = Math.abs(rightVelocity) >= DEAD_ENCODER_BELOW && Math.abs(leftVelocity) >= DEAD_ENCODER_BELOW;
         if (target == 0 || !bothAlive) {
             mismatch = 0;
+            matchBuilt = 0;
             return;
         }
         mismatch += (rightVelocity - leftVelocity - mismatch) * Math.min(1.0, dt / MATCH_SMOOTHING_SECONDS);
+        // Only build once the wheels are properly turning. During the first moments of a
+        // spin-up the two are naturally apart and that should not be remembered.
+        if (Math.abs(speed()) > 0.3 * Math.abs(target)) {
+            matchBuilt += MATCH_BUILD_GAIN / 1000.0 * mismatch * dt;
+            matchBuilt = Math.max(-MAX_MATCH_POWER, Math.min(MAX_MATCH_POWER, matchBuilt));
+        }
+    }
+
+    /** How far apart the two wheels are right now, in the same units as the speed. */
+    public double wheelsApart() {
+        return Math.abs(rightVelocity - leftVelocity);
     }
 
     /** aheadBy: how far this wheel is ahead of the other (ticks/s, smoothed); negative if behind. */
-    private double matched(double common, double aheadBy) {
+    private double matched(double common, double aheadBy, double built) {
         if (common == 0) return 0;
         // aheadBy is signed, so this is right for both directions: a wheel that is ahead (more
         // positive going forwards, more negative in reverse) is pulled back toward the other.
-        double trim = -MATCH_GAIN / 1000.0 * 0.5 * aheadBy;
+        double trim = -MATCH_GAIN / 1000.0 * 0.5 * aheadBy - built;
         trim = Math.max(-MAX_MATCH_POWER, Math.min(MAX_MATCH_POWER, trim));
         double value = common + trim;
         value = target > 0 ? Math.max(0, value) : Math.min(0, value);

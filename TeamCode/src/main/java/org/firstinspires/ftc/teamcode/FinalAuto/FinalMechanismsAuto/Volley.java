@@ -1,14 +1,10 @@
 package org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto;
 
-import static com.pedropathing.ivy.commands.Commands.instant;
 import static com.pedropathing.ivy.groups.Groups.sequential;
 
 import com.pedropathing.ivy.Command;
 import com.pedropathing.ivy.CommandBuilder;
 import org.firstinspires.ftc.teamcode.Shared.HiveAim;
-import org.firstinspires.ftc.teamcode.Shared.ShotTable;
-
-import java.util.List;
 
 /**
  * One volley in autonomous. Every auto shoots through here, so they all shoot the same way
@@ -16,10 +12,9 @@ import java.util.List;
  *
  *   1. start the flywheels (so they spin up while the robot aims)
  *   2. turn to face the hive using the camera, if it can see it
- *   3. set the final speed from the hive distance, if a shot is saved for it
- *   4. wait until the wheels are ready
- *   5. feed the pollen through, letting the wheels recover between each one
- *   6. everything off
+ *   3. wait until the wheels are ready
+ *   4. feed the pollen through
+ *   5. everything off
  *
  * Nothing in here can hang: every wait has a time limit, so a dead camera, a dead flywheel or
  * a jam only costs a second or two and the auto carries on.
@@ -38,22 +33,15 @@ public final class Volley {
     private Volley() { }
 
     public static Command shoot(FlywheelAuto flywheel, IndexIntakeAuto intake, MecanumDriveAuto drive,
-                                HiveAim aim, List<double[]> shotPoints, double fallbackVelocity) {
-        // HIGH_VELOCITY means "the HIGH preset on this robot", worked out when the volley runs.
+                                HiveAim aim, double velocity) {
+        // The speed does not depend on the camera: it is the number passed in (HIGH_VELOCITY
+        // means the team's set speed). The camera is only used to turn toward the hive.
         return sequential(
-                flywheel.spinUpCommand(fallbackVelocity),
+                flywheel.spinUpCommand(velocity),
                 drive.aimAtHive(aim, AIM_TIMEOUT_MS),
-                instant(() -> flywheel.spinUp(speedFor(aim, shotPoints, flywheel.resolve(fallbackVelocity)))),
                 flywheel.waitUntilReady(SPIN_UP_TIMEOUT_MS),
                 feed(flywheel, intake),
                 flywheel.stopCommand());
-    }
-
-    /** The saved speed for the distance the camera measures, or the fallback when there is none. */
-    static double speedFor(HiveAim aim, List<double[]> shotPoints, double fallbackVelocity) {
-        if (aim == null || shotPoints == null) return fallbackVelocity;
-        double saved = ShotTable.speedFor(shotPoints, aim.distanceInches(), fallbackVelocity);
-        return Double.isFinite(saved) ? saved : fallbackVelocity;
     }
 
     /**

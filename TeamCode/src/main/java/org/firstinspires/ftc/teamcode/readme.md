@@ -12,10 +12,11 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 |---|---|
 | RIGHT TRIGGER | Intake |
 | LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
-| RIGHT BUMPER (hold) | Spin up the shooter to the right speed |
+| RIGHT BUMPER (hold) | Spin up the shooter to the set speed |
 | LEFT BUMPER (hold) | Shoot: runs the index straight away |
-| Y | Backup speed high / low, only used when the camera can't see the hive |
-| BACK | Open / close shot setup |
+| D-PAD left / right | Pick a shooter number on the screen: Speed, P, I or F |
+| D-PAD up / down | Change that number (hold to keep going). Saved by itself |
+| X (hold 1 second) | Shooter numbers back to default |
 
 | Gamepad 2 (driving) | Does |
 |---|---|
@@ -41,25 +42,26 @@ From the competition manual (sections 9.6, 9.9, 10.5):
 
 The camera works out which cell is up by itself: when it can see both of our stickers, the higher one is the up cell. It remembers that for 30 seconds; after that a single sticker in view is simply taken as the target.
 
-## Shot setup (once, about 5 minutes)
+## Shooter speed and PID
 
-With nothing saved, the shooter uses the Y preset at every distance and the camera does not change the speed. To make it use less speed up close, save shots:
+There is one flywheel speed. The camera does not change it. What the screen shows is what the wheels are asked for.
 
-1. Put the robot where you normally shoot. The camera has to see our hive.
-2. Gamepad 1: press BACK. The Driver Station shows SHOT SETUP and the hive distance.
-3. Shoot (RIGHT BUMPER, then LEFT BUMPER). D-PAD up / down changes the speed by 25 until it scores.
-4. Press A. That speed is saved for that distance.
-5. Repeat at one or two other distances. Do the back wall and one close spot at least.
-6. Press BACK.
+On gamepad 1 the screen shows four lines, with `>>` marking the one the D-PAD changes:
 
-- Saved shots live on the Control Hub and survive new code installs.
-- X deletes the saved shot nearest to where you are.
-- Between two saved distances it uses a speed in between. Closer than the closest saved shot it uses that shot's speed. Further than the furthest it climbs to the HIGH preset over 3 feet, so one shot saved up close can never make a long shot weak.
-- A saved shot beats the preset whenever the camera sees the hive. If shots are suddenly weak with the camera plugged in, look at the "Shot speed" line: "from SAVED SHOTS" means a saved shot is setting the speed. Fix it in shot setup (save the right speed there, or X to delete).
-- Nothing saved yet? RIGHT BUMPER uses the Y preset (2300 high / 1500 low to start with). To change a preset from the gamepad: BACK, D-PAD to the speed that scores, then B. It is kept across restarts. The INIT screen shows HIGH, LOW and the saved shots, so a wrong number is seen before the match. LEFT TRIGGER runs the wheels backwards at 1600. 2400 is the fastest speed the wheels can hold while pollen go through; flat out (2600+) slows down as soon as the index starts, because the motors have nothing left to push back with.
-- Autonomous uses the same saved shots when its camera can see the hive.
-- The distance is worked out from how far apart the tags look, so the camera has to see at least two tags of the up cell. It needs no 3D setting on the Limelight. It is repeatable, not tape-measure exact.
-- If the camera is moved or re-angled, save the shots again.
+| Line | Default | One press | What it does |
+|---|---|---|---|
+| Speed | 3000 | 50 | How fast the wheels spin. They read about 2800 flat out, so 3000 means full power |
+| P | 0.70 | 0.05 | How hard it pushes back when the speed is off. Wheels hunting up and down: lower it |
+| I | 0.50 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
+| F | 1.00 | 0.01 | The base power for a speed. Speed sits well under the target everywhere: raise it |
+
+- D-PAD left / right picks the line, up / down changes it. Hold it down to keep stepping.
+- The numbers are saved on the Control Hub when you let go, and are still there after a restart or a new install.
+- Autonomous uses the same four numbers. The auto INIT screen shows them.
+- Hold X for a second to go back to the defaults.
+- LEFT TRIGGER runs the wheels backwards at 1600.
+- The two wheels are held within 50 of each other. The flywheel line shows how far apart they are, and says TOO FAR APART if they are not.
+- At full power (anything near 2800 or above) the wheels have nothing in hand, so they slow a little while pollen go through. If the first pollen flies further than the rest, lower Speed until they match (around 2300 to 2400).
 
 ## Auto aim
 
@@ -77,7 +79,7 @@ The AIM line shows how long the last lock took ("AIMED (locked in 0.45 s)"). Use
 
 - Red aims at tags 30-37, blue at 38-45. Wrong alliance = it never finds the hive.
 - It aims at the middle of the up cell's sticker, even when only some of its four tags are in view.
-- If it can only see the down cell it still points at the hive and says "only the DOWN cell in view". The shot speed then stays on the last known distance.
+- If it can only see the down cell it still points at the hive and says "only the DOWN cell in view".
 - The Driver Station line "AIM" says what it sees, including which tag numbers are in view and which pipeline the camera is on.
 - It uses Limelight pipeline 0 and assumes the camera looks the way the shooter shoots.
 
@@ -116,7 +118,7 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 | BlueAllianceWeak | Same, mirrored |
 
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
-- Shot speed in auto: the saved shot for the measured distance, otherwise the HIGH preset, the same one RIGHT BUMPER uses in teleop (2300 unless the drive team saved their own in shot setup). The INIT screen shows the number as "Shot speed".
+- Shot speed in auto: the same set speed, P, I and F as teleop (the numbers changed with the D-PAD on gamepad 1). The INIT screen shows them as "Shooter".
 - Every auto is parked by 24 s no matter what, and selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
@@ -150,7 +152,7 @@ teamcode/
     FlywheelControl     runs the shooter wheels at a speed, says when they are ready
     IntakeAndIndex      intake roller + index belt, directions and speeds in one place
     HiveAim             Limelight -> which way to face, and how far the hive is
-    ShotTable           the saved "distance -> speed" shots
+    ShooterSettings     the set speed and P, I, F, saved on the Control Hub
     HubReset            recovering when a hub loses power
     AutoHandoff         tells teleop which way the robot faced when auto ended
 
@@ -158,7 +160,7 @@ teamcode/
     MainTeleOp          the match teleop: wires gamepads to mechanisms
     FinalMechanisms/
       MecanumDriveFinal   field-centric drive
-      Shooter             gamepad 1 shooter buttons + shot setup
+      Shooter             gamepad 1 shooter buttons + the D-PAD menu for speed and PID
       IndexIntake         gamepad 1 intake / index buttons
     RobotSensors/         test OpModes (camera, colour sensor, turret)
 
@@ -181,7 +183,7 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 1. **Flywheel direction.** Wheels off the ground, hold RIGHT BUMPER. If they spin the wrong way, flip `DIRECTION` in `Shared/FlywheelControl.java` (one line, fixes teleop and auto).
 2. **Flywheels smooth?** Under a second to speed, then steady. If they hunt, lower `DEFAULT_P` in `FlywheelControl.java` (try 0.6).
 3. **Auto aim.** LEFT TRIGGER with the hive in view. Table above if it is wrong.
-4. **Shot setup.** Save 2 or 3 shots.
+4. **Shooter numbers.** Check Speed, P, I, F on the INIT screen are what you tuned.
 5. **Outtake.** LEFT TRIGGER: intake and index both run backwards at the same power. The index speed is `INDEX_OUTTAKE_POWER` in `Shared/IntakeAndIndex.java`.
 6. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
    - Red Strong: x 56, y 8, heading 270
@@ -243,6 +245,12 @@ No robot was available, so everything was checked on a laptop:
 That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or a number that needs tuning. That is what the checklist is for.
 
 ## What changed
+
+**Nov 27 (later)**
+- One set flywheel speed. The camera no longer changes it, and saved shots, shot setup and the Y presets are gone.
+- Speed, P, I and F are changed with the D-PAD on gamepad 1 and saved by themselves. Default speed 3000.
+- Autonomous uses the same speed and PID as teleop.
+- The two flywheels are held within 50 of each other, and the screen shows how far apart they are.
 
 **Nov 27**
 - Shots were still weak with no tag in view. For one day, A in shot setup overwrote the HIGH preset whenever the camera had no distance, so a speed tuned for a close shot could become the speed for everything (the autos too). A now only saves against a distance; B is the button that changes a preset. The saved presets from that day are no longer read, so HIGH is back to 2300.

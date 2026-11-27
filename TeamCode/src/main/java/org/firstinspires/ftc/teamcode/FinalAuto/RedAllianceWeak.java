@@ -27,7 +27,7 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
 @Autonomous(name = "RedAllianceWeak", group = "Autonomous", preselectTeleOp = "MAIN TELEOP")
 public class RedAllianceWeak extends AutoBase {
 
-    /** Used when there is no saved shot for the distance the camera measures. */
+    /** HIGH_VELOCITY = the team's set speed, the one dialled in with the D-PAD in teleop. */
     private static final double SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
     /** The drive takes about 4 s. Starting the flywheels 1.2 s in has them ready on arrival
      *  without running them (and the battery) for the whole trip. */

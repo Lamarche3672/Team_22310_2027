@@ -23,10 +23,7 @@ import org.firstinspires.ftc.teamcode.Shared.AutoHandoff;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.HiveAim;
 import org.firstinspires.ftc.teamcode.Shared.HubReset;
-import org.firstinspires.ftc.teamcode.Shared.ShotTable;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Everything the four scoring autos have in common. A real auto (RedAllianceStrong, ...)
@@ -59,9 +56,6 @@ public abstract class AutoBase extends LinearOpMode {
     protected Battery battery;
     /** The camera aim. Null when there is no Limelight; then autos shoot on the route heading alone. */
     protected HiveAim aim;
-    /** The shots saved in teleop shot setup. Empty until the team has saved some. */
-    protected List<double[]> shotPoints = new ArrayList<>();
-
     protected final ElapsedTime autoTimer = new ElapsedTime();
     protected String currentStep = "Waiting for start";
 
@@ -115,10 +109,11 @@ public abstract class AutoBase extends LinearOpMode {
 
     /**
      * One volley: aim with the camera if it can see the hive, spin up, feed, stop.
-     * fallbackVelocity is used when there is no saved shot for the distance (or no camera).
+     * Pass FlywheelAuto.HIGH_VELOCITY to shoot at the team's set speed (the one on the teleop
+     * screen), or any other number for a spot that needs its own.
      */
-    protected final Command volley(double fallbackVelocity) {
-        return Volley.shoot(flywheel, intake, drive, aim, shotPoints, fallbackVelocity);
+    protected final Command volley(double velocity) {
+        return Volley.shoot(flywheel, intake, drive, aim, velocity);
     }
 
     protected final void stopMechanisms() {
@@ -156,7 +151,6 @@ public abstract class AutoBase extends LinearOpMode {
             aim = null;
             missing += "CAMERA AIM OFF: " + e.getMessage() + "\n";
         }
-        shotPoints = ShotTable.load();
         return missing;
     }
 
@@ -203,8 +197,7 @@ public abstract class AutoBase extends LinearOpMode {
                         start.x(), start.y(), Math.toDegrees(start.heading()));
                 drive.addTelemetry(telemetry);
                 if (aim != null) telemetry.addData("Camera", aim.view());
-                telemetry.addData("Shot speed", flywheel.describeHighPreset()
-                        + (shotPoints.isEmpty() ? "" : ", or a saved shot for the distance"));
+                telemetry.addData("Shooter", flywheel.describeSettings());
                 telemetry.update();
                 sleep(50);
             }
