@@ -203,6 +203,8 @@ public abstract class AutoBase extends LinearOpMode {
                         start.x(), start.y(), Math.toDegrees(start.heading()));
                 drive.addTelemetry(telemetry);
                 if (aim != null) telemetry.addData("Camera", aim.view());
+                telemetry.addData("Shot speed", flywheel.describeHighPreset()
+                        + (shotPoints.isEmpty() ? "" : ", or a saved shot for the distance"));
                 telemetry.update();
                 sleep(50);
             }

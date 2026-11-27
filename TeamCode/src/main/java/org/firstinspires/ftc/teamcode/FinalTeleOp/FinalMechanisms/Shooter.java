@@ -39,8 +39,8 @@ public class Shooter {
     // same speed as the 1st. LOW is for shots from right next to the hive.
     // These are only the starting numbers. The drive team can change either one from the
     // gamepad in shot setup (BACK), and what they save there is what gets used from then on.
-    public double highVelocity = 2300;
-    public double lowVelocity = 1500;
+    public double highVelocity = ShotTable.DEFAULT_HIGH_PRESET;
+    public double lowVelocity = ShotTable.DEFAULT_LOW_PRESET;
     /**
      * LEFT TRIGGER runs the wheels backwards to clear a jam. Slower than shooting on purpose:
      * it only has to push a pollen back out, not throw it across the robot.

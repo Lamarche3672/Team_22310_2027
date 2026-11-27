@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.Shared.Battery;
 import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
+import org.firstinspires.ftc.teamcode.Shared.ShotTable;
 
 /**
  * The shooter flywheels for autonomous: the same controller teleop uses
@@ -16,22 +17,46 @@ import org.firstinspires.ftc.teamcode.Shared.FlywheelControl;
  */
 public class FlywheelAuto {
     /**
-     * Speeds in encoder ticks per second, used when there is no saved shot for the distance.
+     * "Shoot at the HIGH preset": the same speed the drivers get from RIGHT BUMPER in teleop
+     * when no shot is saved for the distance. An auto that passes this to spinUpCommand() or
+     * volley() gets whatever HIGH is on this robot right now, including a speed the drive
+     * team saved from the gamepad in shot setup. So a speed that scores in teleop from the
+     * back wall is the speed the autos shoot at, with nothing to copy across by hand.
      *
-     * The HD Hex tops out at 2800 on a full battery with no load. What it can HOLD, with room
-     * left to recover after each pollen, drops with the battery: about 2260 at 12 V and about
-     * 2060 at 11 V. 2100 is fast and still a speed the wheels can keep through a volley, so
-     * every pollen leaves at the same speed. (It was 3000, then 2300: both just ran flat out.)
-     * Tune it on a field.
+     * (Autonomous used its own 2100 for a while. Teleop at 2300 then scored 8 out of 8 from
+     * the back wall, and there was no reason for auto to shoot weaker than that.)
+     *
+     * A spot that needs its own speed can still pass any other number; only this exact
+     * value is swapped for the preset.
      */
-    public static final double HIGH_VELOCITY = 2100;
+    public static final double HIGH_VELOCITY = ShotTable.DEFAULT_HIGH_PRESET;
     public static final double LOW_VELOCITY = 1800;
 
     private FlywheelControl control;
+    private double highPreset = HIGH_VELOCITY;
+    private boolean highPresetWasSaved;
 
     public void init(HardwareMap hardwareMap, Battery battery) {
+        loadHighPreset();
         control = new FlywheelControl(hardwareMap, battery);
         stop();
+    }
+
+    /** Reads the HIGH preset the drive team saved, if they saved one. Safe without a robot. */
+    public void loadHighPreset() {
+        double[] saved = ShotTable.loadPresets();
+        highPresetWasSaved = saved != null && saved[0] >= 400 && saved[0] <= FlywheelControl.MAX_TICKS_PER_SECOND;
+        highPreset = highPresetWasSaved ? saved[0] : HIGH_VELOCITY;
+    }
+
+    /** Swaps HIGH_VELOCITY for the HIGH preset on this robot; any other speed is left as it is. */
+    public double resolve(double velocity) {
+        return velocity == HIGH_VELOCITY ? highPreset : velocity;
+    }
+
+    /** For the Driver Station at INIT, so the speed can be checked before the match. */
+    public String describeHighPreset() {
+        return String.format("%.0f (%s)", highPreset, highPresetWasSaved ? "HIGH preset saved in shot setup" : "default HIGH preset");
     }
 
     // Every method is safe to call when init() failed (no flywheel motors in the config):
@@ -65,7 +90,7 @@ public class FlywheelAuto {
     }
 
     public Command spinUpCommand(double velocity) {
-        return instant(() -> spinUp(velocity));
+        return instant(() -> spinUp(resolve(velocity)));
     }
 
     /** Waits for the wheels to be ready, but never longer than timeoutMs. */

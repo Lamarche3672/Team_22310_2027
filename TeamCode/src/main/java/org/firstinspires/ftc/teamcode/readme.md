@@ -116,7 +116,7 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 | BlueAllianceWeak | Same, mirrored |
 
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
-- Shot speed in auto: the saved shot for the measured distance, otherwise `HIGH_VELOCITY` (2100) in `FlywheelAuto.java`. 2100 is a speed the wheels can hold through a whole volley; 2300 and 3000 just ran them flat out.
+- Shot speed in auto: the saved shot for the measured distance, otherwise the HIGH preset, the same one RIGHT BUMPER uses in teleop (2300 unless the drive team saved their own in shot setup). The INIT screen shows the number as "Shot speed".
 - Every auto is parked by 24 s no matter what, and selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
@@ -245,6 +245,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27**
+- Autonomous shoots at the teleop HIGH preset (was its own 2100). Change HIGH from the gamepad and the autos follow.
 - Shots were far too weak with the Limelight plugged in and fine with it unplugged. It was not power: with the camera seeing the hive, the speed came from saved shots, and the saved speeds were too low. The old saved-shot file is no longer read (new file name), so the list starts empty and the preset is used until shots are saved again.
 - A saved shot no longer applies to shots further away than it: past the furthest saved shot the speed climbs to the HIGH preset.
 - The "Shot speed" line says "from SAVED SHOTS" when a saved shot is setting the speed.

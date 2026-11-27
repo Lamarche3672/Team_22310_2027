@@ -39,10 +39,11 @@ public final class Volley {
 
     public static Command shoot(FlywheelAuto flywheel, IndexIntakeAuto intake, MecanumDriveAuto drive,
                                 HiveAim aim, List<double[]> shotPoints, double fallbackVelocity) {
+        // HIGH_VELOCITY means "the HIGH preset on this robot", worked out when the volley runs.
         return sequential(
                 flywheel.spinUpCommand(fallbackVelocity),
                 drive.aimAtHive(aim, AIM_TIMEOUT_MS),
-                instant(() -> flywheel.spinUp(speedFor(aim, shotPoints, fallbackVelocity))),
+                instant(() -> flywheel.spinUp(speedFor(aim, shotPoints, flywheel.resolve(fallbackVelocity)))),
                 flywheel.waitUntilReady(SPIN_UP_TIMEOUT_MS),
                 feed(flywheel, intake),
                 flywheel.stopCommand());

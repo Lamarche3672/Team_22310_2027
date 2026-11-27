@@ -30,6 +30,12 @@ public final class ShotTable {
     /** Past the furthest saved shot, the speed climbs to the far speed over this many inches. */
     public static final double FAR_RAMP_INCHES = 36;
     private static final String PRESET_FILE_NAME = "shot_presets.txt";
+    /**
+     * The Y presets before anybody has saved their own. One place, so teleop and autonomous
+     * start from the same number. HIGH is the back-wall shot.
+     */
+    public static final double DEFAULT_HIGH_PRESET = 2300;
+    public static final double DEFAULT_LOW_PRESET = 1500;
     /** Saving within this distance of an existing shot replaces it instead of adding another. */
     public static final double SAME_SPOT_INCHES = 6;
     public static final double DELETE_WITHIN_INCHES = 12;
