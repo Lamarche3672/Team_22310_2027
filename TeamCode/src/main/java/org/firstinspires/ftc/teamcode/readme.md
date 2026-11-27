@@ -112,14 +112,16 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 
 | Auto | What it does |
 |---|---|
-| Red Alliance Strong | Shoots 4 preloads, intakes the garden, drives across, shoots 4 more, parks |
+| Red Alliance Strong | Shoots 4 preloads, intakes the garden, drives back beside the start, shoots 4 more into the same cell, parks |
 | Blue Alliance Strong | Same, mirrored |
-| RedAllianceWeak | Drives to the shooting spot, shoots 4 preloads, parks |
+| RedAllianceWeak | Drives up the field to the far shooting spot, shoots 4 preloads, parks. It shoots at the far cell, which only scores if the hive has tipped by then |
 | BlueAllianceWeak | Same, mirrored |
 
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
 - Shot speed in auto: the same set speed, P, I and F as teleop (the numbers changed with the D-PAD on gamepad 1). The INIT screen shows them as "Shooter".
-- Every auto is parked by 24 s no matter what, and selects MAIN TELEOP afterwards.
+- The strong auto shoots both volleys from the start side, at the cell that is up when the match starts, so it scores whether or not the hive tips. To go back to shooting the second volley from across the field, set `SECOND_SHOT_FROM_START_SIDE` to false in `RedAllianceStrong.java`.
+- Each volley: the wheels get at least 2.5 s to spin up, then the index feeds for 4.5 s.
+- Every auto stops scoring at 24 s no matter what and parks, using whatever time is left up to 29 s. It selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
 - Flower pickup is written but switched off.
@@ -247,6 +249,8 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 27 (later)**
+- Strong autos: the garden pollen are now shot from beside the start position, into the same cell as the preloads, instead of from across the field. The far shot only scored if the hive had tipped.
+- Parking may use all the time left in autonomous (it used to give up after 4 s, and the park spot is now further away).
 - Autos: the flywheels always get at least 2.5 s to spin up before the first pollen, and the index feeds for 4.5 s (was 2.5 s). The first auto shot was going nowhere because the wheels were not up and the belt stopped before the pollen reached them.
 - Speed 2800 or more is now plain full power to both flywheels: no correction, no current cap, no wheel matching, nothing that depends on an encoder. If a shot is weak like that, the software is not what is holding it back.
 - The index feeds at full power (was 0.95) and gets up to speed four times quicker.

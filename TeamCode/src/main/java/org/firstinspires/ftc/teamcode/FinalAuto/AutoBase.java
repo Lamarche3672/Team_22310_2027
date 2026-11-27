@@ -43,9 +43,12 @@ public abstract class AutoBase extends LinearOpMode {
     /** How long to wait for the robot to come to rest on a spot before moving on anyway. */
     protected static final double SETTLE_TIMEOUT_MS = 1500;
     protected static final double PARK_TIMEOUT_MS = 4000;
+    /** Autonomous is 30 s. Nothing new is driven after this point. */
+    private static final double STOP_DRIVING_AT_MS = 29000;
     /** Only shoot if the robot faces within this many degrees of where the route says. */
     protected static final double SHOOT_AIM_DEGREES = 10;
-    // 24 s deadline + 4 s park drive + 1.5 s settle = 29.5 s worst case, inside the 30 s auto.
+    // At 24 s whatever is still being scored is cut off and the robot parks. The park drive
+    // then has until STOP_DRIVING_AT_MS, which is 5 s: enough for the longest park we have.
     protected static final double PARK_DEADLINE_MS = 24000;
     private static final double PARK_ALREADY_THERE_INCHES = 1;
     private static final double FIELD_MIDDLE_INCHES = 72;
@@ -98,7 +101,11 @@ public abstract class AutoBase extends LinearOpMode {
             Pose here = drive.pose();
             Pose spot = parkPose();
             if (here.distance(spot) <= PARK_ALREADY_THERE_INCHES) return null;
-            return drive.follow(Paths.line(here, spot).linear(here, spot), PARK_TIMEOUT_MS);
+            // The park drive may use whatever is left of the auto (up to a second before the
+            // buzzer), not just PARK_TIMEOUT_MS. From the start side the park spot is a long
+            // way off, and a routine that finished early should not give up on parking early.
+            double untilTheEnd = STOP_DRIVING_AT_MS - autoTimer.milliseconds();
+            return drive.follow(Paths.line(here, spot).linear(here, spot), Math.max(PARK_TIMEOUT_MS, untilTheEnd));
         });
     }
 
