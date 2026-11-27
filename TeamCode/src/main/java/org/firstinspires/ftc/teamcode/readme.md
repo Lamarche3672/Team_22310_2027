@@ -13,7 +13,7 @@ It builds and passes the desktop tests and the simulator. **The camera aim, the 
 | RIGHT TRIGGER | Intake |
 | LEFT TRIGGER | Spit everything out (beats everything else). The index runs slowly so pollen don't get thrown |
 | RIGHT BUMPER (hold) | Spin up the shooter to the set speed |
-| LEFT BUMPER (hold) | Shoot: feeds one pollen at a time for as long as it is held |
+| LEFT BUMPER (hold) | Shoot: the index runs for as long as it is held |
 | D-PAD left / right | Pick a shooter number on the screen: Speed, P, I, F, Feed on, Feed off |
 | D-PAD up / down | Change that number (hold to keep going). Saved by itself |
 | X (hold 1 second) | Shooter numbers back to default |
@@ -54,8 +54,8 @@ On gamepad 1 the screen shows six lines, with `>>` marking the one the D-PAD cha
 | P | 0.70 | 0.05 | How hard it pushes back when the speed is off. Wheels hunting up and down: lower it |
 | I | 0.50 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
 | F | 1.00 | 0.01 | The base power for a speed. Speed sits well under the target everywhere: raise it |
-| Feed on (ms) | 150 | 25 | How long the belt runs to hand over ONE pollen. Two go at once: lower it. A pulse moves nothing: raise it |
-| Feed off (ms) | 450 | 50 | How long the belt then waits for the wheels to get their speed back. Later pollen fall short: raise it. 0 = no pauses |
+| Feed on (ms) | 250 | 25 | Only used when Feed off is above 0: how long the belt runs to hand over one pollen |
+| Feed off (ms) | 0 | 50 | 0 = the belt runs for as long as LEFT BUMPER is held. Above 0 = one pollen at a time: the belt stops this long between pollen so the wheels get their speed back |
 
 - D-PAD left / right picks the line, up / down changes it. Hold it down to keep stepping.
 - The numbers are saved on the Control Hub when you let go, and are still there after a restart or a new install.
@@ -63,7 +63,7 @@ On gamepad 1 the screen shows six lines, with `>>` marking the one the D-PAD cha
 - Hold X for a second to go back to the defaults.
 - LEFT TRIGGER runs the wheels backwards at 1600.
 - Below 2800 the two wheels are held within 50 of each other. The flywheel line shows how far apart they are and names the slow wheel if they are not. At full power they are not matched: the only way to match there is to slow the faster wheel, which throws speed away. A wheel that is slow at full power has a mechanical problem (drag, a slipping hub, a tired motor).
-- **One pollen at a time.** While LEFT BUMPER is held the belt goes on, off, on, off. With the belt simply running the pollen arrive nose to tail and the second hits wheels that have not recovered from the first, which is why several came out weakly together. With a working encoder the pause also waits for the wheels to be back up to speed (half a second longer at most).
+- **Hold LEFT BUMPER and the belt runs.** That is the default. If several pollen come out weakly together (they arrive nose to tail, and the second hits wheels that have not recovered from the first), try one at a time: raise Feed off to about 400. The belt then goes on, off, on, off while the bumper is held. For a single good shot you can also just tap the bumper.
 - **Where the encoders are.** The flywheel encoder cables are in the Expansion Hub's encoder ports 0 and 1 (beside the intake and index motor ports), not beside the flywheel motors on 2 and 3. The code finds them there by itself: the first time the wheels start it leads with the right wheel for a fifth of a second and sees which port moves. The screen then says "Flywheel speed is read from encoder ports 0 and 1 (port N = right wheel)".
 - With encoders working, a Speed below 2800 is held properly (P, I, F and wheel matching all work). 3000 is still plain full power with no control; for the most even volleys try about 2500.
 - At full power (anything near 2800 or above) the wheels have nothing in hand, so they slow a little while pollen go through. If the first pollen flies further than the rest, lower Speed until they match (around 2300 to 2400).
@@ -256,7 +256,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 
 **Nov 27 (evening)**
 - The flywheel encoders were never dead: their cables are in encoder ports 0 and 1 while the motors are on 2 and 3. The code now reads them there and works out which wheel is which, so real speed control and wheel matching work for the first time.
-- LEFT BUMPER feeds one pollen at a time (belt on 150 ms, off 450 ms, both on the D-PAD menu). Autonomous feeds the same way.
+- Feeding one pollen at a time is on the D-PAD menu (Feed off above 0). It is off by default: holding LEFT BUMPER runs the belt the whole time. Autonomous feeds the same way teleop is set.
 
 **Nov 27 (later)**
 - Strong autos: the garden pollen are now shot from beside the start position, into the same cell as the preloads, instead of from across the field. The far shot only scored if the hive had tipped.

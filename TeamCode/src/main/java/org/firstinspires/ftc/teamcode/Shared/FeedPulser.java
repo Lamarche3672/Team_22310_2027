@@ -1,9 +1,13 @@
 package org.firstinspires.ftc.teamcode.Shared;
 
 /**
- * Feeds the shooter one pollen at a time.
+ * Decides when the index belt runs while the feed button is held.
  *
- * Why: with the belt simply running, the pollen arrive nose to tail. The first one is a
+ * By default (OFF time 0) that is simply: all the time the button is held. Hold LEFT BUMPER
+ * and the belt runs; let go and it stops.
+ *
+ * It can also feed one pollen at a time, which is switched on by giving OFF a value on the
+ * gamepad 1 menu. Why that exists: with the belt simply running, the pollen arrive nose to tail. The first one is a
  * great shot. It also takes speed out of the wheels, and the second is already touching
  * them before they have it back, so two or three get spat out weakly together. One pollen
  * on its own shoots well, so every pollen is made to be "one on its own": the belt runs just
@@ -18,7 +22,7 @@ package org.firstinspires.ftc.teamcode.Shared;
  * by the clock.
  *
  * Teleop and autonomous both use this, so a volley looks the same in both. The two times are
- * on the gamepad 1 menu (ShooterSettings). Setting OFF to 0 turns the pauses off again.
+ * on the gamepad 1 menu (ShooterSettings).
  */
 public final class FeedPulser {
     /** How close to their starting speed the wheels have to be before the next pollen goes. */

@@ -52,7 +52,7 @@ public class Shooter {
 
     private FlywheelControl flywheels;
     private ShooterSettings settings = new ShooterSettings();
-    /** Turns a held LEFT BUMPER into one pollen at a time. */
+    /** Runs the belt while LEFT BUMPER is held (or in pulses, if Feed off is given a value). */
     private final FeedPulser pulser = new FeedPulser();
     private boolean beltMayRun;
 
@@ -102,10 +102,10 @@ public class Shooter {
     }
 
     /**
-     * 1 = the index should run right now, 0 = not. While LEFT BUMPER is held the belt starts
-     * at once and then goes on / off / on, one pollen at a time (see FeedPulser). It never
-     * waits for the flywheels before the first pollen: the gamepad buzzes and the screen says
-     * READY when the wheels are up, and that is the cue to press it.
+     * 1 = the index should run right now, 0 = not. Hold LEFT BUMPER and the belt runs; let go
+     * and it stops. (With "Feed off" above 0 on the menu it goes on / off / on instead, one
+     * pollen at a time, see FeedPulser.) It never waits for the flywheels: the gamepad buzzes
+     * and the screen says READY when the wheels are up, and that is the cue to press it.
      *
      * It is also 0 for the half second after an outtake while the wheels are still turning
      * backwards: a pollen fed into that would be thrown back down the robot.
@@ -181,6 +181,8 @@ public class Shooter {
             telemetry.addLine("Speed " + String.format("%.0f", FlywheelControl.MAX_TICKS_PER_SECOND)
                     + " or more = FULL POWER to both wheels. P, I, F and wheel matching are not used.");
         }
+        telemetry.addLine(settings.feedOffMs <= 0 ? "Feed off 0 = the belt runs for as long as LEFT BUMPER is held."
+                : "Feed off above 0 = one pollen at a time while LEFT BUMPER is held.");
         telemetry.addLine("D-PAD left/right = pick a line, up/down = change it. Hold X = defaults.");
         if (now - noteNanos < 3_000_000_000L && !note.isEmpty()) telemetry.addLine(note);
 

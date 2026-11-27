@@ -36,7 +36,6 @@ public final class Volley {
      * How long a volley feeds for, pauses between pollen included. 2.5 s was not enough on
      * the real robot: the pollen had not reached the wheels when the belt stopped. In teleop
      * the driver just holds the bumper until they are gone; this is the auto's version of that.
-     * At the default 150 ms on / 450 ms off it is seven or eight pollen's worth for four.
      */
     public static final double FEED_MS = 4500;
     /** Holding the belt for the wheels before the first pollen may stretch a volley by at most this much. */
@@ -58,8 +57,9 @@ public final class Volley {
     }
 
     /**
-     * Feeds for FEED_MS, one pollen at a time: the belt goes on / off / on the same way it
-     * does in teleop (FeedPulser), and the pauses count as part of the feed. Before the first
+     * Feeds for FEED_MS the same way teleop does with LEFT BUMPER held (FeedPulser): the belt
+     * just runs, or goes on / off / on if the team has switched pauses on, and those pauses
+     * count as part of the feed. Before the first
      * pollen it may hold the belt a moment for the wheels (FlywheelControl.feedScale()); that
      * wait does not count, up to MAX_EXTRA_FEED_MS.
      */
