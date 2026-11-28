@@ -47,9 +47,9 @@ public abstract class AutoBase extends LinearOpMode {
     private static final double STOP_DRIVING_AT_MS = 29000;
     /** Only shoot if the robot faces within this many degrees of where the route says. */
     protected static final double SHOOT_AIM_DEGREES = 10;
-    // At 24 s whatever is still being scored is cut off and the robot parks. The park drive
-    // then has until STOP_DRIVING_AT_MS, which is 5 s: enough for the longest park we have.
-    protected static final double PARK_DEADLINE_MS = 24000;
+    // At 25 s whatever is still being scored is cut off and the robot parks. The park drive
+    // then has until STOP_DRIVING_AT_MS, which is 4 s: the longest park we have takes about 3.
+    protected static final double PARK_DEADLINE_MS = 25000;
     private static final double PARK_ALREADY_THERE_INCHES = 1;
     private static final double FIELD_MIDDLE_INCHES = 72;
 

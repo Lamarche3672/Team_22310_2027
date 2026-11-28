@@ -18,12 +18,15 @@ import java.util.Locale;
  * that was tried, and a wrong saved number made every shot fall short with nobody able to
  * see why. One number on the screen that only the D-PAD changes cannot do that.
  *
- * About the speed number: it is what the motor encoders report (ticks per second), which is
- * the number the team has always dialled in. These motors read about 2800 flat out, so
- * anything above that, such as the default 3000, simply means "everything they have".
+ * About the speed number: it is the AVERAGE of what the two flywheel encoders report (ticks
+ * per second), the same numbers the "Flywheel right / left" line shows. On this robot the
+ * wheels reach about 1000 (right) and 1350 (left) flat out, an average near 1175, and with
+ * the index running they can only hold an average of about 900. The default sits just under
+ * that, so every pollen of a volley meets wheels at the same speed. 2800 or more still means
+ * "full power, no speed control".
  */
 public final class ShooterSettings {
-    public static final double DEFAULT_SPEED = 3000;
+    public static final double DEFAULT_SPEED = 850;
     public static final double MIN_SPEED = 400;
     public static final double MAX_SPEED = 3200;
     public static final double MAX_GAIN = 3.0;
@@ -36,11 +39,10 @@ public final class ShooterSettings {
     public static final double DEFAULT_FEED_OFF_MS = 0;
     public static final double MAX_FEED_MS = 1500;
 
-    // "_v2": the first file could be changed by brushing the D-PAD at any moment, and shots
-    // went short without anybody having meant to lower the speed. That file is not read any
-    // more, so every number starts again from its default (speed 3000 = full power). The
-    // menu now has to be opened with BACK before the D-PAD changes anything.
-    private static final String FILE_NAME = "shooter_settings_v2.txt";
+    // "_v3": the numbers saved before this were for running flat out (speed 3000), where the
+    // first pollen of a volley flew further than the rest. That file is not read any more,
+    // so the speed starts from the new default and is held there.
+    private static final String FILE_NAME = "shooter_settings_v3.txt";
 
     public double speed = DEFAULT_SPEED;
     public double p = FlywheelControl.DEFAULT_P;

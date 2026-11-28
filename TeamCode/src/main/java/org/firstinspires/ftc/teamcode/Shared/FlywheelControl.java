@@ -12,14 +12,24 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
  *
  * How it works, in order of importance:
  *
- *  1. Feedforward. A motor's speed is roughly proportional to the voltage it gets, so most of
- *     the power is simply "target speed / top speed". That part is corrected for the battery:
- *     a 10 V battery needs 20% more power than a 12 V one for the same speed.
- *  2. A small P and I correction on top, for friction and for the dip when a pollen goes through.
- *  3. A current limit. From rest a motor pulls its stall current, and two of them together are
- *     what used to drag the battery down. We never ask for more than SPIN_UP_VOLTS above what
- *     the wheel is already generating, which caps the current without slowing spin-up much.
- *  4. Both wheels get the same power, plus a small trim that pulls the slower one up.
+ *  1. Feedforward: the volts a wheel needs for a speed, divided by the volts the battery
+ *     has right now. On this robot that is mostly friction: a wheel needs about 6 V just to
+ *     keep turning, plus 12 V for every 2800 of speed (see DRAG_VOLTS). Dividing by the
+ *     live battery voltage is what keeps the speed steady when the index starts and the
+ *     battery dips: the power goes up by itself, before the wheels have slowed.
+ *  2. A P and I correction on top, for whatever the feedforward gets wrong and for the dip
+ *     when a pollen goes through. What the I part learns is kept from one spin-up to the
+ *     next, so it only has to be learned once.
+ *  3. A soft start, so two motors starting from rest do not both pull their stall current.
+ *  4. Both wheels get the same power. They do not turn at the same speed (the right one has
+ *     more friction), and it is the AVERAGE of the two that is held: that is what sets how
+ *     far a pollen goes.
+ *
+ * Why hold a speed at all, instead of running flat out: flat out, the first pollen meets
+ * wheels at their very fastest. Then the index is running (the battery sits a volt lower)
+ * and a pollen has just taken speed out of them, so every pollen after the first is slower
+ * and lands shorter. Held at a speed the wheels can still reach with the index running,
+ * the first pollen leaves at the same speed as the fourth.
  *
  * Points 2 to 4 all lean on the wheel encoders, and those are the first thing to go wrong on a
  * real robot. So the encoders are checked against what the motors are being told to do:
@@ -69,7 +79,18 @@ public final class FlywheelControl {
     // to recover after a pollen. If the real wheels hunt up and down, lower P first.
     public static final double DEFAULT_P = 0.7;
     public static final double DEFAULT_F = 1.0;
-    public static final double DEFAULT_I = 0.5;
+    public static final double DEFAULT_I = 1.0;
+
+    // ---- what THIS robot's wheels need, measured with TEST: Robot check on Nov 27.
+    // At full power the right wheel read about 1050 and the left about 1450 where a
+    // free-spinning HD Hex reads 2800. Working back from that: a wheel needs about 7.0 V
+    // (right) or 5.5 V (left) just to overcome its own friction, before it has any speed.
+    // Both get the same power, so the feedforward uses the middle. If the wheels are ever
+    // freed up, this number comes down (the I term covers the difference in the meantime;
+    // F on the tuning menu scales it).
+    public static final double DRAG_VOLTS = 6.2;
+    /** On top of the friction: the motor's own constant, 12 V for every 2800 ticks/s. */
+    private static final double VOLTS_PER_TICK = 12.0 / MAX_TICKS_PER_SECOND;
 
     // ---- current limit while spinning up (see point 3 above). At 11 V we allow 7 V across
     // the motor, about 5 A each. A fresh battery (12.5 V and up) gets 9 V, about 6.5 A each,
@@ -107,8 +128,17 @@ public final class FlywheelControl {
      */
     public static final double FEED_BOOST_POWER = 0.08;
     private static final double FEED_BOOST_BELOW_TICKS = 20;
-    private static final double INTEGRATE_WITHIN = 200;
-    private static final double MAX_INTEGRAL_POWER = 0.1;
+    private static final double INTEGRATE_WITHIN = 300;
+    // Wide enough to cover a feedforward that is well out (friction that has changed since
+    // it was measured), not just the last few percent.
+    private static final double MAX_INTEGRAL_POWER = 0.4;
+    /**
+     * Wheel matching (the trim that pulls the two wheels to the same speed) is off. The right
+     * wheel has so much more friction that it is already at full power at shooting speed;
+     * the only way to "match" is to slow the left one down to it, and that costs distance.
+     * Turn it back on once the right wheel has been freed up.
+     */
+    private static final boolean MATCH_WHEELS = false;
     // Matching the two wheels. Unequal wheels put spin on a pollen and it curves, so the two
     // are held within MATCHED_WITHIN of each other. The hub reports speed in steps of about
     // 20 ticks/s, so the raw difference flickers; the trim works on a smoothed difference.
@@ -157,6 +187,8 @@ public final class FlywheelControl {
     private double sentRight = Double.NaN;
     private double sentLeft = Double.NaN;
     private double integral;
+    /** What the I term had learned when the wheels were last stopped, to start the next spin-up from. */
+    private double learnedIntegral;
     private double rightVelocity;
     private double leftVelocity;
     /** Smoothed (right - left) speed, used to trim the wheels toward each other. */
@@ -221,7 +253,10 @@ public final class FlywheelControl {
     public void setTarget(double ticksPerSecond) {
         if (!Double.isFinite(ticksPerSecond)) ticksPerSecond = 0;
         if (ticksPerSecond == target) return;
-        if (Math.signum(ticksPerSecond) != Math.signum(target)) integral = 0;
+        if (Math.signum(ticksPerSecond) != Math.signum(target)) {
+            // Starting forwards from rest: pick up where the last spin-up left off.
+            integral = target == 0 && ticksPerSecond > 0 ? learnedIntegral : 0;
+        }
 
         // A small nudge to the speed (the camera distance moving a little) keeps the "ready"
         // state. A real change means ready has to be earned again from scratch.
@@ -258,6 +293,8 @@ public final class FlywheelControl {
 
     /** Lets the wheels coast to a stop. */
     public void stop() {
+        // Keep what the I term learned on a forward run that was actually under speed control.
+        if (target > 0 && !isFlatOut() && !blind) learnedIntegral = integral;
         target = 0;
         integral = 0;
         power = 0;
@@ -293,9 +330,9 @@ public final class FlywheelControl {
         // mismatch is "how far the right wheel is ahead of the left".
         // Flat out both wheels get the same full power. Matching them there could only mean
         // slowing the faster one down, which throws away exactly the speed that was asked for.
-        boolean flatOut = isFlatOut();
-        rightPower = flatOut ? power : matched(power, mismatch, matchBuilt);
-        leftPower = flatOut ? power : matched(power, -mismatch, -matchBuilt);
+        boolean sameForBoth = isFlatOut() || !MATCH_WHEELS;
+        rightPower = sameForBoth ? power : matched(power, mismatch, matchBuilt);
+        leftPower = sameForBoth ? power : matched(power, -mismatch, -matchBuilt);
         boolean changed = Math.abs(rightPower - sentRight) >= WRITE_THRESHOLD
                 || Math.abs(leftPower - sentLeft) >= WRITE_THRESHOLD
                 || (power == 0 && (sentRight != 0 || sentLeft != 0));
@@ -376,7 +413,7 @@ public final class FlywheelControl {
         if (blind) {
             // No speed to correct with or to cap the current with. Feedforward alone gets
             // close to the target, and easing the power in does the current cap's job.
-            double open = Math.max(-1.0, Math.min(1.0, f * target / MAX_TICKS_PER_SECOND * battery.compensation()));
+            double open = feedforward();
             double step = BLIND_POWER_RISE_PER_SECOND * dt;
             integral = 0;
             return power + Math.max(-step, Math.min(step, open - power));
@@ -384,17 +421,18 @@ public final class FlywheelControl {
 
         double error = target - measured;
 
-        // Only integrate near the target. Integrating during the whole spin-up would wind the
-        // term up and overshoot.
-        if (Math.abs(error) < INTEGRATE_WITHIN) integral += error * dt;
+        // Only integrate near the target (during the whole spin-up it would wind up and
+        // overshoot), and not while the motors are already flat out and still short: more
+        // "wanting" cannot help then, it only has to be unwound later.
+        boolean flatOutAndShort = Math.abs(power) >= 0.999 && error * direction > 0;
+        if (Math.abs(error) < INTEGRATE_WITHIN && !flatOutAndShort) integral += error * dt;
         double integralPower = i / 1000.0 * integral;
         if (Math.abs(integralPower) > MAX_INTEGRAL_POWER) {
             integralPower = Math.signum(integralPower) * MAX_INTEGRAL_POWER;
             integral = integralPower * 1000.0 / Math.max(i, 1e-9);
         }
 
-        double wanted = (f * target / MAX_TICKS_PER_SECOND) * battery.compensation()
-                + p / 1000.0 * error + integralPower + feedBoost(error);
+        double wanted = feedforward() + p / 1000.0 * error + integralPower + feedBoost(error);
         // Never push against the direction we want to spin; over speed we just ease off.
         wanted = direction > 0 ? Math.max(0, wanted) : Math.min(0, wanted);
         // Past the first moments there is no cap: see SOFT_START_NANOS.
@@ -411,6 +449,16 @@ public final class FlywheelControl {
         if (Math.abs(wanted) > Math.abs(backEmf) + headroom) battery.noteFlywheelSpinUp();
         wanted = Math.max(backEmf - headroom, Math.min(backEmf + headroom, wanted));
         return Math.max(-1.0, Math.min(1.0, wanted));
+    }
+
+    /**
+     * The power the wheels should need for the target at the battery voltage we have right
+     * now: (friction volts + speed volts) / battery volts, in the direction of the target.
+     */
+    private double feedforward() {
+        double supply = Double.isNaN(battery.volts()) ? Battery.NOMINAL_VOLTS : battery.volts();
+        double volts = f * (DRAG_VOLTS + VOLTS_PER_TICK * Math.abs(target));
+        return Math.signum(target) * Math.min(1.0, volts / Math.max(6.0, supply));
     }
 
     private double feedBoost(double error) {

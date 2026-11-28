@@ -10,19 +10,15 @@ import org.firstinspires.ftc.teamcode.Shared.HiveAim;
  * One volley in autonomous. Every auto shoots through here, so they all shoot the same way
  * and a fix here fixes all of them.
  *
- * The timing is fixed and simple on purpose:
- *
  *   1. start the flywheels
  *   2. turn to face the hive using the camera, if it can see it (while the wheels spin up)
  *   3. wait until the wheels have been spinning for SPIN_UP_MS
- *   4. feed in pulses: belt on for FEED_ON_MS, off for FEED_PAUSE_MS, and so on, until the
- *      belt has run for FEED_TOTAL_ON_MS in all. The pauses let each pollen leave on its own
- *      and give the wheels a moment to get their speed back before the next one.
+ *   4. feed one pollen at a time: run the belt for FEED_ON_MS, then stop it and wait for the
+ *      wheels to be back up to speed, then the next. A pollen takes speed out of the wheels,
+ *      and one that arrives before they have it back lands short.
  *   5. everything off
  *
- * It goes by the clock and not by "the wheels say they are ready": on this robot that signal
- * could not be trusted, and a volley that waits on it either fires early or not at all.
- * Nothing in here can hang: every step has a fixed length.
+ * Nothing in here can hang: every wait has a longest time.
  */
 public final class Volley {
 
@@ -33,12 +29,17 @@ public final class Volley {
      * started earlier (on the drive to the shooting spot) have usually had it already.
      */
     public static final double SPIN_UP_MS = 2500;
-    /** The belt runs for this long in all during one volley. */
+    /** One pulse of the belt: "a bit", about one pollen's worth. */
+    public static final double FEED_ON_MS = 500;
+    // The wait after each pulse ends as soon as the wheels are back at speed, but is never
+    // shorter than MIN (the pollen needs a moment to actually leave) or longer than MAX
+    // (wheels that cannot get back must not stall the volley).
+    public static final double FEED_MIN_WAIT_MS = 300;
+    public static final double FEED_MAX_WAIT_MS = 800;
+    /** The belt runs for this long in all during one volley: eight pulses. */
     public static final double FEED_TOTAL_ON_MS = 4000;
-    /** One pulse: about one pollen's worth of belt. */
-    public static final double FEED_ON_MS = 1000;
-    /** The gap after each pulse. Four pulses and three gaps make a volley 5.5 s long. */
-    public static final double FEED_PAUSE_MS = 500;
+    /** However long the waits turn out, a volley's feed is over by now. */
+    public static final double FEED_LONGEST_MS = 8000;
 
     private Volley() { }
 
@@ -54,16 +55,18 @@ public final class Volley {
                 flywheel.stopCommand());
     }
 
-    /** Step 4 above: belt on, pause, belt on, pause, until it has run for FEED_TOTAL_ON_MS. */
+    /** Step 4 above: belt on a bit, wait for the wheels, belt on a bit, wait, and so on. */
     public static Command feed(FlywheelAuto flywheel, IndexIntakeAuto intake) {
+        long[] startNanos = new long[1];
         long[] lastNanos = new long[1];
         long[] phaseStartNanos = new long[1];
         boolean[] beltOn = new boolean[1];
         double[] onMs = new double[1];
         return new CommandBuilder()
                 .setStart(() -> {
-                    lastNanos[0] = System.nanoTime();
-                    phaseStartNanos[0] = lastNanos[0];
+                    startNanos[0] = System.nanoTime();
+                    lastNanos[0] = startNanos[0];
+                    phaseStartNanos[0] = startNanos[0];
                     beltOn[0] = true;
                     onMs[0] = 0;
                     flywheel.setFeeding(true);
@@ -76,13 +79,15 @@ public final class Volley {
                     if (beltOn[0] && inPhaseMs >= FEED_ON_MS) {
                         beltOn[0] = false;
                         phaseStartNanos[0] = now;
-                    } else if (!beltOn[0] && inPhaseMs >= FEED_PAUSE_MS) {
+                    } else if (!beltOn[0] && (inPhaseMs >= FEED_MAX_WAIT_MS
+                            || (inPhaseMs >= FEED_MIN_WAIT_MS && flywheel.isBackUpToSpeed()))) {
                         beltOn[0] = true;
                         phaseStartNanos[0] = now;
                     }
                     intake.feedShooter(beltOn[0] ? 1.0 : 0.0);
                 })
-                .setDone(() -> onMs[0] >= FEED_TOTAL_ON_MS)
+                .setDone(() -> onMs[0] >= FEED_TOTAL_ON_MS
+                        || (System.nanoTime() - startNanos[0]) / 1e6 >= FEED_LONGEST_MS)
                 // Also runs when the park deadline cuts a volley short, so the feed never stays on.
                 .setEnd(reason -> {
                     intake.stop();

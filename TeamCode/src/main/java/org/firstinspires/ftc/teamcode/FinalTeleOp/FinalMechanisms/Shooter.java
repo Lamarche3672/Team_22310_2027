@@ -35,7 +35,7 @@ public class Shooter {
     public static final double REVERSE_VELOCITY = 1600;
 
     // How much one press of the D-PAD changes each number.
-    private static final double SPEED_STEP = 50;
+    private static final double SPEED_STEP = 25;
     private static final double P_STEP = 0.05;
     private static final double I_STEP = 0.05;
     private static final double F_STEP = 0.01;
@@ -46,6 +46,9 @@ public class Shooter {
     private static final long REPEAT_EVERY_NANOS = 100_000_000L;
     /** X has to be HELD this long to reset the numbers, so brushing it in a match does nothing. */
     private static final long RESET_HOLD_NANOS = 1_000_000_000L;
+
+    private static final long FEED_DIP_AFTER_NANOS = 400_000_000L;
+    private static final double FEED_DIP_WORTH_SAYING = 60;
 
     /** Wheels still turning faster than this the other way are left to coast before reversing. */
     private static final double COAST_BELOW = 200;
@@ -78,6 +81,11 @@ public class Shooter {
     /** +1 or -1: the direction the wheels were last driven in. 0 = not driven yet. */
     private double lastDriveSign;
     private boolean wasReady;
+    // How far the wheels fell during the last feed, so the drivers can see whether the set
+    // speed is one the wheels can actually keep while pollen go through.
+    private long feedingSinceNanos;
+    private double lowestThisFeed = Double.NaN;
+    private double lowestLastFeed = Double.NaN;
     private long lastRumbleNanos;
     private long drivenSinceNanos;
 
@@ -151,6 +159,8 @@ public class Shooter {
         flywheels.update();
         beltMayRun = pulser.update(feeding && !coasting, flywheels, now);
 
+        trackFeedDip(feeding && wantSpin && !coasting, now);
+
         boolean ready = wantSpin && !coasting && flywheels.isReady();
         if (ready && !wasReady && now - lastRumbleNanos > 500_000_000L) {
             gamepad1.rumble(200);
@@ -175,12 +185,18 @@ public class Shooter {
         if (encoderNote != null) telemetry.addLine(encoderNote);
         else if (noReading) telemetry.addLine("A FLYWHEEL READS 0: check its encoder cable or a jam");
 
-        // Say plainly whether the wheels are getting everything. A shot that falls short at
-        // FULL POWER is the battery or the robot; one that falls short below it is this number.
+        // Say plainly which mode the wheels are in, and what they are really doing next to
+        // what was asked: "held at 850, now 846" is working; "held at 850, now 700" means
+        // the wheels cannot reach it (battery, friction) and the number should come down.
         boolean fullPower = settings.speed >= FlywheelControl.MAX_TICKS_PER_SECOND;
-        telemetry.addLine(fullPower ? String.format("FLYWHEELS: FULL POWER (Speed %.0f)", settings.speed)
-                : String.format("FLYWHEELS: held at %.0f - NOT full power (%.0f or more is full)",
-                        settings.speed, FlywheelControl.MAX_TICKS_PER_SECOND));
+        telemetry.addLine(fullPower ? String.format("FLYWHEELS: FULL POWER, no speed control (Speed %.0f)", settings.speed)
+                : String.format("FLYWHEELS: held at %.0f%s", settings.speed,
+                        wantSpin ? String.format(", now %.0f", flywheels.speed()) : ""));
+
+        if (!fullPower && lowestLastFeed < settings.speed - FEED_DIP_WORTH_SAYING) {
+            telemetry.addLine(String.format("Last feed the wheels fell to %.0f. For every pollen the same, set Speed to about %.0f.",
+                    lowestLastFeed, 25 * Math.floor(lowestLastFeed / 25)));
+        }
 
         if (menuOpen) {
             // The arrow marks the number the D-PAD is changing.
@@ -203,11 +219,8 @@ public class Shooter {
         // The power is here so "slow" can be told apart: a low number with the speed on target
         // is just a low set speed, a high number with a low speed is the wheels being held back.
         double apart = flywheels.wheelsApart();
-        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (%.0f apart%s, power %.0f%%)",
-                flywheels.rightVelocity(), flywheels.leftVelocity(), apart,
-                wantSpin && ready && apart > FlywheelControl.MATCHED_WITHIN
-                        ? (flywheels.rightVelocity() < flywheels.leftVelocity() ? " - RIGHT WHEEL IS SLOW" : " - LEFT WHEEL IS SLOW") : "",
-                flywheels.power() * 100);
+        telemetry.addData("Flywheel right / left", "%.0f / %.0f  (%.0f apart, power %.0f%%)",
+                flywheels.rightVelocity(), flywheels.leftVelocity(), apart, flywheels.power() * 100);
     }
 
     /** The tuning menu: BACK opens and closes it; open, left / right picks a number, up / down changes it, holding X resets them. */
@@ -270,6 +283,25 @@ public class Shooter {
                 say(settings.save() ? "back to defaults: " + settings.describe() : "defaults set, but could not save", now);
             }
         }
+    }
+
+    /**
+     * Remembers the lowest average wheel speed during a feed (after the first moments, once a
+     * pollen has had time to arrive). If that is well under the set speed, the wheels cannot
+     * keep that speed with the index running, and the first pollen will fly further than the
+     * rest. The screen then says what speed they could keep.
+     */
+    private void trackFeedDip(boolean feedingNow, long now) {
+        if (!feedingNow) {
+            if (feedingSinceNanos != 0 && !Double.isNaN(lowestThisFeed)) lowestLastFeed = lowestThisFeed;
+            feedingSinceNanos = 0;
+            lowestThisFeed = Double.NaN;
+            return;
+        }
+        if (feedingSinceNanos == 0) feedingSinceNanos = now;
+        if (now - feedingSinceNanos < FEED_DIP_AFTER_NANOS || !flywheels.hasSpeedReading()) return;
+        double speed = flywheels.speed();
+        if (Double.isNaN(lowestThisFeed) || speed < lowestThisFeed) lowestThisFeed = speed;
     }
 
     /** +1, -1 or 0 for this loop: one step on a press, then repeating steps while it is held. */

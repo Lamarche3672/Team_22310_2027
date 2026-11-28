@@ -27,6 +27,8 @@ public class FlywheelAuto {
      */
     public static final double HIGH_VELOCITY = ShooterSettings.DEFAULT_SPEED;
 
+    private static final double BACK_UP_WITHIN = 40;
+
     private FlywheelControl control;
     private ShooterSettings settings = new ShooterSettings();
 
@@ -70,6 +72,16 @@ public class FlywheelAuto {
 
     public boolean isReady() {
         return control != null && control.isReady();
+    }
+
+    /**
+     * True when the wheels have their speed back after a pollen (within 40 of the target).
+     * Also true when there is nothing to go by (no flywheels, no encoder reading, or running
+     * flat out with no target to compare with), so a volley then simply waits its shortest time.
+     */
+    public boolean isBackUpToSpeed() {
+        if (control == null || control.isFlatOut() || !control.hasSpeedReading()) return true;
+        return control.speed() >= control.target() - BACK_UP_WITHIN;
     }
 
     public Command spinUpCommand(double velocity) {

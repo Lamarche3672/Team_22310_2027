@@ -77,27 +77,6 @@ public final class Constants {
     );
     // ======================= FORESIGHT TUNER RESULT: END ========================
 
-    /**
-     * The fastest the autos may drive, as a fraction of the robot's top speed. This is
-     * battery protection, not a tuner result, which is why it sits outside the block above.
-     *
-     * Without it Pedro starts every path at 100% power from a standstill: four drive motors
-     * each pulling their full stall current (about 9 A) in the same instant. With the
-     * flywheels running as well the battery fell to 5.3 V and both hubs restarted mid-run.
-     * Pedro's power on a path is in proportion to the speed it is aiming for, so capping the
-     * speed at 0.75 also caps the power off the line at about 70%, and the amps with it.
-     * Our paths are short and never reached top speed anyway, so it costs well under a
-     * second in a whole auto.
-     *
-     * (Pedro also has an acceleration limit. Do not use it: it asks for so little power on
-     * the first step that the robot never starts moving. Tried in the simulator.)
-     */
-    public static final double AUTO_MAX_PATH_SPEED = 0.75;
-
-    static {
-        foresightConfig.maxPathSpeed.set(AUTO_MAX_PATH_SPEED);
-    }
-
     // Everything below builds the Pedro objects from the numbers above. Autos call create();
     // the tuners call the individual pieces.
 

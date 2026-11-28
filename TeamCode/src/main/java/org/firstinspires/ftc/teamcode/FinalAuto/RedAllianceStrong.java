@@ -18,11 +18,8 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
  * RED ALLIANCE STRONG: the 8-pollen auto.
  *
  *   1. shoot the 4 preloads from the start position
- *   2. drive into the garden with the intake on and collect 4 more: the turn toward it is
- *      finished early, the last stretch is a straight line, and the robot lets go of its
- *      wheels when it gets there instead of fidgeting on the spot
- *   3. back straight out, then turn and drive beside the start position, spinning the
- *      flywheels up on the way
+ *   2. drive into the garden with the intake on and collect 4 more
+ *   3. drive back beside the start position, spinning the flywheels up on the way
  *   4. shoot those 4 from there, into the same cell as the preloads
  *   then AutoBase parks.
  *
@@ -51,13 +48,8 @@ public class RedAllianceStrong extends AutoBase {
     private static final double GARDEN_SPEED_INCHES_PER_SECOND = 30;
     /** The turn toward the garden is finished 40% of the way along, so the intake arrives facing it. */
     private static final double GARDEN_TURN_DONE_AT = 0.4;
-    /**
-     * How hard the index runs while intaking (0 to 1). It is 0: the belt on this robot is
-     * stiff enough to need most of the motor's strength just to turn, so the 0.3 it used to
-     * get here never moved it. It only sat stalled, pulling amps, through the whole drive.
-     * Teleop intakes with the belt off too.
-     */
-    private static final double GARDEN_INDEX_SPEED = 0.0;
+    /** The index creeps while intaking so each pollen makes room for the next. */
+    private static final double GARDEN_INDEX_SPEED = 0.3;
     /** A short pause at the end of the garden for the last pollen to come in. */
     private static final double GARDEN_DWELL_MS = 400;
 
@@ -74,6 +66,8 @@ public class RedAllianceStrong extends AutoBase {
     /** Keep intaking this long after leaving the garden, then switch to spinning up. */
     private static final double INTAKE_FINISH_MS = 900;
     private static final double CROSS_TURN_DONE_AT = 0.65;
+    /** The turn back toward the hive is finished 70% of the way, so the robot arrives already facing it. */
+    private static final double RETURN_TURN_DONE_AT = 0.7;
     private static final double RETURN_TIMEOUT_MS = 4000;
 
     // ---- optional third cycle from a flower. Off: the robot cannot take pollen out of flowers yet.
@@ -95,19 +89,7 @@ public class RedAllianceStrong extends AutoBase {
     // x, y in inches, heading in degrees. The shooter is on the BACK of the robot, so a
     // shooting heading points the back at the hive.
     private final Pose start = poseFactory.of(56, 8, 270);
-    /**
-     * The end of the garden run. It was (10.7481, 10.2282), which puts the robot's front
-     * corners touching both walls of the corner. The robot could never quite get there, kept
-     * pushing, and pivoted against the walls in among the pollen. 1.5 inches further out on
-     * both axes it has room to simply stop. Same heading, so the intake points where it did.
-     */
-    private final Pose point12CollectLeftGarden = poseFactory.of(12.25, 11.73, 200);
-    /**
-     * Part way back from the garden, still facing it. The robot backs out in a straight line
-     * to here before it starts turning toward the hive, so it does not swing round while the
-     * intake is still in the pollen.
-     */
-    private final Pose clearOfGarden = poseFactory.of(32.0, 11.4, 200);
+    private final Pose point12CollectLeftGarden = poseFactory.of(10.7481, 10.2282, 200);
     private final Pose point33GoforSecondshot = poseFactory.of(42.6823, 124.02, 100);
     /**
      * The start-side spot for the second volley: the start position moved 3 inches off the
@@ -145,10 +127,6 @@ public class RedAllianceStrong extends AutoBase {
                 step("2  Start -> garden, intake on", sequential(
                         intake.intakeCommand(GARDEN_INDEX_SPEED),
                         drive.followSlowly(path12CollectLeftGarden(), GARDEN_SPEED_INCHES_PER_SECOND, GARDEN_TIMEOUT_MS),
-                        // Arrived: let go of the wheels for the pause. Left "holding" the
-                        // spot, the robot keeps nudging and twisting to fix the last half
-                        // inch, and that twisting is what scattered the pollen.
-                        drive.stopCommand(),
                         waitMs(GARDEN_DWELL_MS))),
 
                 // .with(...) runs alongside the drive: finish intaking, then start the
@@ -209,16 +187,9 @@ public class RedAllianceStrong extends AutoBase {
     }
 
     public Path gardenToSecondShot() {
-        if (!SECOND_SHOT_FROM_START_SIDE) {
-            return Paths.line(point12CollectLeftGarden, secondShot)
-                    .linear(point12CollectLeftGarden, secondShot, CROSS_TURN_DONE_AT);
-        }
-        // Two legs joined into one path, so the robot flows through without stopping:
-        // straight back out of the garden without turning, then the turn toward the hive
-        // on the way to the shooting spot.
-        return Paths.path(
-                Paths.line(point12CollectLeftGarden, clearOfGarden).constant(clearOfGarden),
-                Paths.line(clearOfGarden, secondShot).linear(clearOfGarden, secondShot));
+        return Paths.line(point12CollectLeftGarden, secondShot)
+                .linear(point12CollectLeftGarden, secondShot,
+                        SECOND_SHOT_FROM_START_SIDE ? RETURN_TURN_DONE_AT : CROSS_TURN_DONE_AT);
     }
 
     public Path toFlower() {

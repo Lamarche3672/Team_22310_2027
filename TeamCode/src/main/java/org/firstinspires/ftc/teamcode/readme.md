@@ -255,6 +255,11 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 
 ## What changed
 
+**Nov 28**
+- Teleop: the flywheels hold a speed (default 850, the average of the two wheels) instead of running flat out. Flat out, the first pollen met wheels 11 to 20% faster than the rest and flew long. The feedforward now knows how much voltage this robot's wheels need just to turn, and follows the battery voltage. If the screen says the wheels fell during a feed, lower Speed to the number it suggests.
+- Strong autos: back to the earlier garden route (original end point, no stop on arrival, one turning path back), still shooting the second volley from the start side. The drive speed cap is gone again.
+- Auto volleys feed one pollen at a time: belt on 0.5 s, then wait until the wheels are back at speed (0.3 to 0.8 s), eight times.
+
 **Nov 27 (late)**
 - The two gamepads no longer get in each other's way. The battery guard used to slow and limit the drive below 11 V, and on this robot the shooter alone holds the flywheel hub at 10 to 11 V, so driving went soft whenever the other driver ran the shooter. The guard now only steps in below about 9 V.
 - Full-power flywheels are back to true full power after a half-second soft start. For one build they went through a voltage-based current cap, which starved them whenever the voltage sagged (strong one moment, weak the next).

@@ -30,15 +30,12 @@ public class IndexIntakeAuto {
     }
 
     /**
-     * Push pollen into the flywheels: 1 = belt on, 0 = belt off (the pauses in a volley).
-     *
-     * Only the index runs, the same as LEFT BUMPER in teleop. The intake used to run here too,
-     * but measured on the robot the flywheels pull about 10 A and the index 6 A, all through
-     * the one hub, and every extra amp there costs flywheel speed at the exact moment a
-     * pollen arrives. The intake's 3 A was load for nothing: the belt feeds on its own.
+     * Push pollen into the flywheels: 1 = belt on, 0 = belt off (the waits in a volley).
+     * The intake roller turns with the belt, so the last pollen is pushed up onto it, and
+     * stops with it, so nothing else is pulling on the battery while the wheels recover.
      */
     public void feedShooter(double scale) {
-        if (motors != null) motors.command(0.0, scale);
+        if (motors != null) motors.command(scale > 0 ? 1.0 : 0.0, scale);
     }
 
     public void outtake() {
