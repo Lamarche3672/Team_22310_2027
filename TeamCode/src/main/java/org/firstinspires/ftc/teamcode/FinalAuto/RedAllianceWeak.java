@@ -17,8 +17,8 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
 /**
  * RED ALLIANCE WEAK: the simple, safe auto for when our partner wants the garden.
  *
- *   1. drive up the field to the shooting spot (one smooth path, no stops)
- *   2. shoot the 4 preloads
+ *   1. drive up the field along the far side (one smooth path, no stops)
+ *   2. (only if SHOOT_PRELOADS is on) shoot the 4 preloads from the shooting spot
  *   then AutoBase parks.
  *
  * It stays out of the garden side entirely. Positions are red coordinates in inches;
@@ -26,6 +26,14 @@ import org.firstinspires.ftc.teamcode.FinalAuto.FinalMechanismsAuto.FlywheelAuto
  */
 @Autonomous(name = "RedAllianceWeak", group = "Autonomous", preselectTeleOp = "MAIN TELEOP")
 public class RedAllianceWeak extends AutoBase {
+
+    /**
+     * false: this auto only drives its route and parks. It does not shoot. From the far
+     * shooting spot the pollen go at the far cell, which is down at the start of a match, so
+     * the shots were not scoring, and the team chose to bank the parking points instead.
+     * true: stop at the shooting spot and shoot the 4 preloads first, as it used to.
+     */
+    private static final boolean SHOOT_PRELOADS = false;
 
     /** HIGH_VELOCITY = the team's set speed, the one dialled in with the D-PAD in teleop. */
     private static final double SHOT_VELOCITY = FlywheelAuto.HIGH_VELOCITY;
@@ -44,7 +52,13 @@ public class RedAllianceWeak extends AutoBase {
 
     private final PoseFactory poseFactory = alliancePoseFactory();
 
-    private final Pose start = poseFactory.of(56, 8, 90);
+    /**
+     * One tile (24 in) to the right of where the strong auto starts (56, 8), so the two robots
+     * are not on the same spot and this one is clear of our partner's shots. Only the start
+     * moved: from here the robot angles back into the middle lane between the two hives. The
+     * lane itself cannot move a tile right, the other alliance's hive is there.
+     */
+    private final Pose start = poseFactory.of(80, 8, 90);
     private final Pose rotateDeadSide2 = poseFactory.of(65.222, 46.3369, 270);
     private final Pose rotateforShooting = poseFactory.of(66.0643, 95.3369, 270);
     private final Pose shootStart = poseFactory.of(66.0643, 95.3369, 270);
@@ -70,6 +84,11 @@ public class RedAllianceWeak extends AutoBase {
 
     @Override
     protected Command scoringRoutine() {
+        if (!SHOOT_PRELOADS) {
+            // No shooting: drive the same route up the field, then AutoBase parks from there.
+            // The flywheels and the index are never started.
+            return step("1  Drive up the field (no shooting)", drive.follow(toShootingSpot(), APPROACH_TIMEOUT_MS));
+        }
         return sequential(
                 step("1  Drive to the shooting spot", sequential(
                         drive.follow(toShootingSpot(), APPROACH_TIMEOUT_MS).with(sequential(

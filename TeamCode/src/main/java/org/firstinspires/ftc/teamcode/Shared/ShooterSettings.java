@@ -26,7 +26,7 @@ import java.util.Locale;
  * "full power, no speed control".
  */
 public final class ShooterSettings {
-    public static final double DEFAULT_SPEED = 850;
+    public static final double DEFAULT_SPEED = 900;
     public static final double MIN_SPEED = 400;
     public static final double MAX_SPEED = 3200;
     public static final double MAX_GAIN = 3.0;
@@ -39,10 +39,10 @@ public final class ShooterSettings {
     public static final double DEFAULT_FEED_OFF_MS = 0;
     public static final double MAX_FEED_MS = 1500;
 
-    // "_v3": the numbers saved before this were for running flat out (speed 3000), where the
-    // first pollen of a volley flew further than the rest. That file is not read any more,
-    // so the speed starts from the new default and is held there.
-    private static final String FILE_NAME = "shooter_settings_v3.txt";
+    // "_v4": the numbers saved before this were for running flat out (speed 3000), where the
+    // first pollen of a volley flew further than the rest, and then for 850, which landed a
+    // little short. Those files are not read any more, so the speed starts from the default.
+    private static final String FILE_NAME = "shooter_settings_v4.txt";
 
     public double speed = DEFAULT_SPEED;
     public double p = FlywheelControl.DEFAULT_P;

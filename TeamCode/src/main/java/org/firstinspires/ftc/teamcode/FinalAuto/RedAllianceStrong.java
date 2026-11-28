@@ -46,8 +46,8 @@ public class RedAllianceStrong extends AutoBase {
     // ---- garden run
     /** Slow enough to pick pollen up instead of pushing them along. 20 was too slow to move reliably. */
     private static final double GARDEN_SPEED_INCHES_PER_SECOND = 30;
-    /** The turn toward the garden is finished 40% of the way along, so the intake arrives facing it. */
-    private static final double GARDEN_TURN_DONE_AT = 0.4;
+    /** The turn toward the garden is finished half way along, so the intake arrives facing it. */
+    private static final double GARDEN_TURN_DONE_AT = 0.5;
     /** The index creeps while intaking so each pollen makes room for the next. */
     private static final double GARDEN_INDEX_SPEED = 0.3;
     /** A short pause at the end of the garden for the last pollen to come in. */
@@ -90,6 +90,15 @@ public class RedAllianceStrong extends AutoBase {
     // shooting heading points the back at the hive.
     private final Pose start = poseFactory.of(56, 8, 270);
     private final Pose point12CollectLeftGarden = poseFactory.of(10.7481, 10.2282, 200);
+    // Both garden legs used to be straight lines a couple of inches from the bottom wall,
+    // with the robot turning on the way. A square robot is widest corner to corner, so
+    // turning that close put a corner into the wall; it then dragged along it or stopped
+    // dead, and a robot that stops for 0.6 s gives up the drive. These points pull each leg
+    // out into the field for the part where the robot turns. They only bend the route (the
+    // robot does not stop at them) and the garden point itself is where it always was.
+    private final Pose offTheWallToGarden = poseFactory.of(50, 22, 270);
+    private final Pose intoTheGarden = poseFactory.of(30, 14, 200);
+    private final Pose outOfTheGarden = poseFactory.of(22, 24, 200);
     private final Pose point33GoforSecondshot = poseFactory.of(42.6823, 124.02, 100);
     /**
      * The start-side spot for the second volley: the start position moved 3 inches off the
@@ -181,15 +190,21 @@ public class RedAllianceStrong extends AutoBase {
     // ---- paths. ".linear(a, b, t)" turns the robot from a's heading to b's while it
     // drives, finishing the turn at fraction t of the way.
 
+    /** Off the wall first, turn out in the open, then the last stretch runs straight into the garden. */
     public Path path12CollectLeftGarden() {
-        return Paths.line(start, point12CollectLeftGarden)
+        return Paths.curve(start, offTheWallToGarden, intoTheGarden, point12CollectLeftGarden)
                 .linear(start, point12CollectLeftGarden, GARDEN_TURN_DONE_AT);
     }
 
     public Path gardenToSecondShot() {
-        return Paths.line(point12CollectLeftGarden, secondShot)
-                .linear(point12CollectLeftGarden, secondShot,
-                        SECOND_SHOT_FROM_START_SIDE ? RETURN_TURN_DONE_AT : CROSS_TURN_DONE_AT);
+        if (!SECOND_SHOT_FROM_START_SIDE) {
+            return Paths.line(point12CollectLeftGarden, secondShot)
+                    .linear(point12CollectLeftGarden, secondShot, CROSS_TURN_DONE_AT);
+        }
+        // Leaves the corner diagonally, away from both walls at once, and only comes back
+        // down to the wall when the robot is square to it again.
+        return Paths.curve(point12CollectLeftGarden, outOfTheGarden, secondShot)
+                .linear(point12CollectLeftGarden, secondShot, RETURN_TURN_DONE_AT);
     }
 
     public Path toFlower() {

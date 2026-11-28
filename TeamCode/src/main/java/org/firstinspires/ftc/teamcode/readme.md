@@ -120,14 +120,14 @@ If it is wrong on the real robot, it is one number at the top of `Shared/HiveAim
 |---|---|
 | Red Alliance Strong | Shoots 4 preloads, intakes the garden, drives back beside the start, shoots 4 more into the same cell, parks |
 | Blue Alliance Strong | Same, mirrored |
-| RedAllianceWeak | Drives up the field to the far shooting spot, shoots 4 preloads, parks. It shoots at the far cell, which only scores if the hive has tipped by then |
+| RedAllianceWeak | Drives up the field along the far side and parks. It does not shoot (`SHOOT_PRELOADS` in `RedAllianceWeak.java` turns the old preload volley back on) |
 | BlueAllianceWeak | Same, mirrored |
 
 - **Every shot is aimed with the camera** if it can see the hive: the robot turns to the tags before feeding. If it can't see them it shoots on the heading from the route. A camera reading that asks for more than 25 degrees is ignored as a bad read.
 - Shot speed in auto: the same set speed, P, I and F as teleop (the numbers changed with the D-PAD on gamepad 1). The INIT screen shows them as "Shooter".
 - The strong auto shoots both volleys from the start side, at the cell that is up when the match starts, so it scores whether or not the hive tips. To go back to shooting the second volley from across the field, set `SECOND_SHOT_FROM_START_SIDE` to false in `RedAllianceStrong.java`.
-- Each volley: the wheels spin for 2.5 s, then the index feeds in pulses: on 1 s, off 0.5 s, four times, so the belt runs 4 s in all and each pollen leaves on its own. Only the index runs during the feed.
-- Garden run: the robot finishes turning toward the garden early, drives the last stretch in a straight line, lets go of its wheels when it arrives, then backs straight out before turning toward the hive.
+- Each volley: the wheels spin for 2.5 s, then the index feeds one pollen at a time: belt on 0.5 s, then a wait until the wheels are back at speed (0.3 to 0.8 s), eight times, so the belt runs 4 s in all.
+- Garden run: both legs bow out into the field (about 15 inches from the bottom wall) for the part where the robot turns, because turning right beside the wall puts a corner into it. The garden point itself has not moved. The three bend points are next to it in `RedAllianceStrong.java`.
 - Every auto stops scoring at 24 s no matter what and parks, using whatever time is left up to 29 s. It selects MAIN TELEOP afterwards.
 - A missing intake, flywheel or camera does not stop the auto. It still drives and parks.
 - Blue is red turned half a turn. Change red and blue changes too. Blue has never been on a field.
@@ -197,8 +197,8 @@ Rule of thumb: a motor direction, a power or a speed lives in `Shared/`. Buttons
 6. **Auto start pose.** After INIT the Driver Station shows where the robot should be. It has to match.
    - Red Strong: x 56, y 8, heading 270
    - Blue Strong: x 88, y 136, heading 90
-   - Red Weak: x 56, y 8, heading 90
-   - Blue Weak: x 88, y 136, heading 270
+   - Red Weak: x 80, y 8, heading 90 (one tile to the right of the strong start)
+   - Blue Weak: x 64, y 136, heading 270
 7. **Run each auto you will use.** Watch the "Last aim" line: it says whether the camera aimed the shot.
 8. **Pinpoint cable test.** INIT an auto, pull the Pinpoint cable for half a second, plug it back. It should say "Pinpoint restarted".
 9. **After auto.** Teleop now sets "forward" by itself from where auto ended (the Drive line says "forward set by auto"). Check it once: push the left stick away from you and the robot should drive away from you. If it is wrong, tap START the old way, and fix `RED_DRIVERS_FACE_DEGREES` in `Shared/AutoHandoff.java`. This only applies when teleop is initialised within 30 seconds of the auto ending (always true in a match). Otherwise forward is whichever way the robot faces at INIT, like before.
@@ -256,7 +256,10 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 ## What changed
 
 **Nov 28**
-- Teleop: the flywheels hold a speed (default 850, the average of the two wheels) instead of running flat out. Flat out, the first pollen met wheels 11 to 20% faster than the rest and flew long. The feedforward now knows how much voltage this robot's wheels need just to turn, and follows the battery voltage. If the screen says the wheels fell during a feed, lower Speed to the number it suggests.
+- Weak autos (both colours) no longer shoot: they drive their route and park.
+- Weak autos start one tile to the right (red x 80, blue x 64), out of our partner's way. Only the start moved; from there the robot angles back into the same lane up the middle, because the other alliance's hive is a tile to the right of that lane.
+- Strong autos no longer rub the bottom wall. Both garden legs were straight lines a couple of inches from it with the robot turning on the way, which put a corner into the wall for about 3 s a run. They now bow out into the field while the robot turns. Same garden point, same shots, about 0.2 s longer.
+- Teleop: the flywheels hold a speed (default 900, raised from 850 which landed a little short; it is the average of the two wheels) instead of running flat out. Flat out, the first pollen met wheels 11 to 20% faster than the rest and flew long. The feedforward now knows how much voltage this robot's wheels need just to turn, and follows the battery voltage. If the screen says the wheels fell during a feed, lower Speed to the number it suggests.
 - Strong autos: back to the earlier garden route (original end point, no stop on arrival, one turning path back), still shooting the second volley from the start side. The drive speed cap is gone again.
 - Auto volleys feed one pollen at a time: belt on 0.5 s, then wait until the wheels are back at speed (0.3 to 0.8 s), eight times.
 
