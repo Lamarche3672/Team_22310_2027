@@ -21,12 +21,15 @@ import java.util.Locale;
  * About the speed number: it is the AVERAGE of what the two flywheel encoders report (ticks
  * per second), the same numbers the "Flywheel right / left" line shows. On this robot the
  * wheels reach about 1000 (right) and 1350 (left) flat out, an average near 1175, and with
- * the index running they can only hold an average of about 900. The default sits just under
- * that, so every pollen of a volley meets wheels at the same speed. 2800 or more still means
- * "full power, no speed control".
+ * the index running they can only hold an average of about 900.
+ *
+ * 2800 or more means "full power, no speed control", and that is the default: held at 900
+ * the shots landed short, and this shooter has no speed to spare. The cost is that the first
+ * pollen of a volley meets faster wheels than the ones behind it and flies a little further.
+ * To even a volley out, lower Speed on the menu to around 900.
  */
 public final class ShooterSettings {
-    public static final double DEFAULT_SPEED = 900;
+    public static final double DEFAULT_SPEED = 3000;
     public static final double MIN_SPEED = 400;
     public static final double MAX_SPEED = 3200;
     public static final double MAX_GAIN = 3.0;
@@ -39,10 +42,10 @@ public final class ShooterSettings {
     public static final double DEFAULT_FEED_OFF_MS = 0;
     public static final double MAX_FEED_MS = 1500;
 
-    // "_v4": the numbers saved before this were for running flat out (speed 3000), where the
-    // first pollen of a volley flew further than the rest, and then for 850, which landed a
-    // little short. Those files are not read any more, so the speed starts from the default.
-    private static final String FILE_NAME = "shooter_settings_v4.txt";
+    // "_v5": the files before this hold the speeds from when the wheels were held at 850 and
+    // then 900, which both landed short. They are not read any more, so the speed starts
+    // from the default, full power.
+    private static final String FILE_NAME = "shooter_settings_v5.txt";
 
     public double speed = DEFAULT_SPEED;
     public double p = FlywheelControl.DEFAULT_P;

@@ -51,9 +51,9 @@ The screen always says whether the flywheels are at FULL POWER or held at a lowe
 
 | Line | Default | One press | What it does |
 |---|---|---|---|
-| Speed | 3000 | 50 | How fast the wheels spin. 2800 or more means FULL POWER straight to both motors, with no speed control at all |
+| Speed | 3000 | 25 | How fast the wheels spin. 2800 or more means FULL POWER straight to both motors, with no speed control at all |
 | P | 0.70 | 0.05 | How hard it pushes back when the speed is off. Wheels hunting up and down: lower it |
-| I | 0.50 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
+| I | 1.00 | 0.05 | Slowly removes a steady error. Speed sits a little under the target: raise it |
 | F | 1.00 | 0.01 | The base power for a speed. Speed sits well under the target everywhere: raise it |
 | Feed on (ms) | 250 | 25 | Only used when Feed off is above 0: how long the belt runs to hand over one pollen |
 | Feed off (ms) | 0 | 50 | 0 = the belt runs for as long as LEFT BUMPER is held. Above 0 = one pollen at a time: the belt stops this long between pollen so the wheels get their speed back |
@@ -258,7 +258,7 @@ That finds logic bugs. It cannot find a backwards motor, a wrong camera angle or
 **Nov 28**
 - Weak autos (both colours) are now park only. Start the robot in the corner beside our parking zone, touching both walls. It drives one straight line (about 30 inches) into the zone and stops at the edge nearest the side wall, a couple of inches clear of it. How far from the wall is the x of `parkatSpawn` in `RedAllianceWeak.java`. The old route up the middle is in the git history.
 - Strong autos no longer rub the bottom wall. Both garden legs were straight lines a couple of inches from it with the robot turning on the way, which put a corner into the wall for about 3 s a run. They now bow out into the field while the robot turns. Same garden point, same shots, about 0.2 s longer.
-- Teleop: the flywheels hold a speed (default 900, raised from 850 which landed a little short; it is the average of the two wheels) instead of running flat out. Flat out, the first pollen met wheels 11 to 20% faster than the rest and flew long. The feedforward now knows how much voltage this robot's wheels need just to turn, and follows the battery voltage. If the screen says the wheels fell during a feed, lower Speed to the number it suggests.
+- Flywheels are back at FULL POWER by default (Speed 3000), in teleop and in the autos. Held at 850 and then 900 the shots landed short. Flat out, the first pollen of a volley meets wheels 11 to 20% faster than the rest and flies a little further; to even a volley out, lower Speed on the BACK menu to about 900 and the wheels are held there (the feedforward knows how much voltage this robot's wheels need just to turn, and follows the battery voltage). Speeds saved before this change are ignored.
 - Strong autos: back to the earlier garden route (original end point, no stop on arrival, one turning path back), still shooting the second volley from the start side. The drive speed cap is gone again.
 - Auto volleys feed one pollen at a time: belt on 0.5 s, then wait until the wheels are back at speed (0.3 to 0.8 s), eight times.
 
