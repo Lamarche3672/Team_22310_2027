@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
  * to this one too.
  *
  * Check before trusting it: on the blue start spot, after INIT, the Driver Station should read
- * about x 64, y 136, heading 270.
+ * about x 136, y 8, heading 270.
  */
 @Autonomous(name = "BlueAllianceWeak", group = "Autonomous", preselectTeleOp = "MAIN TELEOP")
 public class BlueAllianceWeak extends RedAllianceWeak {
